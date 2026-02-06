@@ -1206,6 +1206,7 @@ def run_task(
             provider=audio_native_config.provider,
             model=audio_native_config.model,
             use_xml_prompt=audio_native_config.use_xml_prompt,
+            cascaded_config=audio_native_config.cascaded_config,
         )
 
         # Create VoiceStreamingUserSimulator

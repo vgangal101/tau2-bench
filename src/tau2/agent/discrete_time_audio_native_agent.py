@@ -39,9 +39,13 @@ See docs/architecture/discrete_time_audio_native_agent.md for design details.
 """
 
 import base64
-from typing import List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Literal, Optional, Tuple, Union
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from tau2.voice.audio_native.livekit.config import CascadedConfig
+
 from pydantic import ConfigDict, Field
 
 from tau2.agent.base.streaming import StreamingState, _has_meaningful_content
@@ -87,7 +91,9 @@ from tau2.voice.audio_native.xai.discrete_time_adapter import DiscreteTimeXAIAda
 from tau2.voice.audio_native.xai.provider import XAIVADConfig
 
 # Provider type alias
-AudioNativeProvider = Literal["openai", "gemini", "xai", "nova", "qwen", "deepgram"]
+AudioNativeProvider = Literal[
+    "openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"
+]
 
 # VAD config union type
 VADConfig = Union[
@@ -217,6 +223,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         model: Optional[str] = None,
         max_inactive_seconds: float = DEFAULT_AUDIO_NATIVE_MAX_INACTIVE_SECONDS,
         use_xml_prompt: bool = False,
+        cascaded_config: Optional["CascadedConfig"] = None,
     ):
         """Initialize the discrete-time audio native agent.
 
@@ -249,6 +256,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             use_xml_prompt: Whether to use XML tags in system prompt. Defaults to False (plain text).
                 - True: Use XML tags
                 - False: Use plain text (no XML tags)
+            cascaded_config: Configuration for cascaded (STT→LLM→TTS) providers.
+                Only used when provider="livekit". Ignored for other providers.
+                Can be a CascadedConfig instance or None to use defaults.
         """
         self.tools = tools
         self.domain_policy = domain_policy
@@ -261,11 +271,19 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.use_xml_prompt = use_xml_prompt
         self.model = model
         self.max_inactive_seconds = max_inactive_seconds
+        self.cascaded_config = cascaded_config
         if self.model is None:
+            if self.provider == "livekit":
+                # LiveKit uses CascadedConfig for model selection
+                from tau2.voice.audio_native.livekit.config import CascadedConfig
+
+                config = self.cascaded_config or CascadedConfig()
+                self.model = config.llm.model
+            else:
+                self.model = DEFAULT_AUDIO_NATIVE_MODELS[self.provider]
             logger.debug(
-                f"No model provided, using default model for provider: {self.provider}"
+                f"No model provided, using default model for provider {self.provider}: {self.model}"
             )
-            self.model = DEFAULT_AUDIO_NATIVE_MODELS[self.provider]
 
         # Audio format (defaults to telephony)
         self.audio_format = audio_format or TELEPHONY_AUDIO_FORMAT
@@ -290,6 +308,12 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             self.vad_config = QwenVADConfig()
         elif provider == "deepgram":
             self.vad_config = DeepgramVADConfig()
+        elif provider == "livekit":
+            # LiveKit uses Deepgram for STT which has integrated VAD
+            from tau2.voice.audio_native.livekit.discrete_time_adapter import (
+                LiveKitVADConfig,
+            )
+            self.vad_config = LiveKitVADConfig()
         else:  # nova
             self.vad_config = NovaVADConfig()
 
@@ -372,6 +396,20 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                     send_audio_instant=self.send_audio_instant,
                     fast_forward_mode=self.fast_forward_mode,
                     llm_model=self.model,
+                )
+            elif self.provider == "livekit":
+                from tau2.voice.audio_native.livekit.discrete_time_adapter import (
+                    LiveKitCascadedAdapter,
+                )
+                from tau2.voice.audio_native.livekit.config import CascadedConfig
+
+                config = self.cascaded_config or CascadedConfig()
+                self._adapter = LiveKitCascadedAdapter(
+                    tick_duration_ms=self.tick_duration_ms,
+                    cascaded_config=config,
+                    send_audio_instant=self.send_audio_instant,
+                    fast_forward_mode=self.fast_forward_mode,
+                    audio_format=self.audio_format,
                 )
             else:
                 raise ValueError(f"Unknown provider: {self.provider}")

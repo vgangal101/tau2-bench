@@ -1,11 +1,14 @@
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import pandas as pd
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
+
+if TYPE_CHECKING:
+    from tau2.voice.audio_native.livekit.config import CascadedConfig
 
 from tau2.config import (
     DEFAULT_AUDIO_NATIVE_AGENT_IMPLEMENTATION,
@@ -63,9 +66,15 @@ class AudioNativeConfig(BaseModel):
     """
 
     # Provider selection
-    provider: Literal["openai", "gemini", "xai", "nova", "qwen", "deepgram"] = Field(
+    provider: Literal["openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"] = Field(
         default=DEFAULT_AUDIO_NATIVE_PROVIDER,
-        description="Audio native API provider: 'openai' (OpenAI Realtime), 'gemini' (Gemini Live), 'xai' (xAI Grok Voice Agent), 'nova' (Amazon Nova Sonic), 'qwen' (Alibaba Qwen Omni), or 'deepgram' (Deepgram Voice Agent)",
+        description="Audio native API provider: 'openai' (OpenAI Realtime), 'gemini' (Gemini Live), 'xai' (xAI Grok Voice Agent), 'nova' (Amazon Nova Sonic), 'qwen' (Alibaba Qwen Omni), 'deepgram' (Deepgram Voice Agent), or 'livekit' (LiveKit cascaded STT→LLM→TTS)",
+    )
+
+    # Cascaded config (for livekit provider)
+    cascaded_config_name: Optional[str] = Field(
+        default=None,
+        description="Name of cascaded config preset for livekit provider (e.g., 'default', 'openai-thinking', 'openai-thinking-high')",
     )
 
     model: str = Field(
@@ -235,6 +244,25 @@ class AudioNativeConfig(BaseModel):
     def max_steps_ticks(self) -> int:
         """Maximum steps in ticks."""
         return int(self.max_steps_seconds / self.tick_duration_seconds)
+
+    @property
+    def cascaded_config(self) -> Optional["CascadedConfig"]:
+        """Get the CascadedConfig for livekit provider.
+
+        Returns the config from CASCADED_CONFIGS if a name is specified,
+        otherwise returns None (will use defaults).
+        """
+        if self.cascaded_config_name is None:
+            return None
+
+        from tau2.voice.audio_native.livekit.config import CASCADED_CONFIGS
+
+        if self.cascaded_config_name not in CASCADED_CONFIGS:
+            raise ValueError(
+                f"Unknown cascaded config: '{self.cascaded_config_name}'. "
+                f"Available: {list(CASCADED_CONFIGS.keys())}"
+            )
+        return CASCADED_CONFIGS[self.cascaded_config_name]
 
 
 class RunConfig(BaseModel):
