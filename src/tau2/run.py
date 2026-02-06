@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import ContextVar
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from loguru import logger
 
@@ -23,10 +23,12 @@ from tau2.data_model.simulation import (
     AudioNativeConfig,
     Info,
     Results,
+    Review,
     RunConfig,
     SimulationRun,
     TerminationReason,
     UserInfo,
+    UserOnlyReview,
 )
 from tau2.data_model.tasks import Task
 from tau2.data_model.voice import SpeechEnvironment, SynthesisConfig, VoiceSettings
@@ -101,6 +103,42 @@ def create_speech_environment(
     )
 
     return sampled.to_speech_environment(seed)
+
+
+def _format_user_error_feedback(review: Union[Review, UserOnlyReview]) -> Optional[str]:
+    """Format user errors from a review into feedback for the user simulator.
+
+    Returns a string to append to user instructions, or None if no user errors.
+    """
+    if not review.errors:
+        return None
+
+    error_lines = []
+    for error in review.errors:
+        # For Review (full mode), only include user-source errors
+        source = getattr(error, "source", "user")
+        if source != "user":
+            continue
+        severity = getattr(error, "severity", None)
+        if severity == "minor":
+            continue
+
+        tags = ", ".join(error.error_tags) if error.error_tags else "error"
+        correct = getattr(error, "correct_behavior", None)
+        if correct:
+            error_lines.append(f"- [{tags}] {correct}")
+        else:
+            reasoning = getattr(error, "reasoning", "")
+            error_lines.append(f"- [{tags}] {reasoning[:200]}")
+
+    if not error_lines:
+        return None
+
+    return (
+        "IMPORTANT: In a previous attempt at this conversation, the user simulator "
+        "made these errors. You MUST avoid repeating them:\n"
+        + "\n".join(error_lines)
+    )
 
 
 def run_auto_review(
@@ -400,6 +438,7 @@ def run_domain(config: RunConfig) -> Results:
         auto_resume=config.auto_resume,
         auto_review=config.auto_review,
         review_mode=config.review_mode,
+        user_error_retries=config.user_error_retries,
     )
     metrics = compute_metrics(simulation_results)
     ConsoleDisplay.display_agent_metrics(metrics)
@@ -436,6 +475,7 @@ def run_tasks(
     auto_resume: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
+    user_error_retries: int = 0,
 ) -> Results:
     """
     Runs tasks for a given domain.
@@ -462,6 +502,7 @@ def run_tasks(
         audio_native_config (AudioNativeConfig): Configuration for audio-native mode.
         audio_debug (bool): Enable audio debugging (per-tick audio files and analysis).
         auto_resume (bool): Automatically resume from existing save file without prompting.
+        user_error_retries (int): Max retries on critical user simulator errors (requires auto_review).
     Returns:
         The simulation results.
     """
@@ -753,6 +794,66 @@ def run_tasks(
                     review_mode=review_mode,
                 )
                 simulation.trial = trial
+
+                # User error retry: if review detected a critical user error, re-run
+                if auto_review and user_error_retries > 0:
+                    user_retry_count = 0
+                    while user_retry_count < user_error_retries:
+                        # Check review for critical user error
+                        review = simulation.review or simulation.user_only_review
+                        if review is None or not review.critical_user_error:
+                            break
+
+                        user_retry_count += 1
+                        error_tags = []
+                        if review.errors:
+                            for e in review.errors:
+                                source = getattr(e, "source", "user")
+                                if source == "user" or not hasattr(e, "source"):
+                                    error_tags.extend(e.error_tags or [])
+                        tag_str = ", ".join(set(error_tags)) if error_tags else "unknown"
+
+                        retry_text = Text(
+                            text=f"  ⚠️  Critical user error on task {task.id} ({tag_str}). "
+                            f"Re-running with feedback ({user_retry_count}/{user_error_retries})...",
+                            style="yellow",
+                        )
+                        ConsoleDisplay.console.print(retry_text)
+
+                        # Build feedback for the user simulator
+                        feedback = _format_user_error_feedback(review)
+
+                        # Re-run with a different seed (and optionally feedback)
+                        retry_seed = seed + user_retry_count * 1000
+                        simulation = run_task(
+                            domain=domain,
+                            task=task,
+                            agent=agent,
+                            user=user,
+                            llm_agent=llm_agent,
+                            llm_args_agent=llm_args_agent,
+                            llm_user=llm_user,
+                            llm_args_user=llm_args_user,
+                            max_steps=max_steps,
+                            max_errors=max_errors,
+                            evaluation_type=evaluation_type,
+                            seed=retry_seed,
+                            save_dir=save_dir,
+                            enforce_communication_protocol=enforce_communication_protocol,
+                            speech_complexity=speech_complexity,
+                            audio_native_config=audio_native_config,
+                            user_voice_settings=user_voice_settings,
+                            user_persona_config=user_persona_config,
+                            verbose_logs=verbose_logs,
+                            audio_debug=audio_debug,
+                            auto_review=auto_review,
+                            review_mode=review_mode,
+                            user_error_feedback=feedback,
+                        )
+                        simulation.trial = trial
+
+                    simulation.user_error_retries_used = user_retry_count
+
                 if console_display:
                     ConsoleDisplay.display_simulation(simulation, show_details=False)
                 _save(simulation)
@@ -923,6 +1024,7 @@ def run_task(
     audio_debug: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
+    user_error_feedback: Optional[str] = None,
 ) -> SimulationRun:
     """
     Runs a single task simulation.
@@ -1075,9 +1177,12 @@ def run_task(
         )
 
         # Create VoiceStreamingUserSimulator
+        user_instructions = str(task.user_scenario)
+        if user_error_feedback:
+            user_instructions += f"\n\n{user_error_feedback}"
         user_instance = VoiceStreamingUserSimulator(
             tools=user_tools,
-            instructions=str(task.user_scenario),
+            instructions=user_instructions,
             llm=llm_user,
             llm_args=llm_args_user,
             voice_settings=task_voice_settings,
@@ -1165,9 +1270,12 @@ def run_task(
                 "Dummy user can only be used with solo agent"
             )
 
+        user_instructions = str(task.user_scenario)
+        if user_error_feedback:
+            user_instructions += f"\n\n{user_error_feedback}"
         user_kwargs = {
             "tools": user_tools,
-            "instructions": str(task.user_scenario),
+            "instructions": user_instructions,
             "llm": llm_user,
             "llm_args": llm_args_user,
         }

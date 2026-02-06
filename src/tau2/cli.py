@@ -379,6 +379,12 @@ def add_run_args(parser):
         default="full",
         help="Review mode when --auto-review is enabled: 'full' (agent+user errors, default) or 'user' (user simulator only).",
     )
+    parser.add_argument(
+        "--user-error-retries",
+        type=int,
+        default=3,
+        help="Max retries when a critical user simulator error is detected (requires --auto-review). Set to 0 to disable.",
+    )
 
 
 def main():
@@ -470,6 +476,7 @@ def main():
                 auto_resume=args.auto_resume,
                 auto_review=args.auto_review,
                 review_mode=args.review_mode,
+                user_error_retries=args.user_error_retries,
             )
         )
 

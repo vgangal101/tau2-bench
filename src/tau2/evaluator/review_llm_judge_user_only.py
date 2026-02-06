@@ -43,6 +43,13 @@ A user simulator error occurs when a user message:
 - Provides incorrect information that contradicts the <User Instructions>.
 - Reveals information the user should not know according to the instructions.
 
+## Important Review Principles
+
+1. **Fact-check every user claim**: For every factual detail the user provides (names, emails, zip codes, sizes, colors, product descriptions, etc.), verify it appears in or is derivable from the <User Instructions>. Any detail not grounded in the instructions is a hallucination — even if it sounds plausible. When the user lacks information, the correct behavior is to say "I don't know" or ask the agent.
+
+2. **Do not blame the user for agent failures**: If the agent is unresponsive, repeatedly fails, or makes critical errors, the user giving up or ending the conversation is a reasonable reaction — not a user error. Only flag premature_termination when the agent was actively working and making progress.
+
+
 ## Error Severity
 For each user error, classify its severity:
 - **critical_helped**: The user error helped the agent succeed inappropriately (e.g., user provided information they shouldn't have, making the task too easy).
@@ -51,12 +58,12 @@ For each user error, classify its severity:
 
 ## Error Tags
 For each error, assign one or more tags from the following list:
-- **hallucination**: Made up information not grounded in the user instructions or conversation context.
+- **hallucination**: Provided factual details (e.g., zip codes, sizes, product descriptions) not present in or derivable from the user instructions — even if plausible.
 - **incorrect_interpretation**: Misinterpreted available information (e.g., misunderstood agent's message or response).
 - **guideline_violation**: Message not consistent with the User Simulator Guidelines or User Instructions.
 - **revealed_info_early**: Shared information before it was appropriate or before proper verification.
 - **inconsistent_behavior**: Statement contradicts earlier statements or actions in the conversation.
-- **premature_termination**: Ended the conversation (e.g. via ###STOP### token) or accepted an outcome before the task was completed (while the other participant wanted to continue and was not stuck).
+- **premature_termination**: Ended the conversation or accepted an incomplete outcome while the agent was actively working and making progress. Do NOT use this tag if the user ended the conversation because the agent was unresponsive or repeatedly failing.
 - **missed_required_action**: Did not take a required action that was expected.
 - **wrong_sequence**: Performed actions out of the expected order or sequence.
 - **other**: Use only when no other tag applies. Include a description of the error type in the reasoning.
@@ -64,11 +71,15 @@ For each error, assign one or more tags from the following list:
 ## Workflow
 Follow these steps to produce your analysis:
 
-1. **Analyze each user message**: Go through the conversation message by message. For each user message, check if it contains an error based on the guidelines above. Note any errors you find.
+1. **Fact-check user claims**: Verify every factual claim the user makes against the <User Instructions>.
 
-2. **Summarize**: After analyzing all messages, summarize what happened at the conversation level. Consider the overall flow, whether the user followed their instructions, and what errors (if any) affected the outcome.
+2. **Analyze each user message**: Go through the conversation message by message. For each user message, check if it contains an error based on the guidelines above. Note any errors you find.
 
-3. **Format output**: Compile your findings into the expected JSON format. Include only the messages where errors were found (discard messages with no errors from the errors list).
+3. **Assess context for termination**: If the user ended the conversation early, only flag premature_termination if the agent was actively making progress (not stalled or failing).
+
+4. **Summarize**: Summarize what happened at the conversation level, including what errors (if any) affected the outcome.
+
+5. **Format output**: Compile your findings into the expected JSON format. Include only the messages where errors were found (discard messages with no errors from the errors list).
 
 # Output
 Structure your answer in the following JSON format:
@@ -140,6 +151,13 @@ Review the entire conversation. Identify ALL errors where the user simulator:
 - Provides incorrect information that contradicts the <User Instructions>.
 - Reveals information the user should not know according to the instructions.
 
+## Important Review Principles
+
+1. **Fact-check every user claim**: For every factual detail the user provides (names, emails, zip codes, sizes, colors, product descriptions, etc.), verify it appears in or is derivable from the <User Instructions>. Any detail not grounded in the instructions is a hallucination — even if it sounds plausible. When the user lacks information, the correct behavior is to say "I don't know" or ask the agent.
+
+2. **Do not blame the user for agent failures**: If the agent is unresponsive, repeatedly fails, or makes critical errors, the user giving up or ending the conversation is a reasonable reaction — not a user error. Only flag premature_termination when the agent was actively working and making progress.
+
+
 ## Turn-Taking/Interruption Errors (only if interruption is enabled):
 - Interrupts the agent too frequently or unnecessarily.
 - Interrupts the agent when they have only spoken a few words (less than ~5 words).
@@ -157,12 +175,12 @@ For each user error, classify its severity:
 
 ## Error Tags
 For each error, assign one or more tags from the following list:
-- **hallucination**: Made up information not grounded in the user instructions or conversation context.
+- **hallucination**: Provided factual details (e.g., zip codes, sizes, product descriptions) not present in or derivable from the user instructions — even if plausible.
 - **incorrect_interpretation**: Misinterpreted available information (e.g., misunderstood agent's message or response).
 - **guideline_violation**: Message not consistent with the User Simulator Guidelines or User Instructions.
 - **revealed_info_early**: Shared information before it was appropriate or before proper verification.
 - **inconsistent_behavior**: Statement contradicts earlier statements or actions in the conversation.
-- **premature_termination**: Ended the conversation (e.g. via ###STOP### token) or accepted an outcome before the task was completed (while the other participant wanted to continue and was not stuck).
+- **premature_termination**: Ended the conversation or accepted an incomplete outcome while the agent was actively working and making progress. Do NOT use this tag if the user ended the conversation because the agent was unresponsive or repeatedly failing.
 - **missed_required_action**: Did not take a required action that was expected.
 - **wrong_sequence**: Performed actions out of the expected order or sequence.
 - **interruption_error**: Interrupted inappropriately or failed to interrupt when appropriate (only for full-duplex with interruption enabled).
@@ -171,11 +189,15 @@ For each error, assign one or more tags from the following list:
 ## Workflow
 Follow these steps to produce your analysis:
 
-1. **Analyze each user segment**: Go through the conversation segment by segment. For each user segment, check if it contains an error based on the guidelines above. Note any errors you find.
+1. **Fact-check user claims**: Verify every factual claim the user makes against the <User Instructions>.
 
-2. **Summarize**: After analyzing all segments, summarize what happened at the conversation level. Consider the overall flow, whether the user followed their instructions, and what errors (if any) affected the outcome.
+2. **Analyze each user segment**: Go through the conversation segment by segment. For each user segment, check if it contains an error based on the guidelines above. Note any errors you find.
 
-3. **Format output**: Compile your findings into the expected JSON format. Include only the segments where errors were found (discard segments with no errors from the errors list).
+3. **Assess context for termination**: If the user ended the conversation early, only flag premature_termination if the agent was actively making progress (not stalled or failing).
+
+4. **Summarize**: Summarize what happened at the conversation level, including what errors (if any) affected the outcome.
+
+5. **Format output**: Compile your findings into the expected JSON format. Include only the segments where errors were found (discard segments with no errors from the errors list).
 
 # Output
 Structure your answer in the following JSON format:

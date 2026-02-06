@@ -455,6 +455,15 @@ class RunConfig(BaseModel):
             default="full",
         ),
     ]
+    user_error_retries: Annotated[
+        int,
+        Field(
+            description="Maximum number of retries when a critical user simulator error is detected. "
+            "Requires auto_review=True. Set to 0 to disable. "
+            "Each retry re-runs the simulation with a different seed.",
+            default=3,
+        ),
+    ]
 
     def validate(self) -> None:
         """
@@ -1091,6 +1100,10 @@ class SimulationRun(BaseModel):
             description="Classification of user authentication outcome.",
             default=None,
         )
+    )
+    user_error_retries_used: int = Field(
+        description="Number of retries triggered by critical user simulator errors.",
+        default=0,
     )
 
 
