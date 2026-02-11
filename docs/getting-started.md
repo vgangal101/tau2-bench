@@ -16,9 +16,16 @@ git clone https://github.com/sierra-research/tau2-bench
 cd tau2-bench
 ```
 
-### 2. Install ffmpeg (required for voice features)
+### 2. Install system dependencies
 
-If you plan to use voice-enabled features, install ffmpeg first:
+**PortAudio** (required for `pyaudio`):
+
+**macOS:**
+```bash
+brew install portaudio
+```
+
+**ffmpeg** (required for voice features):
 
 **macOS:**
 ```bash

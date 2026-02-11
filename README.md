@@ -55,10 +55,11 @@ Each domain specifies:
 ```bash
 git clone https://github.com/sierra-research/tau2-bench
 cd tau2-bench
+brew install portaudio  # required for pyaudio
 uv sync
 ```
 
-This requires [uv](https://docs.astral.sh/uv/getting-started/installation/). See the [full installation guide](docs/getting-started.md) for details on ffmpeg and voice dependencies.
+This requires [uv](https://docs.astral.sh/uv/getting-started/installation/). You also need `portaudio` installed on your system (`brew install portaudio` on macOS). See the [full installation guide](docs/getting-started.md) for details on all system dependencies.
 
 ### 2. Set up API keys
 
