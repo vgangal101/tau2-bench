@@ -577,6 +577,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             call_id=tool_msg.id,
             result=tool_msg.content or "",
             request_response=request_response,
+            is_error=tool_msg.error,
         )
 
     def _extract_tool_calls(self, tick_result: TickResult) -> List[ToolCall]:

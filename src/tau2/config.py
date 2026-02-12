@@ -108,8 +108,12 @@ DEFAULT_SEND_AUDIO_INSTANT = True
 DEFAULT_SPEECH_COMPLEXITY = "regular"  # Options: "control", "regular"
 
 # OpenAI Realtime API configuration
-DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2025-08-28"
+DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2026-01-12"
 DEFAULT_OPENAI_REALTIME_BASE_URL = "wss://api.openai.com/v1/realtime"
+DEFAULT_OPENAI_VOICE = "alloy"
+DEFAULT_OPENAI_NOISE_REDUCTION = (
+    "near_field"  # Options: "near_field", "far_field", or None to disable
+)
 DEFAULT_OPENAI_VAD_THRESHOLD_LOW = (
     0.2  # Audio level threshold (0.0-1.0). OpenAI default is 0.5.
 )
@@ -122,6 +126,7 @@ DEFAULT_GEMINI_MODEL = "models/gemini-live-2.5-flash-native-audio"
 # See: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference
 DEFAULT_GEMINI_MODEL_VERTEX = "gemini-live-2.5-flash-native-audio"
 DEFAULT_GEMINI_VOICE = "Zephyr"
+DEFAULT_GEMINI_PROACTIVE_AUDIO = True  # Allow model to ignore irrelevant audio input
 DEFAULT_GEMINI_LOCATION = "us-central1"
 
 # xAI Grok Voice Agent API configuration

@@ -455,12 +455,12 @@ class RunConfig(BaseModel):
             default="full",
         ),
     ]
-    user_error_retries: Annotated[
+    hallucination_retries: Annotated[
         int,
         Field(
-            description="Maximum number of retries when a critical user simulator error is detected. "
-            "Requires auto_review=True. Set to 0 to disable. "
-            "Each retry re-runs the simulation with a different seed.",
+            description="Maximum number of retries when a user simulator hallucination is detected. "
+            "Set to 0 to disable. "
+            "Each retry re-runs the simulation with a different seed and feedback.",
             default=3,
         ),
     ]
@@ -726,6 +726,49 @@ class UserOnlyReview(BaseModel):
     )
     cost: Optional[float] = Field(
         description="The cost of the review.",
+        default=None,
+    )
+
+
+class HallucinationCheckError(BaseModel):
+    """
+    Represents a hallucination detected in the user simulator's messages.
+    """
+
+    reasoning: str = Field(description="Explanation of why this is a hallucination.")
+    user_message: Optional[str] = Field(
+        description="The problematic user message content.",
+        default=None,
+    )
+    correct_behavior: Optional[str] = Field(
+        description="What the user should have said or done instead.",
+        default=None,
+    )
+
+
+class HallucinationCheck(BaseModel):
+    """
+    Result of checking a conversation for user simulator hallucinations.
+    """
+
+    reasoning: str = Field(
+        description="Step-by-step reasoning about the conversation before the decision.",
+        default="",
+    )
+    hallucination_found: bool = Field(
+        description="Whether any hallucinations were detected.",
+        default=False,
+    )
+    errors: list[HallucinationCheckError] = Field(
+        description="List of hallucinations found.",
+        default_factory=list,
+    )
+    summary: str = Field(
+        description="Brief summary of the hallucination check.",
+        default="",
+    )
+    cost: Optional[float] = Field(
+        description="The cost of the hallucination check.",
         default=None,
     )
 
@@ -1101,9 +1144,17 @@ class SimulationRun(BaseModel):
             default=None,
         )
     )
-    user_error_retries_used: int = Field(
-        description="Number of retries triggered by critical user simulator errors.",
+    hallucination_retries_used: int = Field(
+        description="Number of retries triggered by user simulator hallucinations.",
         default=0,
+    )
+    hallucination_check: Optional[HallucinationCheck] = Field(
+        description="Result of the hallucination check for this simulation.",
+        default=None,
+    )
+    provider_session_id: Optional[str] = Field(
+        description="Provider session ID (e.g., OpenAI session ID, xAI conversation ID) for debugging.",
+        default=None,
     )
 
 

@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import ContextVar
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from loguru import logger
 
@@ -21,19 +21,19 @@ from tau2.data_model.persona import InterruptTendency, PersonaConfig, Verbosity
 from tau2.data_model.simulation import (
     AgentInfo,
     AudioNativeConfig,
+    HallucinationCheck,
     Info,
     Results,
-    Review,
     RunConfig,
     SimulationRun,
     TerminationReason,
     UserInfo,
-    UserOnlyReview,
 )
 from tau2.data_model.tasks import Task
 from tau2.data_model.voice import SpeechEnvironment, SynthesisConfig, VoiceSettings
 from tau2.environment.environment import EnvironmentInfo
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
+from tau2.evaluator.reviewer import check_hallucination
 from tau2.gym.gym_agent import GymAgent
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.orchestrator.full_duplex_orchestrator import FullDuplexOrchestrator
@@ -105,39 +105,29 @@ def create_speech_environment(
     return sampled.to_speech_environment(seed)
 
 
-def _format_user_error_feedback(review: Union[Review, UserOnlyReview]) -> Optional[str]:
-    """Format user errors from a review into feedback for the user simulator.
+def _format_hallucination_feedback(
+    hallucination_check: "HallucinationCheck",
+) -> Optional[str]:
+    """Format hallucination errors into feedback for the user simulator.
 
-    Returns a string to append to user instructions, or None if no user errors.
+    Returns a string to append to user instructions, or None if no hallucinations.
     """
-    if not review.errors:
+    if not hallucination_check.errors:
         return None
 
     error_lines = []
-    for error in review.errors:
-        # For Review (full mode), only include user-source errors
-        source = getattr(error, "source", "user")
-        if source != "user":
-            continue
-        severity = getattr(error, "severity", None)
-        if severity == "minor":
-            continue
-
-        tags = ", ".join(error.error_tags) if error.error_tags else "error"
-        correct = getattr(error, "correct_behavior", None)
-        if correct:
-            error_lines.append(f"- [{tags}] {correct}")
+    for error in hallucination_check.errors:
+        if error.correct_behavior:
+            error_lines.append(f"- [hallucination] {error.correct_behavior}")
         else:
-            reasoning = getattr(error, "reasoning", "")
-            error_lines.append(f"- [{tags}] {reasoning[:200]}")
+            error_lines.append(f"- [hallucination] {error.reasoning[:200]}")
 
     if not error_lines:
         return None
 
     return (
         "IMPORTANT: In a previous attempt at this conversation, the user simulator "
-        "made these errors. You MUST avoid repeating them:\n"
-        + "\n".join(error_lines)
+        "made these errors. You MUST avoid repeating them:\n" + "\n".join(error_lines)
     )
 
 
@@ -438,7 +428,7 @@ def run_domain(config: RunConfig) -> Results:
         auto_resume=config.auto_resume,
         auto_review=config.auto_review,
         review_mode=config.review_mode,
-        user_error_retries=config.user_error_retries,
+        hallucination_retries=config.hallucination_retries,
     )
     metrics = compute_metrics(simulation_results)
     ConsoleDisplay.display_agent_metrics(metrics)
@@ -475,7 +465,7 @@ def run_tasks(
     auto_resume: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
-    user_error_retries: int = 0,
+    hallucination_retries: int = 0,
 ) -> Results:
     """
     Runs tasks for a given domain.
@@ -502,7 +492,7 @@ def run_tasks(
         audio_native_config (AudioNativeConfig): Configuration for audio-native mode.
         audio_debug (bool): Enable audio debugging (per-tick audio files and analysis).
         auto_resume (bool): Automatically resume from existing save file without prompting.
-        user_error_retries (int): Max retries on critical user simulator errors (requires auto_review).
+        hallucination_retries (int): Max retries on user simulator hallucinations (full-duplex only).
     Returns:
         The simulation results.
     """
@@ -795,36 +785,78 @@ def run_tasks(
                 )
                 simulation.trial = trial
 
-                # User error retry: if review detected a critical user error, re-run
-                if auto_review and user_error_retries > 0:
-                    user_retry_count = 0
-                    while user_retry_count < user_error_retries:
-                        # Check review for critical user error
-                        review = simulation.review or simulation.user_only_review
-                        if review is None or not review.critical_user_error:
+                # Hallucination retry: if hallucination check detects fabricated info, re-run
+                is_full_duplex = (
+                    simulation.ticks is not None and len(simulation.ticks) > 0
+                )
+                if hallucination_retries > 0 and is_full_duplex:
+                    hallucination_retry_count = 0
+                    while hallucination_retry_count < hallucination_retries:
+                        # Run focused hallucination check
+                        h_check = check_hallucination(simulation, task)
+                        simulation.hallucination_check = h_check
+
+                        if not h_check.hallucination_found:
                             break
 
-                        user_retry_count += 1
-                        error_tags = []
-                        if review.errors:
-                            for e in review.errors:
-                                source = getattr(e, "source", "user")
-                                if source == "user" or not hasattr(e, "source"):
-                                    error_tags.extend(e.error_tags or [])
-                        tag_str = ", ".join(set(error_tags)) if error_tags else "unknown"
+                        hallucination_retry_count += 1
+                        n_errors = len(h_check.errors)
 
                         retry_text = Text(
-                            text=f"  ⚠️  Critical user error on task {task.id} ({tag_str}). "
-                            f"Re-running with feedback ({user_retry_count}/{user_error_retries})...",
+                            text=f"  ⚠️  Hallucination detected on task {task.id} ({n_errors} instance(s)). "
+                            f"Re-running with feedback ({hallucination_retry_count}/{hallucination_retries})...",
                             style="yellow",
                         )
                         ConsoleDisplay.console.print(retry_text)
 
+                        # Save the discarded run to a shared Results file for tau2 view
+                        if save_dir is not None:
+                            discarded_dir = save_dir / "hallucination_discarded"
+                            discarded_dir.mkdir(parents=True, exist_ok=True)
+                            discarded_path = discarded_dir / "results.json"
+
+                            # Append to existing discarded results file, or create new one
+                            if discarded_path.exists():
+                                with open(discarded_path, "r") as fp:
+                                    discarded_data = json.load(fp)
+                                discarded_data["simulations"].append(
+                                    simulation.model_dump(mode="json")
+                                )
+                                # Add task if not already present
+                                existing_task_ids = {
+                                    t["id"] for t in discarded_data["tasks"]
+                                }
+                                if task.id not in existing_task_ids:
+                                    discarded_data["tasks"].append(
+                                        task.model_dump(mode="json")
+                                    )
+                                with open(discarded_path, "w") as fp:
+                                    json.dump(discarded_data, fp, indent=2)
+                            else:
+                                discarded_results = Results(
+                                    info=simulation_results.info,
+                                    tasks=[
+                                        t
+                                        for t in simulation_results.tasks
+                                        if t.id == task.id
+                                    ],
+                                    simulations=[simulation],
+                                )
+                                with open(discarded_path, "w") as fp:
+                                    fp.write(
+                                        discarded_results.model_dump_json(indent=2)
+                                    )
+
+                            logger.info(
+                                f"Saved discarded hallucination run to {discarded_path} "
+                                f"(task {task.id}, retry {hallucination_retry_count})"
+                            )
+
                         # Build feedback for the user simulator
-                        feedback = _format_user_error_feedback(review)
+                        feedback = _format_hallucination_feedback(h_check)
 
                         # Re-run with a different seed (and optionally feedback)
-                        retry_seed = seed + user_retry_count * 1000
+                        retry_seed = seed + hallucination_retry_count * 1000
                         simulation = run_task(
                             domain=domain,
                             task=task,
@@ -848,11 +880,11 @@ def run_tasks(
                             audio_debug=audio_debug,
                             auto_review=auto_review,
                             review_mode=review_mode,
-                            user_error_feedback=feedback,
+                            hallucination_feedback=feedback,
                         )
                         simulation.trial = trial
 
-                    simulation.user_error_retries_used = user_retry_count
+                    simulation.hallucination_retries_used = hallucination_retry_count
 
                 if console_display:
                     ConsoleDisplay.display_simulation(simulation, show_details=False)
@@ -1024,7 +1056,7 @@ def run_task(
     audio_debug: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
-    user_error_feedback: Optional[str] = None,
+    hallucination_feedback: Optional[str] = None,
 ) -> SimulationRun:
     """
     Runs a single task simulation.
@@ -1178,8 +1210,8 @@ def run_task(
 
         # Create VoiceStreamingUserSimulator
         user_instructions = str(task.user_scenario)
-        if user_error_feedback:
-            user_instructions += f"\n\n{user_error_feedback}"
+        if hallucination_feedback:
+            user_instructions += f"\n\n{hallucination_feedback}"
         user_instance = VoiceStreamingUserSimulator(
             tools=user_tools,
             instructions=user_instructions,
@@ -1271,8 +1303,8 @@ def run_task(
             )
 
         user_instructions = str(task.user_scenario)
-        if user_error_feedback:
-            user_instructions += f"\n\n{user_error_feedback}"
+        if hallucination_feedback:
+            user_instructions += f"\n\n{hallucination_feedback}"
         user_kwargs = {
             "tools": user_tools,
             "instructions": user_instructions,

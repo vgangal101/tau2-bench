@@ -133,6 +133,7 @@ class XAIRealtimeProvider:
         self.sample_rate = sample_rate
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._current_vad_config: Optional[XAIVADConfig] = None
+        self.session_id: Optional[str] = None
 
     @property
     def is_connected(self) -> bool:
@@ -170,7 +171,12 @@ class XAIRealtimeProvider:
         if data.get("type") != "conversation.created":
             raise RuntimeError(f"Expected conversation.created, got {data.get('type')}")
 
-        logger.info("xAI Realtime API: Connected successfully")
+        # Store conversation/session ID for debugging
+        conv_data = data.get("conversation", {})
+        self.session_id = conv_data.get("id") or data.get("event_id")
+        logger.info(
+            f"xAI Realtime API: Connected successfully (session_id={self.session_id})"
+        )
 
     async def disconnect(self) -> None:
         """Close the WebSocket connection."""

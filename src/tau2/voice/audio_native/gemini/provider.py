@@ -17,6 +17,7 @@ from tau2.config import (
     DEFAULT_GEMINI_LOCATION,
     DEFAULT_GEMINI_MODEL,
     DEFAULT_GEMINI_MODEL_VERTEX,
+    DEFAULT_GEMINI_PROACTIVE_AUDIO,
     DEFAULT_GEMINI_VOICE,
 )
 from tau2.environment.tool import Tool
@@ -273,6 +274,9 @@ class GeminiLiveProvider:
         self._resumption_count = 0
         self._resumption_handle: Optional[str] = None
         self._connect_config: Optional[Dict[str, Any]] = None  # For reconnection
+
+        # Gemini doesn't expose a session ID; use timestamps + API key for debugging
+        self.session_id: Optional[str] = None
         self._go_away_received: bool = (
             False  # Track if GoAway was received before disconnect
         )
@@ -339,6 +343,7 @@ class GeminiLiveProvider:
             voice: Voice name for audio output. Defaults to DEFAULT_VOICE.
             _resumption_handle: Internal parameter for session resumption.
                 Pass the handle from a previous session to resume it.
+            proactive_audio: If True, allow model to ignore irrelevant audio input.
 
         Raises:
             RuntimeError: If connection fails.
@@ -436,6 +441,12 @@ class GeminiLiveProvider:
             config_kwargs["output_audio_transcription"] = (
                 types.AudioTranscriptionConfig()
             )
+
+            # Enable proactive audio to allow model to ignore irrelevant input
+            if DEFAULT_GEMINI_PROACTIVE_AUDIO:
+                config_kwargs["proactivity"] = types.ProactivityConfig(
+                    proactive_audio=True,
+                )
 
             config = types.LiveConnectConfig(**config_kwargs)
 
@@ -841,6 +852,7 @@ class GeminiLiveProvider:
         call_id: str,
         name: str,
         result: str,
+        is_error: bool = False,
     ) -> None:
         """Send the result of a tool/function call back to the API.
 
@@ -848,6 +860,9 @@ class GeminiLiveProvider:
             call_id: The unique identifier of the function call.
             name: The name of the function that was called.
             result: The string result of the function execution.
+            is_error: If True, send the result as an error using the "error"
+                key instead of "output". This helps the model understand the
+                tool call failed and adjust its behavior accordingly.
 
         Raises:
             RuntimeError: If not connected to the API.
@@ -857,14 +872,19 @@ class GeminiLiveProvider:
 
         from google.genai import types
 
+        if is_error:
+            response_payload = {"error": result}
+        else:
+            response_payload = {"output": result}
+
         function_response = types.FunctionResponse(
             id=call_id,
             name=name,
-            response={"result": result},
+            response=response_payload,
         )
 
         await self._session.send_tool_response(function_responses=[function_response])
-        logger.debug(f"Sent tool response for {name}({call_id})")
+        logger.debug(f"Sent tool response for {name}({call_id}), is_error={is_error}")
 
     async def receive_events_for_duration(
         self, duration_seconds: float

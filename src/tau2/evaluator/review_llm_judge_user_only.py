@@ -1,5 +1,4 @@
 import json
-import re
 from copy import deepcopy
 
 from tau2.config import DEFAULT_LLM_EVAL_USER_SIMULATOR
@@ -14,7 +13,7 @@ from tau2.data_model.message import (
 from tau2.data_model.simulation import UserInfo, UserOnlyReview, UserOnlyReviewError
 from tau2.data_model.tasks import Task
 from tau2.utils.display import MarkdownDisplay
-from tau2.utils.llm_utils import generate
+from tau2.utils.llm_utils import extract_json_from_llm_response, generate
 
 # =============================================================================
 # Prompts for User Simulator Review
@@ -247,25 +246,8 @@ Interruption enabled: {interruption_enabled}
 
 
 def _extract_json_from_response(response: str) -> str:
-    """
-    Extract JSON from LLM response, handling markdown code blocks.
-    """
-    # Try to extract JSON from markdown code blocks
-    # Match ```json ... ``` or ``` ... ```
-    pattern = r"```(?:json)?\s*([\s\S]*?)```"
-    match = re.search(pattern, response)
-    if match:
-        return match.group(1).strip()
-
-    # If no code block, try to find JSON object directly
-    # Look for content between first { and last }
-    start = response.find("{")
-    end = response.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return response[start : end + 1]
-
-    # Return original response as fallback
-    return response
+    """Extract JSON from LLM response. Delegates to shared utility."""
+    return extract_json_from_llm_response(response)
 
 
 def _parse_user_only_review_response(

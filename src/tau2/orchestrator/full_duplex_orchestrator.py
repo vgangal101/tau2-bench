@@ -534,6 +534,12 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         # Compute responsiveness metrics
         info = compute_responsiveness_info(ticks)
 
+        # Extract provider session ID if available (e.g., OpenAI session ID)
+        provider_session_id = None
+        if hasattr(self.agent, "adapter") and hasattr(self.agent.adapter, "provider"):
+            provider = self.agent.adapter.provider
+            provider_session_id = getattr(provider, "session_id", None)
+
         simulation_run = SimulationRun(
             id=self.simulation_id,
             task_id=self.task.id,
@@ -550,6 +556,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             mode=self.mode.value,
             speech_environment=speech_environment,
             info=info,
+            provider_session_id=provider_session_id,
         )
         return simulation_run
 

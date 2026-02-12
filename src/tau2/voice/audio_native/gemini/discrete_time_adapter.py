@@ -160,7 +160,8 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         self._skip_item_id: Optional[str] = None
 
         # Tool result queue (for sending tool results in next tick)
-        self._pending_tool_results: List[Tuple[str, str, str, bool]] = []
+        # Each entry: (call_id, name, result_str, request_response, is_error)
+        self._pending_tool_results: List[Tuple[str, str, str, bool, bool]] = []
 
         # Track tool call info for Gemini (which sends null IDs)
         # Maps synthetic call_id -> (original_gemini_id, function_name)
@@ -352,8 +353,16 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
     async def _async_run_tick(self, user_audio: bytes, tick_number: int) -> TickResult:
         """Async tick execution."""
         # Send any pending tool results first
-        for call_id, name, result_str, request_response in self._pending_tool_results:
-            await self.provider.send_tool_response(call_id, name, result_str)
+        for (
+            call_id,
+            name,
+            result_str,
+            request_response,
+            is_error,
+        ) in self._pending_tool_results:
+            await self.provider.send_tool_response(
+                call_id, name, result_str, is_error=is_error
+            )
         self._pending_tool_results.clear()
 
         # Convert user audio from telephony to Gemini format
@@ -622,6 +631,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         call_id: str,
         result: str,
         request_response: bool = True,
+        is_error: bool = False,
     ) -> None:
         """Queue a tool result to be sent in the next tick.
 
@@ -629,6 +639,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
             call_id: The tool call ID (synthetic ID from our tracking).
             result: The tool result as a string.
             request_response: If True, request a response after sending.
+            is_error: If True, the tool call failed and result contains error details.
         """
         # Look up original Gemini ID and function name from our tracking dictionary
         # Pop it since each tool call should only be responded to once
@@ -643,8 +654,12 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
             original_id, name = info
 
         # Queue with original Gemini ID (not our synthetic one) so Gemini can match it
-        self._pending_tool_results.append((original_id, name, result, request_response))
-        logger.debug(f"Queued tool result for {name}(gemini_id={original_id!r})")
+        self._pending_tool_results.append(
+            (original_id, name, result, request_response, is_error)
+        )
+        logger.debug(
+            f"Queued tool result for {name}(gemini_id={original_id!r}, is_error={is_error})"
+        )
 
     def clear_buffers(self) -> None:
         """Clear all internal audio and transcript buffers."""

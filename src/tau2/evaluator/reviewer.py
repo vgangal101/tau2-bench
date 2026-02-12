@@ -8,11 +8,15 @@ Two review modes are supported:
 - "full": Review both agent and user simulator errors (also does auth classification)
 - "user": Review only user simulator errors
 
+Additionally, a focused hallucination check is available:
+- check_hallucination(): Detects user simulator hallucinations (full-duplex only).
+  This is used to gate reruns independently of the full review.
+
 This is different from the evaluator which computes task success rewards/metrics.
 The reviewer identifies qualitative conversation errors.
 
 Usage:
-    from tau2.evaluator.reviewer import review_simulation, ReviewMode
+    from tau2.evaluator.reviewer import review_simulation, ReviewMode, check_hallucination
 
     # Full review (agent + user errors)
     review, auth = review_simulation(simulation, task, ReviewMode.FULL, ...)
@@ -22,6 +26,10 @@ Usage:
     # User-only review
     review, _ = review_simulation(simulation, task, ReviewMode.USER, ...)
     simulation.user_only_review = review
+
+    # Hallucination check (full-duplex only)
+    hallucination_check = check_hallucination(simulation, task)
+    simulation.hallucination_check = hallucination_check
 """
 
 from enum import Enum
@@ -29,6 +37,7 @@ from typing import Optional, Union
 
 from tau2.data_model.simulation import (
     AuthenticationClassification,
+    HallucinationCheck,
     Review,
     SimulationRun,
     UserInfo,
@@ -39,6 +48,7 @@ from tau2.evaluator.auth_classifier import (
     AuthenticationClassifier,
     FullDuplexAuthenticationClassifier,
 )
+from tau2.evaluator.hallucination_reviewer import FullDuplexHallucinationReviewer
 from tau2.evaluator.review_llm_judge import (
     ConversationReviewer,
     FullDuplexConversationReviewer,
@@ -130,3 +140,35 @@ def review_simulation(
                 full_trajectory=simulation.messages,
             )
         return review, None
+
+
+def check_hallucination(
+    simulation: SimulationRun,
+    task: Task,
+) -> HallucinationCheck:
+    """
+    Check a simulation for user simulator hallucinations.
+
+    This is a focused fact-check that only detects fabricated information.
+    It does not analyze premature termination, interruption behavior, or
+    other guideline violations. Full-duplex only.
+
+    Args:
+        simulation: The simulation run to check.
+        task: The task specification.
+
+    Returns:
+        HallucinationCheck with any hallucinations found.
+
+    Raises:
+        ValueError: If the simulation is not full-duplex.
+    """
+    if not _is_full_duplex(simulation):
+        raise ValueError(
+            "Hallucination check is only supported for full-duplex simulations."
+        )
+
+    return FullDuplexHallucinationReviewer.review(
+        task=task,
+        full_trajectory=simulation.ticks,
+    )
