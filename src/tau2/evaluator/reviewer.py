@@ -180,7 +180,7 @@ def format_hallucination_feedback(
     """Format hallucination errors into feedback for the user simulator.
 
     Used by the hallucination retry loop: when a hallucination is detected,
-    this function builds a feedback string that is prepended to the user
+    this function builds a feedback string that is appended to the user
     instructions on the next retry attempt.
 
     Args:

@@ -878,6 +878,7 @@ def run_tasks(
                             auto_review=auto_review,
                             review_mode=review_mode,
                             hallucination_feedback=feedback,
+                            solo_mode=solo_mode,
                         )
                         simulation.trial = trial
 

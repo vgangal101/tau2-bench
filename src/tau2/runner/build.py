@@ -391,9 +391,16 @@ def build_voice_orchestrator(
             If None, defaults are created.
         user_persona_config: Pre-computed persona config (from run-level setup).
             If None, derived from sampled voice config.
+        hallucination_feedback: Optional feedback from a previous hallucination
+            check. If provided, appended to user instructions to help avoid
+            repeating the same errors on retry.
 
     Returns:
         A fully constructed FullDuplexOrchestrator, ready for run_simulation().
+
+    Raises:
+        ValueError: If the agent is registered with solo_mode=True, which is
+            not supported for voice/full-duplex runs.
 
     Example:
         config = VoiceRunConfig(domain="airline", audio_native_config=AudioNativeConfig())
@@ -405,6 +412,16 @@ def build_voice_orchestrator(
         simulation_id = str(uuid.uuid4())
     if seed is None:
         seed = config.seed
+
+    # Solo mode is not supported for voice/full-duplex runs
+    solo_mode = registry.get_agent_metadata(
+        config.effective_agent, "solo_mode", default=False
+    )
+    if solo_mode:
+        raise ValueError(
+            f"Agent '{config.effective_agent}' is registered with solo_mode=True, "
+            f"but solo mode is not supported for voice/full-duplex runs."
+        )
 
     domain = config.domain
 
@@ -473,6 +490,8 @@ def build_orchestrator(
         simulation_id: Unique simulation ID. If None, a UUID is generated.
         user_voice_settings: Pre-computed voice settings (voice mode only).
         user_persona_config: Pre-computed persona config.
+        hallucination_feedback: Optional feedback from a previous hallucination
+            check (voice mode only). Passed through to build_voice_orchestrator.
 
     Returns:
         A fully constructed Orchestrator or FullDuplexOrchestrator.
