@@ -23,7 +23,8 @@ from tau2.data_model.message import (
     MultiToolMessage,
     UserMessage,
 )
-from tau2.data_model.simulation import SimulationRun, Task
+from tau2.data_model.simulation import SimulationRun
+from tau2.data_model.tasks import Task
 from tau2.environment.environment import Environment
 from tau2.environment.tool import Tool, as_tool
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
@@ -1003,8 +1004,13 @@ class AgentGymEnv(gym.Env):
             step-by-step control.
         """
         environment = self._get_environment()
+        task = self._get_task()
         tools = environment.get_tools()
-        user_tools = environment.get_user_tools() if environment.user_tools else []
+        user_tools = (
+            environment.get_user_tools(include=task.user_tools)
+            if environment.user_tools
+            else []
+        )
         if self.solo_mode:
             tools = tools + user_tools
         return GymAgent(
@@ -1022,7 +1028,7 @@ class AgentGymEnv(gym.Env):
 
         The user simulator is configured with:
         - Task-specific user scenario and instructions
-        - Domain-specific user tools (if available)
+        - Task-specific user tools (filtered from domain user tools)
         - Default LLM configuration for user simulation
 
         Error Handling:
@@ -1031,13 +1037,13 @@ class AgentGymEnv(gym.Env):
 
         Returns:
             A UserSimulator instance configured with the task's user scenario
-            and domain-specific user tools (if available). The simulator is
+            and task-specific user tools (if available). The simulator is
             ready to participate in the conversation simulation.
         """
         environment = self._get_environment()
         task = self._get_task()
         try:
-            user_tools = environment.get_user_tools()
+            user_tools = environment.get_user_tools(include=task.user_tools) or None
         except ValueError:
             user_tools = None
         if self.solo_mode:
@@ -1492,7 +1498,7 @@ class UserGymEnv(gym.Env):
         Create and return a GymUser instance for external control.
 
         The user is configured with:
-        - Domain-specific user tools (if available)
+        - Task-specific user tools (filtered from domain user tools)
         - Task instructions (user scenario)
 
         Returns:
@@ -1501,7 +1507,7 @@ class UserGymEnv(gym.Env):
         environment = self._get_environment()
         task = self._get_task()
         try:
-            user_tools = environment.get_user_tools()
+            user_tools = environment.get_user_tools(include=task.user_tools) or None
         except ValueError:
             user_tools = None
         return GymUser(

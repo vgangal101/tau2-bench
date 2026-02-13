@@ -1,0 +1,535 @@
+====================================================================================================
+TAU-KNOWLEDGE BENCHMARK ANALYSIS
+====================================================================================================
+
+Generated: 2026-02-04T10:15:05.992415
+Files processed: 44
+k values: [1, 2, 3, 4]
+
+Models: claude-opus-4-5-20251101 (high), claude-sonnet-4-5-20250929, gpt-5.2 (high), gpt-5.2 (none), openrouter/deepseek/deepseek-v3.2 (high), openrouter/deepseek/deepseek-v3.2 (none), vertex_ai/gemini-3-flash-preview, vertex_ai/gemini-3-pro-preview (high)
+Conditions: agentic_search, classic_rag_bm25_no_grep, classic_rag_openai_no_grep, classic_rag_qwen_no_grep, required_docs
+
+--- LEGEND ---
+  p^1       = pass^1: probability of success on ALL 1 attempts (reliability)
+  ActRecl   = Action Recall: fraction of required actions the agent performed
+  DocRecl   = Document Recall: fraction of required docs whose title appeared in context
+  Cost($)   = Average cost per task in dollars
+  N         = Number of simulations
+  *         = Statistically significant (p < 0.05)
+
+====================================================================================================
+1. CONDITION COMPARISON (macro-average across models that ran each condition)
+====================================================================================================
+
+Ranked by p^1. Turn duration = time from user message to last agent message before next user message.
+
+Condition                                p^1  ActRecl  DocRecl   Dur(s)  P50Turn  P90Turn  Calls  Cost($)      N
+----------------------------------------------------------------------------------------------------------------
+required_docs                         0.2738   0.7123   0.0000    166.6     12.5     56.7    N/A   0.2972   3053
+agentic_search                        0.1572   0.6016   0.6441    709.8     38.5    222.6   25.9   1.4991   2992
+classic_rag_bm25_no_grep              0.1495   0.5837   0.6432    384.5     28.8    132.8   10.1   1.3193   3068
+classic_rag_openai_no_grep            0.1488   0.5759   0.6442    501.1     23.6    153.4    8.6   1.0750   3022
+classic_rag_qwen_no_grep              0.1488   0.5977   0.6439    527.6     23.7    163.5    8.7   1.1458   3061
+
+====================================================================================================
+2. MODEL COMPARISON (macro-average across all conditions the model ran)
+====================================================================================================
+
+Turn duration = time from user message to last agent message before next user message.
+
+Model                                                   p^1  ActRecl  DocRecl   Dur(s)  P50Turn  P90Turn  Calls  Cost($)      N
+-------------------------------------------------------------------------------------------------------------------------------
+claude-opus-4-5-20251101 (high)                      0.2263   0.6544   0.5227    125.5     13.3     40.8    9.7   3.2657   1940
+openrouter/deepseek/deepseek-v3.2 (high)             0.2031   0.6702   0.5771    441.6     47.7    146.9   11.4   0.3311   1708
+gpt-5.2 (high)                                       0.2021   0.6728   0.6118   2004.6    174.1    887.0   18.1   1.1481   1893
+openrouter/deepseek/deepseek-v3.2 (none)             0.2000   0.6643   0.5600    358.6     39.6    135.7   11.2   0.2728   1936
+claude-sonnet-4-5-20250929                           0.1948   0.6231   0.5296    131.5     12.4     45.7   10.8   2.3722   1938
+vertex_ai/gemini-3-pro-preview (high)                0.1418   0.6364   0.4793    249.7     25.1     83.4    7.7   0.5886   1923
+vertex_ai/gemini-3-flash-preview                     0.1273   0.5800   0.4494     95.8      6.9     30.5   10.6   0.1773   1918
+gpt-5.2 (none)                                       0.1098   0.4127   0.3906    255.9     21.4     94.9    5.5   0.3823   1940
+
+Average knowledge tool calls per task by model (KB_search + shell):
+Note: Averages are computed only over tasks with access to each tool type.
+
+Model                                                 KB_search    N(KB)        shell    N(sh)
+----------------------------------------------------------------------------------------------
+claude-opus-4-5-20251101 (high)                            8.92     1164        21.98      388
+openrouter/deepseek/deepseek-v3.2 (high)                  12.10     1058        23.91      280
+gpt-5.2 (high)                                            14.58     1143        45.41      388
+openrouter/deepseek/deepseek-v3.2 (none)                   9.91     1161        26.16      388
+claude-sonnet-4-5-20250929                                 8.98     1163        27.21      387
+vertex_ai/gemini-3-pro-preview (high)                      6.75     1151        18.12      387
+vertex_ai/gemini-3-flash-preview                           8.56     1147        27.22      386
+gpt-5.2 (none)                                             3.67     1164        16.63      388
+
+====================================================================================================
+3. PAIRWISE SIGNIFICANCE (paired bootstrap)
+====================================================================================================
+
+Each cell shows p-value for whether row condition > column condition.
+* indicates significant difference (p < 0.05). Positive mean_diff = row is better.
+
+  Conditions - pass^1:
+
+                                    quired_docs ntic_search m25_no_grep nai_no_grep wen_no_grep
+-----------------------------------------------------------------------------------------------
+required_docs                               ---      <.001*      <.001*      <.001*      <.001*
+agentic_search                            <.001         ---       0.221       0.190       0.193
+classic_rag_bm25_no_grep                  <.001       0.221         ---       0.510       0.494
+classic_rag_openai_no_grep                <.001       0.190       0.510         ---       0.504
+classic_rag_qwen_no_grep                  <.001       0.193       0.494       0.504         ---
+
+  Conditions - Action Recall:
+
+                                    quired_docs ntic_search m25_no_grep nai_no_grep wen_no_grep
+-----------------------------------------------------------------------------------------------
+required_docs                               ---      <.001*      <.001*      <.001*      <.001*
+agentic_search                            <.001         ---      0.017*      0.001*       0.340
+classic_rag_bm25_no_grep                  <.001       0.017         ---       0.162       0.034
+classic_rag_openai_no_grep                <.001       0.001       0.162         ---       <.001
+classic_rag_qwen_no_grep                  <.001       0.340      0.034*      <.001*         ---
+
+  Conditions - Document Recall:
+
+                                    quired_docs ntic_search m25_no_grep nai_no_grep wen_no_grep
+-----------------------------------------------------------------------------------------------
+required_docs                               ---       <.001       <.001       <.001       <.001
+agentic_search                           <.001*         ---       0.457       0.479       0.506
+classic_rag_bm25_no_grep                 <.001*       0.457         ---       0.409       0.469
+classic_rag_openai_no_grep               <.001*       0.479       0.409         ---       0.476
+classic_rag_qwen_no_grep                 <.001*       0.506       0.469       0.476         ---
+
+  Models - pass^1:
+
+                                                   4-5-20251101 (high) eepseek-v3.2 (high)      gpt-5.2 (high) eepseek-v3.2 (none) sonnet-4-5-20250929 -pro-preview (high) ini-3-flash-preview      gpt-5.2 (none)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+claude-opus-4-5-20251101 (high)                                    ---              0.032*              0.040*              0.015*              0.001*              <.001*              <.001*              <.001*
+openrouter/deepseek/deepseek-v3.2 (high)                         0.032                 ---               0.533               0.417               0.278              <.001*              <.001*              <.001*
+gpt-5.2 (high)                                                   0.040               0.533                 ---               0.454               0.305              <.001*              <.001*              <.001*
+openrouter/deepseek/deepseek-v3.2 (none)                         0.015               0.417               0.454                 ---               0.318              <.001*              <.001*              <.001*
+claude-sonnet-4-5-20250929                                       0.001               0.278               0.305               0.318                 ---              <.001*              <.001*              <.001*
+vertex_ai/gemini-3-pro-preview (high)                            <.001               <.001               <.001               <.001               <.001                 ---               0.088              0.002*
+vertex_ai/gemini-3-flash-preview                                 <.001               <.001               <.001               <.001               <.001               0.088                 ---               0.060
+gpt-5.2 (none)                                                   <.001               <.001               <.001               <.001               <.001               0.002               0.060                 ---
+
+====================================================================================================
+4. STATISTICAL SIGNIFICANCE ANALYSIS
+====================================================================================================
+
+4a. Do models differ significantly? (permutation test, stratified by condition)
+------------------------------------------------------------
+    Observed variance of model means: 0.001601
+    p-value: 0.0000
+    Conditions used: 5
+    CONCLUSION: Models differ significantly (p < 0.05)
+
+4b. Do conditions differ significantly? (permutation test, stratified by model)
+    Excludes 'required_docs' condition.
+------------------------------------------------------------
+  pass^1:
+      p-value: 0.6950, variance: 0.000012, models: 8
+      -> No significant difference
+  avg_action_recall:
+      p-value: 0.0060, variance: 0.000106, models: 8
+      -> Conditions differ significantly (p < 0.05)
+  avg_doc_recall:
+      p-value: 1.0000, variance: 0.000000, models: 8
+      -> No significant difference
+
+====================================================================================================
+5. CORRELATION ANALYSIS (Cost vs Performance)
+====================================================================================================
+
+Pearson (r) and Spearman (ρ) correlations between cost proxies and performance (pass^1).
+Computed across all model+condition pairs.
+
+  Metric                            Pearson r   Spearman ρ      N
+  ------------------------------ ------------ ------------ ------
+  Duration (actual) vs pass^1           0.037       -0.020     40
+  Duration (estimated) vs pass^1       -0.045        0.067     40
+  Tokens (M) vs pass^1                 -0.311       -0.238     40
+  Duration (actual vs estimated)        0.339        0.355     40
+
+====================================================================================================
+6. KNOWLEDGE TOOL USAGE AND DURATION ANALYSIS
+====================================================================================================
+
+Average tool calls per task and average duration per call (in seconds):
+
+  agentic_search:
+    Overall:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           12.88     0.390s     0.335s     0.534s      38543       2840       2992
+      shell(cat)                             9.49     0.415s     0.336s     0.584s      28398       2779       2992
+      shell(ls)                              1.11     0.375s     0.331s     0.487s       3333       2518       2992
+      shell(LC_ALL=C)                        1.06     0.385s     0.304s     0.470s       3176         88       2992
+      shell(LANG=C)                          0.52     0.384s     0.306s     0.477s       1558         41       2992
+      shell(sed)                             0.51     0.427s     0.318s     0.654s       1515        111       2992
+      shell(find)                            0.16     0.676s     0.476s     1.237s        478        318       2992
+      shell(head)                            0.12     0.410s     0.307s     0.577s        360        178       2992
+      shell(for)                             0.02     0.351s     0.367s     0.504s         54         43       2992
+      shell(python3)                         0.01     0.319s     0.322s     0.393s         31         13       2992
+      shell(tail)                            0.01     0.346s     0.345s     0.406s         17         12       2992
+      shell(unknown)                         0.00     0.000s     0.000s     0.000s          6          6       2992
+      shell(get_current_time)                0.00     0.484s     0.394s     0.766s          6          6       2992
+      shell(get_current_time())              0.00     0.413s     0.390s     0.488s          4          4       2992
+      shell(wc)                              0.00     0.339s     0.306s     0.432s          4          4       2992
+      shell(echo)                            0.00     0.328s     0.356s     0.360s          3          3       2992
+      shell(date)                            0.00     0.322s     0.322s     0.361s          2          2       2992
+      shell(unlock_discoverable_agent_tool)         0.00     0.286s     0.286s     0.312s          2          2       2992
+      shell(get_all_user_accounts_by_user_id_3847)         0.00     0.323s     0.323s     0.323s          1          1       2992
+      shell(set)                             0.00     0.324s     0.324s     0.324s          1          1       2992
+      shell(python)                          0.00     0.394s     0.394s     0.394s          1          1       2992
+      shell(unlock_discoverable_agent_tool("get_all_user_accounts_by_user_id_3847"))         0.00     0.305s     0.305s     0.305s          1          1       2992
+      grep                                   0.00     0.000s     0.000s     0.000s          1          1       2992
+      shell(unlock_discoverable_agent_tool{agent_tool_name:)         0.00     0.263s     0.263s     0.263s          1          1       2992
+      Agent response                        39.85    16.367s     7.780s    47.395s     116248       2992       2992
+    claude-opus-4-5-20251101 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           11.10     0.490s     0.389s     0.817s       4308        378        388
+      shell(cat)                            10.15     0.563s     0.412s     1.048s       3938        377        388
+      shell(ls)                              0.43     0.569s     0.446s     0.996s        166        105        388
+      shell(find)                            0.27     0.615s     0.562s     1.196s        106         63        388
+      shell(tail)                            0.01     0.327s     0.303s     0.382s          3          3        388
+      shell(for)                             0.01     0.312s     0.308s     0.325s          3          1        388
+      shell(head)                            0.00     0.365s     0.365s     0.365s          1          1        388
+      shell(get_current_time)                0.00     1.028s     1.028s     1.028s          1          1        388
+      shell(unlock_discoverable_agent_tool)         0.00     0.319s     0.319s     0.319s          1          1        388
+      shell(sed)                             0.00     0.317s     0.317s     0.317s          1          1        388
+      Agent response                        31.12     4.158s     3.193s     7.402s      11688        388        388
+    claude-sonnet-4-5-20250929:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(cat)                            13.13     0.366s     0.340s     0.456s       5080        376        387
+      shell(grep)                           12.26     0.368s     0.342s     0.458s       4743        376        387
+      shell(ls)                              1.35     0.365s     0.338s     0.455s        522        308        387
+      shell(find)                            0.37     0.786s     0.943s     1.288s        144         87        387
+      shell(for)                             0.07     0.359s     0.372s     0.467s         26         23        387
+      shell(tail)                            0.02     0.357s     0.363s     0.415s          9          5        387
+      shell(wc)                              0.01     0.363s     0.326s     0.447s          3          3        387
+      shell(head)                            0.01     0.340s     0.340s     0.385s          2          2        387
+      shell(get_current_time)                0.01     0.400s     0.400s     0.483s          2          2        387
+      grep                                   0.00     0.000s     0.000s     0.000s          1          1        387
+      Agent response                        44.10     3.434s     2.553s     6.186s      16678        387        387
+    gpt-5.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           16.51     0.346s     0.300s     0.438s       6406        283        388
+      shell(cat)                            10.93     0.387s     0.307s     0.467s       4239        242        388
+      shell(LC_ALL=C)                        8.17     0.385s     0.304s     0.471s       3169         86        388
+      shell(LANG=C)                          4.02     0.384s     0.306s     0.477s       1558         41        388
+      shell(sed)                             3.78     0.427s     0.319s     0.640s       1465         95        388
+      shell(ls)                              1.54     0.336s     0.316s     0.432s        599        387        388
+      shell(head)                            0.34     0.487s     0.333s     0.999s        131         35        388
+      shell(find)                            0.06     0.331s     0.309s     0.392s         25         23        388
+      shell(python3)                         0.05     0.333s     0.299s     0.395s         18          7        388
+      shell(for)                             0.02     0.351s     0.371s     0.430s          7          6        388
+      shell(date)                            0.00     0.273s     0.273s     0.273s          1          1        388
+      shell(set)                             0.00     0.324s     0.324s     0.324s          1          1        388
+      shell(python)                          0.00     0.394s     0.394s     0.394s          1          1        388
+      shell(tail)                            0.00     0.299s     0.299s     0.299s          1          1        388
+      Agent response                        56.64    51.424s    47.712s    74.222s      21587        388        388
+    gpt-5.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(cat)                             7.93     0.533s     0.352s     0.987s       3077        377        388
+      shell(grep)                            7.13     0.430s     0.340s     0.568s       2768        380        388
+      shell(ls)                              1.34     0.368s     0.329s     0.462s        518        381        388
+      shell(head)                            0.10     0.417s     0.379s     0.588s         39         10        388
+      shell(sed)                             0.10     0.455s     0.321s     0.880s         37          8        388
+      shell(LC_ALL=C)                        0.02     0.351s     0.365s     0.418s          7          2        388
+      shell(tail)                            0.01     0.376s     0.388s     0.392s          3          2        388
+      shell(find)                            0.01     0.363s     0.363s     0.377s          2          2        388
+      shell(python3)                         0.01     0.314s     0.314s     0.327s          2          2        388
+      Agent response                        27.26    15.338s    15.249s    19.622s      10188        388        388
+    openrouter/deepseek/deepseek-v3.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           13.07     0.342s     0.315s     0.444s       3659        280        280
+      shell(cat)                             9.25     0.342s     0.314s     0.449s       2591        280        280
+      shell(ls)                              1.12     0.336s     0.311s     0.421s        315        276        280
+      shell(find)                            0.32     0.823s     0.940s     1.309s         89         64        280
+      shell(head)                            0.06     0.358s     0.318s     0.480s         18         17        280
+      shell(for)                             0.04     0.403s     0.484s     0.541s         11          8        280
+      shell(python3)                         0.03     0.281s     0.322s     0.366s          7          2        280
+      shell(unknown)                         0.01     0.000s     0.000s     0.000s          3          3        280
+      shell(echo)                            0.00     0.361s     0.361s     0.361s          1          1        280
+      shell(get_current_time)                0.00     0.451s     0.451s     0.451s          1          1        280
+      Agent response                        40.19    14.354s     9.529s    25.409s      10974        280        280
+    openrouter/deepseek/deepseek-v3.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           13.08     0.356s     0.307s     0.455s       5074        386        388
+      shell(cat)                            11.27     0.350s     0.305s     0.450s       4372        387        388
+      shell(ls)                              1.16     0.351s     0.297s     0.449s        449        375        388
+      shell(head)                            0.34     0.322s     0.288s     0.429s        133         92        388
+      shell(find)                            0.23     0.591s     0.396s     1.047s         90         59        388
+      shell(sed)                             0.03     0.324s     0.283s     0.327s         11          6        388
+      shell(for)                             0.02     0.261s     0.278s     0.368s          7          5        388
+      shell(unknown)                         0.01     0.000s     0.000s     0.000s          3          3        388
+      shell(python3)                         0.01     0.258s     0.381s     0.390s          3          1        388
+      shell(echo)                            0.01     0.311s     0.311s     0.347s          2          2        388
+      shell(get_current_time)                0.01     0.313s     0.313s     0.332s          2          2        388
+      shell(get_all_user_accounts_by_user_id_3847)         0.00     0.323s     0.323s     0.323s          1          1        388
+      shell(date)                            0.00     0.371s     0.371s     0.371s          1          1        388
+      shell(unlock_discoverable_agent_tool)         0.00     0.253s     0.253s     0.253s          1          1        388
+      shell(tail)                            0.00     0.259s     0.259s     0.259s          1          1        388
+      shell(wc)                              0.00     0.268s     0.268s     0.268s          1          1        388
+      Agent response                        44.89    11.162s     8.881s    18.723s      17030        388        388
+    vertex_ai/gemini-3-flash-preview:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           18.70     0.410s     0.361s     0.579s       7217        382        386
+      shell(cat)                             7.49     0.406s     0.363s     0.560s       2890        369        386
+      shell(ls)                              0.98     0.418s     0.375s     0.591s        379        360        386
+      shell(find)                            0.03     0.490s     0.401s     0.910s         12         12        386
+      shell(get_current_time())              0.01     0.413s     0.390s     0.488s          4          4        386
+      shell(unlock_discoverable_agent_tool("get_all_user_accounts_by_user_id_3847"))         0.00     0.305s     0.305s     0.305s          1          1        386
+      shell(sed)                             0.00     0.680s     0.680s     0.680s          1          1        386
+      shell(unlock_discoverable_agent_tool{agent_tool_name:)         0.00     0.263s     0.263s     0.263s          1          1        386
+      Agent response                        43.12     2.801s     1.783s     5.046s      16257        386        386
+    vertex_ai/gemini-3-pro-preview (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      shell(grep)                           11.29     0.400s     0.330s     0.596s       4368        375        387
+      shell(cat)                             5.71     0.376s     0.318s     0.499s       2211        371        387
+      shell(ls)                              0.99     0.391s     0.330s     0.485s        385        326        387
+      shell(head)                            0.09     0.476s     0.304s     1.063s         36         21        387
+      shell(find)                            0.03     0.345s     0.283s     0.525s         10          8        387
+      shell(python3)                         0.00     0.522s     0.522s     0.522s          1          1        387
+      Agent response                        31.61    11.590s     8.557s    22.769s      11846        387        387
+
+  classic_rag_bm25_no_grep:
+    Overall:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             10.14     0.050s     0.005s     0.121s      31121       3046       3068
+      Agent response                        24.26    14.207s     7.291s    34.557s      71375       3068       3068
+    claude-opus-4-5-20251101 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              9.21     0.061s     0.039s     0.138s       3573        381        388
+      Agent response                        23.05     4.983s     3.675s     9.564s       8557        388        388
+    claude-sonnet-4-5-20250929:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              9.64     0.046s     0.028s     0.095s       3739        377        388
+      Agent response                        25.86     4.473s     3.213s     9.188s       9644        388        388
+    gpt-5.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             15.91     0.046s     0.004s     0.044s       6109        384        384
+      Agent response                        25.44    46.662s    37.869s    75.927s       9384        384        384
+    gpt-5.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              3.93     0.088s     0.055s     0.208s       1523        387        388
+      Agent response                        17.05    14.299s    15.381s    22.542s       6228        388        388
+    openrouter/deepseek/deepseek-v3.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             12.75     0.003s     0.002s     0.003s       4717        370        370
+      Agent response                        29.49    14.326s     9.318s    28.527s      10541        370        370
+    openrouter/deepseek/deepseek-v3.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             10.10     0.007s     0.003s     0.017s       3887        384        385
+      Agent response                        28.29    11.983s     8.716s    22.664s      10505        385        385
+    vertex_ai/gemini-3-flash-preview:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             11.99     0.123s     0.062s     0.298s       4615        383        385
+      Agent response                        26.85     3.939s     2.359s     7.039s       9951        385        385
+    vertex_ai/gemini-3-pro-preview (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              7.78     0.046s     0.015s     0.117s       2958        380        380
+      Agent response                        18.28    12.988s     9.858s    25.320s       6565        380        380
+
+  classic_rag_openai_no_grep:
+    Overall:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.61     1.013s     0.412s     0.748s      26030       2996       3022
+      Agent response                        23.30    17.999s     6.794s    64.091s      67377       3022       3022
+    claude-opus-4-5-20251101 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.89     0.492s     0.435s     0.788s       3450        374        388
+      Agent response                        22.49     4.719s     3.322s     9.287s       8339        388        388
+    claude-sonnet-4-5-20250929:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.84     0.449s     0.426s     0.722s       3421        377        387
+      Agent response                        25.35     4.598s     3.259s     9.460s       9423        387        387
+    gpt-5.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             13.53     1.921s     0.403s     0.918s       5035        372        372
+      Agent response                        25.21    79.291s    75.765s   112.337s       9007        372        372
+    gpt-5.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              3.39     1.043s     0.545s     0.794s       1315        388        388
+      Agent response                        16.06     9.239s     9.104s    15.757s       5842        388        388
+    openrouter/deepseek/deepseek-v3.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             11.90     0.338s     0.356s     0.510s       3938        331        331
+      Agent response                        29.24    14.008s     9.025s    26.953s       9347        331        331
+    openrouter/deepseek/deepseek-v3.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             10.09     1.913s     0.380s     0.537s       3916        388        388
+      Agent response                        28.74    11.748s     8.511s    22.026s      10762        388        388
+    vertex_ai/gemini-3-flash-preview:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              6.60     0.459s     0.439s     0.842s       2508        378        380
+      Agent response                        21.71     2.074s     1.629s     3.492s       7870        380        380
+    vertex_ai/gemini-3-pro-preview (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              6.31     0.865s     0.502s     1.188s       2447        388        388
+      Agent response                        18.49    12.994s     8.723s    22.021s       6787        388        388
+
+  classic_rag_qwen_no_grep:
+    Overall:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.66     1.251s     0.548s     1.351s      26500       3035       3061
+      Agent response                        23.50    19.310s     6.802s    71.006s      68859       3061       3061
+    claude-opus-4-5-20251101 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.65     0.805s     0.558s     1.299s       3356        377        388
+      Agent response                        22.72     4.974s     3.586s     9.679s       8429        388        388
+    claude-sonnet-4-5-20250929:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              8.47     0.581s     0.519s     1.016s       3286        377        388
+      Agent response                        24.45     4.556s     3.208s     9.387s       9097        388        388
+    gpt-5.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             14.27     1.442s     0.473s     1.974s       5521        387        387
+      Agent response                        26.26    85.379s    81.142s   118.789s       9775        387        387
+    gpt-5.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              3.69     2.108s     0.730s     1.765s       1430        387        388
+      Agent response                        16.93     8.179s     8.475s    14.033s       6179        388        388
+    openrouter/deepseek/deepseek-v3.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                             11.63     1.373s     0.548s     1.016s       4151        357        357
+      Agent response                        29.12    14.210s     9.278s    27.106s      10039        357        357
+    openrouter/deepseek/deepseek-v3.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              9.54     1.588s     0.555s     1.027s       3701        388        388
+      Agent response                        27.94    11.558s     8.381s    21.820s      10451        388        388
+    vertex_ai/gemini-3-flash-preview:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              7.04     0.536s     0.506s     1.137s       2691        379        382
+      Agent response                        22.99     2.257s     1.643s     3.641s       8399        382        382
+    vertex_ai/gemini-3-pro-preview (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      KB_search                              6.17     1.927s     0.629s     1.661s       2364        383        383
+      Agent response                        17.95    12.142s     8.336s    22.032s       6490        383        383
+
+  required_docs:
+    Overall:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        15.93     9.087s     4.844s    20.102s      45584       3053       3053
+    claude-opus-4-5-20251101 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        14.73     5.068s     3.792s     9.322s       5328        388        388
+    claude-sonnet-4-5-20250929:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        16.26     4.530s     3.352s     8.776s       5922        388        388
+    gpt-5.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        13.22    27.112s    18.743s    60.225s       4423        362        362
+    gpt-5.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        15.35     2.893s     1.478s     6.550s       5568        388        388
+    openrouter/deepseek/deepseek-v3.2 (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        18.09    13.190s     9.696s    25.753s       6322        370        370
+    openrouter/deepseek/deepseek-v3.2 (none):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        18.69    11.308s     7.930s    20.853s       6846        387        387
+    vertex_ai/gemini-3-flash-preview:
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        17.45     1.847s     1.506s     3.063s       6334        385        385
+    vertex_ai/gemini-3-pro-preview (high):
+      Tool                             Calls/Task       Mean        P50        P90    N Calls       Used   N Trials
+      ------------------------------ ------------ ---------- ---------- ---------- ---------- ---------- ----------
+      Agent response                        13.57    10.713s     6.832s    22.395s       4841        385        385
+
+
+====================================================================================================
+7. COMPLETE METRICS TABLE (all model+condition pairs)
+====================================================================================================
+
+Note: p^1 shown with 95% CI computed via bootstrap resampling.
+
+Model                                         Condition                        p^1 [95% CI]     p^2     p^3     p^4  ActRecl   DocCov   Dur(s)  P50Turn  P90Turn    Cost($)     N
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+claude-opus-4-5-20251101 (high)               agentic_search                  0.196 ± 0.059  0.1082  0.0670  0.0412   0.6333   0.5790    154.4     16.3     54.0     3.3493   388
+claude-opus-4-5-20251101 (high)               classic_rag_bm25_no_grep        0.193 ± 0.066  0.1289  0.1005  0.0825   0.6352   0.6699    127.9     14.7     40.7     4.3560   388
+claude-opus-4-5-20251101 (high)               classic_rag_openai_no_grep      0.201 ± 0.066  0.1271  0.0928  0.0722   0.6158   0.6414    124.0     13.9     40.6     3.6037   388
+claude-opus-4-5-20251101 (high)               classic_rag_qwen_no_grep        0.196 ± 0.068  0.1357  0.1031  0.0825   0.6318   0.6520    133.2     14.1     42.0     4.0419   388
+claude-opus-4-5-20251101 (high)               required_docs                   0.345 ± 0.081  0.2852  0.2526  0.2268   0.7560   0.0000     88.0      9.7     25.3     0.9774   388
+claude-sonnet-4-5-20250929                    agentic_search                  0.201 ± 0.063  0.1168  0.0722  0.0412   0.6387   0.6400    174.9     15.2     69.0     3.4281   387
+claude-sonnet-4-5-20250929                    classic_rag_bm25_no_grep        0.165 ± 0.061  0.1048  0.0799  0.0619   0.5962   0.6772    127.8     13.4     46.6     2.9654   388
+claude-sonnet-4-5-20250929                    classic_rag_openai_no_grep      0.160 ± 0.057  0.0945  0.0593  0.0412   0.5928   0.6678    134.3     14.3     44.6     2.4216   387
+claude-sonnet-4-5-20250929                    classic_rag_qwen_no_grep        0.168 ± 0.059  0.0893  0.0670  0.0619   0.5812   0.6611    131.9     13.4     45.2     2.3966   388
+claude-sonnet-4-5-20250929                    required_docs                   0.281 ± 0.077  0.2285  0.2088  0.1959   0.7065   0.0000     88.6      9.1     23.7     0.6493   388
+gpt-5.2 (high)                                agentic_search                  0.183 ± 0.061  0.1082  0.0799  0.0619   0.6805   0.8295   3163.4    377.0   1443.4     2.0090   388
+gpt-5.2 (high)                                classic_rag_bm25_no_grep        0.173 ± 0.058  0.0876  0.0567  0.0412   0.6594   0.7479   1352.0    137.5    515.1     1.3051   384
+gpt-5.2 (high)                                classic_rag_openai_no_grep      0.183 ± 0.064  0.1168  0.0876  0.0722   0.6419   0.7519   2426.1    245.8    902.1     1.0469   372
+gpt-5.2 (high)                                classic_rag_qwen_no_grep        0.209 ± 0.059  0.1134  0.0696  0.0412   0.6801   0.7493   2667.5    267.8    938.6     1.1484   387
+gpt-5.2 (high)                                required_docs                   0.263 ± 0.068  0.1615  0.1031  0.0722   0.7021   0.0000    414.1     41.4    156.2     0.2310   362
+gpt-5.2 (none)                                agentic_search                  0.093 ± 0.048  0.0533  0.0387  0.0309   0.3732   0.4705    508.8     59.9    187.7     0.9453   388
+gpt-5.2 (none)                                classic_rag_bm25_no_grep        0.103 ± 0.050  0.0636  0.0464  0.0309   0.4103   0.5539    323.2     33.1     98.1     0.3058   388
+gpt-5.2 (none)                                classic_rag_openai_no_grep      0.093 ± 0.043  0.0464  0.0361  0.0309   0.3525   0.4612    201.5     21.2     54.7     0.2519   388
+gpt-5.2 (none)                                classic_rag_qwen_no_grep        0.093 ± 0.041  0.0447  0.0284  0.0206   0.4044   0.5164    188.4     18.9     52.2     0.2856   388
+gpt-5.2 (none)                                required_docs                   0.168 ± 0.057  0.0962  0.0593  0.0309   0.5229   0.0000     57.9      6.6     16.3     0.1231   388
+openrouter/deepseek/deepseek-v3.2 (high)      agentic_search                  0.162 ± 0.059  0.0922  0.0665  0.0532   0.6493   0.5832    632.2     74.4    193.3     0.5247   280
+openrouter/deepseek/deepseek-v3.2 (high)      classic_rag_bm25_no_grep        0.168 ± 0.061  0.1014  0.0773  0.0619   0.6032   0.7324    434.0     52.3    149.3     0.3758   370
+openrouter/deepseek/deepseek-v3.2 (high)      classic_rag_openai_no_grep      0.193 ± 0.061  0.1168  0.0979  0.0928   0.6855   0.7419    440.5     51.0    154.8     0.3503   331
+openrouter/deepseek/deepseek-v3.2 (high)      classic_rag_qwen_no_grep        0.152 ± 0.057  0.0790  0.0541  0.0412   0.6482   0.7560    449.4     50.2    142.8     0.3374   357
+openrouter/deepseek/deepseek-v3.2 (high)      required_docs                   0.340 ± 0.073  0.2440  0.2062  0.1856   0.7648   0.0000    252.0     25.4     92.2     0.0674   370
+openrouter/deepseek/deepseek-v3.2 (none)      agentic_search                  0.168 ± 0.057  0.0945  0.0670  0.0515   0.6314   0.6137    520.5     59.2    188.8     0.4735   388
+openrouter/deepseek/deepseek-v3.2 (none)      classic_rag_bm25_no_grep        0.188 ± 0.064  0.1289  0.0979  0.0722   0.6504   0.7035    346.3     44.1    133.9     0.2943   385
+openrouter/deepseek/deepseek-v3.2 (none)      classic_rag_openai_no_grep      0.168 ± 0.058  0.1048  0.0773  0.0619   0.6505   0.7285    363.5     43.5    130.0     0.2686   388
+openrouter/deepseek/deepseek-v3.2 (none)      classic_rag_qwen_no_grep        0.157 ± 0.062  0.0979  0.0825  0.0722   0.6435   0.7192    344.7     41.8    126.3     0.2629   388
+openrouter/deepseek/deepseek-v3.2 (none)      required_docs                   0.320 ± 0.073  0.2234  0.1804  0.1546   0.7457   0.0000    218.0     22.5     78.5     0.0648   387
+vertex_ai/gemini-3-flash-preview              agentic_search                  0.137 ± 0.064  0.0997  0.0876  0.0825   0.6008   0.3786    146.3     13.4     65.2     0.2149   386
+vertex_ai/gemini-3-flash-preview              classic_rag_bm25_no_grep        0.106 ± 0.049  0.0653  0.0567  0.0515   0.5304   0.5823    122.0     10.3     48.4     0.3202   385
+vertex_ai/gemini-3-flash-preview              classic_rag_openai_no_grep      0.085 ± 0.045  0.0533  0.0387  0.0309   0.5014   0.5583     71.4      6.0     19.1     0.1421   380
+vertex_ai/gemini-3-flash-preview              classic_rag_qwen_no_grep        0.085 ± 0.045  0.0481  0.0309  0.0206   0.5537   0.5988     76.4      6.3     20.8     0.1689   382
+vertex_ai/gemini-3-flash-preview              required_docs                   0.224 ± 0.075  0.1667  0.1340  0.1134   0.7139   0.0000     63.0      4.0     12.4     0.0406   385
+vertex_ai/gemini-3-pro-preview (high)         agentic_search                  0.119 ± 0.048  0.0550  0.0309  0.0206   0.6058   0.3395    377.6     39.9    148.2     1.0481   387
+vertex_ai/gemini-3-pro-preview (high)         classic_rag_bm25_no_grep        0.101 ± 0.049  0.0550  0.0412  0.0412   0.5850   0.5966    242.8     28.4     82.0     0.6318   380
+vertex_ai/gemini-3-pro-preview (high)         classic_rag_openai_no_grep      0.108 ± 0.045  0.0515  0.0361  0.0309   0.5666   0.6191    247.5     24.8     78.3     0.5150   388
+vertex_ai/gemini-3-pro-preview (high)         classic_rag_qwen_no_grep        0.131 ± 0.052  0.0636  0.0387  0.0309   0.6384   0.6322    229.6     23.9     75.0     0.5245   383
+vertex_ai/gemini-3-pro-preview (high)         required_docs                   0.250 ± 0.070  0.1649  0.1392  0.1237   0.7862   0.0000    150.9     16.2     48.5     0.2238   385
+
+====================================================================================================
+END OF REPORT
+====================================================================================================

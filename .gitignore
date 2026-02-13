@@ -8,7 +8,7 @@ dumps/
 dump.rdb
 *.rdg
 logs/
-data/simulations/
+data/simulations/*
 data/exp/
 data/datasets/
 data/models/
@@ -196,6 +196,7 @@ cache-*.arrow
 data-*-of-*.arrow
 src/experiments/model_training/data/full-v1/*/cache-*.arrow
 src/experiments/model_training/data/full-v1/*/data-*.arrow
+data/.embeddings_cache
 
 # Large JSONL training files
 src/experiments/model_training/data/train_full-v1.jsonl
@@ -203,6 +204,7 @@ src/experiments/model_training/data/test_full-v1.jsonl
 
 data/benchmark/
 data/simulations/.credentials/
+!data/simulations/knowledge/
 
 # LaTeX build artifacts
 *.aux

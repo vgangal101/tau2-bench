@@ -28,6 +28,7 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
             Message
         ],  # FIXME: It would be better to be able to get only the messages that are after the initial state
         solo_mode: bool = False,
+        env_kwargs: dict = None,
     ) -> RewardInfo:
         """
         Calculate the reward for the simulation.
@@ -74,7 +75,13 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
         ):
             message_history = task.initial_state.message_history
 
-        predicted_environment = environment_constructor(solo_mode=solo_mode)
+        if env_kwargs is None:
+            env_kwargs = {}
+
+        predicted_environment = environment_constructor(
+            solo_mode=solo_mode, **env_kwargs
+        )
+
         predicted_environment.set_state(
             initialization_data=initialization_data,
             initialization_actions=initialization_actions,
@@ -82,7 +89,7 @@ class EnvironmentEvaluator(EvaluatorBase[Message]):
         )
 
         # Setting up gold environment
-        gold_environment = environment_constructor()
+        gold_environment = environment_constructor(**env_kwargs)
         gold_environment.set_state(
             initialization_data=initialization_data,
             initialization_actions=initialization_actions,
@@ -219,6 +226,7 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
         task: Task,
         full_trajectory: list[Tick],
         solo_mode: bool = False,
+        env_kwargs: dict = None,
     ) -> RewardInfo:
         """
         Calculate the reward for the simulation.
@@ -227,9 +235,12 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
             task: Task
             full_trajectory: list[Tick]
             solo_mode: bool
+            env_kwargs: dict
         Returns:
             RewardInfo
         """
+        if env_kwargs is None:
+            env_kwargs = {}
         if task.evaluation_criteria is None:
             return RewardInfo(
                 reward=1.0,
@@ -269,7 +280,9 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
         # Note: Audio native does not support task history, so we only use the simulation trajectory
         predicted_message_history = cls.ticks_to_message_history(full_trajectory)
 
-        predicted_environment = environment_constructor(solo_mode=solo_mode)
+        predicted_environment = environment_constructor(
+            solo_mode=solo_mode, **env_kwargs
+        )
         predicted_environment.set_state(
             initialization_data=initialization_data,
             initialization_actions=initialization_actions,
@@ -277,7 +290,7 @@ class FullDuplexEnvironmentEvaluator(EvaluatorBase[Tick]):
         )
 
         # Setting up gold environment
-        gold_environment = environment_constructor()
+        gold_environment = environment_constructor(**env_kwargs)
         gold_environment.set_state(
             initialization_data=initialization_data,
             initialization_actions=initialization_actions,
