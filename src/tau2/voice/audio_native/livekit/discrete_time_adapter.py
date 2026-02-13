@@ -33,6 +33,11 @@ from typing import Any, List, Optional, Tuple
 from loguru import logger
 from pydantic import BaseModel
 
+# NOTE: LiveKit plugins must be registered on the main thread before workers spawn.
+# This is handled by _preregister_livekit_plugins() in tau2/run.py, which is called
+# before ThreadPoolExecutor creates worker threads. Do NOT import livekit.plugins
+# at module level here as this module may be imported from worker threads.
+
 from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
@@ -123,7 +128,8 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         self._pending_tool_results: List[Tuple[str, str, bool]] = []
 
         # Audio buffering for tick alignment
-        self._audio_buffer: bytes = b""
+        # Excess audio from one tick is carried over to the next
+        self._buffered_audio_chunks: List[Tuple[bytes, Optional[str]]] = []
         self._cumulative_user_audio_ms: int = 0
 
         # Utterance tracking for TTS audio chunks
@@ -187,8 +193,10 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
             )
             future.result(timeout=30.0)
             self._connected = True
-            # Reset audio converter state for fresh connection
+            # Reset state for fresh connection
             self._audio_converter.reset()
+            self._buffered_audio_chunks = []
+            self._tick_count = 0
             logger.info(
                 f"LiveKitCascadedAdapter connected "
                 f"(tick={self.tick_duration_ms}ms, bytes_per_tick={self.bytes_per_tick})"
@@ -217,7 +225,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         self._connected = False
         self._provider = None
         self._tick_count = 0
-        self._audio_buffer = b""
+        self._buffered_audio_chunks = []
         self._audio_converter.reset()
         logger.info("LiveKitCascadedAdapter disconnected")
 
@@ -299,6 +307,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         """Async tick execution.
 
         Collects events from the provider and maps them to TickResult.
+        Audio is capped at bytes_per_tick, with excess buffered for next tick.
         """
         events: List[CascadedEvent] = []
         tool_calls: List[ToolCall] = []
@@ -312,6 +321,11 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         )
         cumulative_at_tick_start = self._cumulative_user_audio_ms
         self._cumulative_user_audio_ms += int(user_audio_duration_ms)
+
+        # Start with any buffered audio from previous tick
+        if self._buffered_audio_chunks:
+            agent_audio_chunks.extend(self._buffered_audio_chunks)
+            self._buffered_audio_chunks = []
 
         # Send any pending tool results first
         for call_id, result, _request_response in self._pending_tool_results:
@@ -334,7 +348,15 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
             if event.type == CascadedEventType.LLM_COMPLETED:
                 transcript_for_tick = event.text or ""
 
-        # Build TickResult
+        # Cap audio at bytes_per_tick and buffer excess for next tick
+        capped_chunks, buffered_chunks = self._cap_audio_chunks(
+            agent_audio_chunks, self.bytes_per_tick
+        )
+
+        # Store buffered audio for next tick
+        self._buffered_audio_chunks = buffered_chunks
+
+        # Build TickResult with capped audio
         result = TickResult(
             tick_number=tick_number,
             audio_sent_bytes=len(user_audio),
@@ -343,7 +365,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
             events=events,
             vad_events=vad_events,
             tool_calls=tool_calls,
-            agent_audio_chunks=agent_audio_chunks,
+            agent_audio_chunks=capped_chunks,
             proportional_transcript=transcript_for_tick,
             bytes_per_tick=self.bytes_per_tick,
             bytes_per_second=self.audio_format.bytes_per_second,
@@ -353,6 +375,48 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
 
         logger.debug(f"Tick {tick_number}: {result.summary()}")
         return result
+
+    def _cap_audio_chunks(
+        self,
+        chunks: List[Tuple[bytes, Optional[str]]],
+        max_bytes: int,
+    ) -> Tuple[List[Tuple[bytes, Optional[str]]], List[Tuple[bytes, Optional[str]]]]:
+        """Cap audio chunks at max_bytes, returning (kept, buffered).
+
+        Args:
+            chunks: List of (audio_data, utterance_id) tuples.
+            max_bytes: Maximum bytes to keep.
+
+        Returns:
+            Tuple of (chunks to keep, chunks to buffer for next tick).
+        """
+        if not chunks:
+            return [], []
+
+        total_bytes = sum(len(chunk[0]) for chunk in chunks)
+        if total_bytes <= max_bytes:
+            return chunks, []
+
+        # Need to cap - split chunks
+        kept: List[Tuple[bytes, Optional[str]]] = []
+        buffered: List[Tuple[bytes, Optional[str]]] = []
+        current_bytes = 0
+
+        for chunk_data, utterance_id in chunks:
+            if current_bytes + len(chunk_data) <= max_bytes:
+                kept.append((chunk_data, utterance_id))
+                current_bytes += len(chunk_data)
+            else:
+                # This chunk would exceed cap - split if needed
+                space_left = max_bytes - current_bytes
+                if space_left > 0:
+                    kept.append((chunk_data[:space_left], utterance_id))
+                    buffered.append((chunk_data[space_left:], utterance_id))
+                else:
+                    buffered.append((chunk_data, utterance_id))
+                current_bytes = max_bytes  # Capped
+
+        return kept, buffered
 
     def _handle_event(
         self,
@@ -385,6 +449,10 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
 
         elif event.type == CascadedEventType.INTERRUPTED:
             vad_events.append("interrupted")
+            # Clear buffered audio - we don't want to play old audio after interrupt
+            self._buffered_audio_chunks = []
+            # Also clear any audio accumulated for this tick so far
+            agent_audio_chunks.clear()
 
         elif event.type == CascadedEventType.TOOL_CALL:
             tc = event.tool_call

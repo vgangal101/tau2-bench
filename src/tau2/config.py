@@ -161,7 +161,7 @@ DEFAULT_AUDIO_NATIVE_MODELS = {
     "nova": DEFAULT_NOVA_MODEL,
     "qwen": DEFAULT_QWEN_MODEL,
     "deepgram": DEFAULT_DEEPGRAM_LLM_MODEL,  # Cascaded: uses LLM model as identifier
-    # Note: "livekit" is not here - it uses CascadedConfig.llm.model instead
+    "livekit": "dummy",  # We just need this key to register livekit as a provider
 }
 
 # Provider type classification

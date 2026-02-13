@@ -517,7 +517,9 @@ class CascadedVoiceProvider:
         try:
             from livekit.agents import stt as lk_stt
 
+            logger.debug("STT receiver task started, waiting for events...")
             async for event in self._stt_stream:
+                logger.debug(f"STT event received: type={event.type}")
                 if self._cancel_event.is_set():
                     break
 
@@ -565,6 +567,10 @@ class CascadedVoiceProvider:
             audio: Audio bytes (16kHz mono PCM expected by Deepgram).
         """
         if self._stt_stream is None:
+            logger.warning("STT stream is None, cannot push audio")
+            return
+
+        if len(audio) == 0:
             return
 
         try:
@@ -585,9 +591,10 @@ class CascadedVoiceProvider:
 
             # Push to stream
             self._stt_stream.push_frame(frame)
+            logger.debug(f"Pushed {len(audio)} bytes ({samples_per_channel} samples) to STT")
 
         except Exception as e:
-            logger.error(f"Failed to push audio to STT: {e}")
+            logger.error(f"Failed to push audio to STT: {e}", exc_info=True)
 
     async def _drain_stt_events(self, timeout: float = 0.0) -> List[CascadedEvent]:
         """Drain all available STT events from the queue.
@@ -667,10 +674,6 @@ class CascadedVoiceProvider:
                         interrupt_event = await self.interrupt()
                         yield interrupt_event
 
-            elif event.type == CascadedEventType.SPEECH_ENDED:
-                self._is_user_speaking = False
-                self._speech_ended_time = time.time()
-
             elif event.type == CascadedEventType.TRANSCRIPT_PARTIAL:
                 self._current_transcript = event.transcript or ""
 
@@ -679,11 +682,21 @@ class CascadedVoiceProvider:
                 self._accumulated_transcript += " " + transcript
                 self._accumulated_transcript = self._accumulated_transcript.strip()
                 self._current_transcript = ""
+                # Note: Don't trigger LLM here - wait for END_OF_SPEECH
+                # because _is_user_speaking is still True at this point
 
-                # Check if we should trigger LLM
+            elif event.type == CascadedEventType.SPEECH_ENDED:
+                self._is_user_speaking = False
+                self._speech_ended_time = time.time()
+
+                # Now that speech has ended, check if we should trigger LLM
                 if self._should_trigger_llm():
                     final_transcript = self._accumulated_transcript
                     self._accumulated_transcript = ""
+
+                    logger.debug(
+                        f"Triggering LLM with transcript: {final_transcript[:50]}..."
+                    )
 
                     # Process through LLM and TTS
                     async for llm_event in self._process_llm(final_transcript):
@@ -749,7 +762,7 @@ class CascadedVoiceProvider:
             # Build chat context for LiveKit LLM
             chat_ctx = self._build_chat_context()
 
-            # Format tools
+            # Format tools for the LLM
             tools = self._format_tools()
 
             # Stream LLM response
@@ -993,23 +1006,50 @@ class CascadedVoiceProvider:
         """Format tools for the LLM.
 
         Returns:
-            List of LiveKit FunctionTool objects.
+            List of LiveKit tool objects.
         """
         if not self._tools:
             return []
 
         try:
-            from livekit.agents import llm as lk_llm
+            from livekit.agents.llm.tool_context import (
+                RawFunctionTool,
+                RawFunctionToolInfo,
+                ToolFlag,
+            )
 
             formatted: List[Any] = []
             for tool in self._tools:
-                # Create FunctionInfo from tool schema
-                func_info = lk_llm.FunctionInfo(
+                # Get OpenAI schema from tool
+                # Tool.openai_schema returns {"type": "function", "function": {...}}
+                # But LiveKit's to_fnc_ctx wraps raw_schema with {"type": "function", "function": raw_schema}
+                # So we need to pass only the inner "function" part
+                try:
+                    full_schema = tool.openai_schema
+                    # Extract just the function part
+                    raw_schema = full_schema.get("function", full_schema)
+                except Exception:
+                    # Fallback: construct schema from known attributes
+                    raw_schema = {
+                        "name": tool.name,
+                        "description": getattr(tool, "short_desc", "") or "",
+                        "parameters": {"type": "object", "properties": {}},
+                    }
+
+                # Create tool info
+                info = RawFunctionToolInfo(
                     name=tool.name,
-                    description=tool.description or "",
-                    parameters=tool.parameters or {},
+                    raw_schema=raw_schema,
+                    flags=ToolFlag.NONE,
                 )
-                formatted.append(func_info)
+
+                # Create a placeholder callable (execution happens externally)
+                async def placeholder_fn(**kwargs):
+                    return None
+
+                raw_tool = RawFunctionTool(placeholder_fn, info)
+                formatted.append(raw_tool)
+
             return formatted
         except Exception as e:
             logger.warning(f"Failed to format tools: {e}")
@@ -1042,6 +1082,40 @@ class CascadedVoiceProvider:
             type=CascadedEventType.INTERRUPTED,
             data={"previous_state": old_state.value},
         )
+
+    # =========================================================================
+    # Greeting Generation
+    # =========================================================================
+
+    async def generate_greeting(
+        self,
+        text: str = "Hi! How can I help you today?",
+    ) -> AsyncGenerator[CascadedEvent, None]:
+        """Generate TTS audio for an initial greeting (bypasses LLM).
+
+        Use this to generate the agent's opening message with audio.
+
+        Args:
+            text: Greeting text to synthesize.
+
+        Yields:
+            TTS audio events.
+        """
+        if not self.is_connected:
+            raise RuntimeError("Provider not connected. Call connect() first.")
+
+        # Add greeting to context as assistant message
+        self._context.add_assistant(text)
+
+        # Emit LLM completed event (for tracking)
+        yield CascadedEvent(
+            type=CascadedEventType.LLM_COMPLETED,
+            data={"text": text, "tool_calls": []},
+        )
+
+        # Generate TTS audio for the greeting
+        async for event in self._process_tts(text):
+            yield event
 
     # =========================================================================
     # Direct Text Input (for testing)

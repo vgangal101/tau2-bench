@@ -67,6 +67,28 @@ _current_simulation_id: ContextVar[Optional[str]] = ContextVar(
 )
 
 
+def _preregister_livekit_plugins() -> None:
+    """Pre-register LiveKit plugins on the main thread.
+
+    LiveKit requires plugins to be registered on the main thread. This function
+    imports the plugins before ThreadPoolExecutor workers are spawned, ensuring
+    they are available in worker threads without thread registration errors.
+
+    Must be called from the main thread before any workers are created.
+    """
+    try:
+        # Import the plugins - this triggers their registration
+        from livekit.plugins import deepgram, openai, anthropic, elevenlabs  # noqa: F401
+
+        logger.debug("LiveKit plugins pre-registered on main thread")
+    except ImportError as e:
+        logger.warning(
+            f"Failed to pre-register LiveKit plugins: {e}. "
+            "Install with: pip install livekit-plugins-openai livekit-plugins-deepgram "
+            "livekit-plugins-anthropic livekit-plugins-elevenlabs"
+        )
+
+
 def create_speech_environment(
     seed: int,
     user_voice_settings: Optional[VoiceSettings] = None,
@@ -520,6 +542,11 @@ def run_tasks(
         logger.warning("Each trial will modify the seed for the user")
 
     lock = multiprocessing.Lock()
+
+    # Pre-register LiveKit plugins on main thread before workers spawn
+    # This must happen before ThreadPoolExecutor to avoid thread registration errors
+    if audio_native_config is not None and audio_native_config.provider == "livekit":
+        _preregister_livekit_plugins()
 
     # Create run-level voice settings and persona config for audio-native mode
     user_voice_settings = None

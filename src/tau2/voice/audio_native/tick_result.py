@@ -97,6 +97,7 @@ class TickResult(BaseModel):
     events: List[Any] = Field(
         default_factory=list,
         description="All API events received during this tick (provider-specific types)",
+        exclude=True,  # Exclude from serialization (may contain bytes)
     )
 
     # --- VAD events (provider-agnostic) ---
