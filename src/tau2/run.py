@@ -68,28 +68,11 @@ _current_simulation_id: ContextVar[Optional[str]] = ContextVar(
 def _preregister_livekit_plugins() -> None:
     """Pre-register LiveKit plugins on the main thread.
 
-    LiveKit requires plugins to be registered on the main thread. This function
-    imports the plugins before ThreadPoolExecutor workers are spawned, ensuring
-    they are available in worker threads without thread registration errors.
-
-    Must be called from the main thread before any workers are created.
+    Delegates to the shared implementation in the livekit package.
     """
-    try:
-        # Import the plugins - this triggers their registration
-        from livekit.plugins import (  # noqa: F401
-            anthropic,
-            deepgram,
-            elevenlabs,
-            openai,
-        )
+    from tau2.voice.audio_native.livekit import preregister_livekit_plugins
 
-        logger.debug("LiveKit plugins pre-registered on main thread")
-    except ImportError as e:
-        logger.warning(
-            f"Failed to pre-register LiveKit plugins: {e}. "
-            "Install with: pip install livekit-plugins-openai livekit-plugins-deepgram "
-            "livekit-plugins-anthropic livekit-plugins-elevenlabs"
-        )
+    preregister_livekit_plugins()
 
 
 def create_speech_environment(
@@ -135,25 +118,11 @@ def _format_hallucination_feedback(
 ) -> Optional[str]:
     """Format hallucination errors into feedback for the user simulator.
 
-    Returns a string to append to user instructions, or None if no hallucinations.
+    Delegates to the shared implementation in the reviewer module.
     """
-    if not hallucination_check.errors:
-        return None
+    from tau2.evaluator.reviewer import format_hallucination_feedback
 
-    error_lines = []
-    for error in hallucination_check.errors:
-        if error.correct_behavior:
-            error_lines.append(f"- [hallucination] {error.correct_behavior}")
-        else:
-            error_lines.append(f"- [hallucination] {error.reasoning[:200]}")
-
-    if not error_lines:
-        return None
-
-    return (
-        "IMPORTANT: In a previous attempt at this conversation, the user simulator "
-        "made these errors. You MUST avoid repeating them:\n" + "\n".join(error_lines)
-    )
+    return format_hallucination_feedback(hallucination_check)
 
 
 def run_auto_review(

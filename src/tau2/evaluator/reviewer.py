@@ -172,3 +172,37 @@ def check_hallucination(
         task=task,
         full_trajectory=simulation.ticks,
     )
+
+
+def format_hallucination_feedback(
+    hallucination_check: HallucinationCheck,
+) -> Optional[str]:
+    """Format hallucination errors into feedback for the user simulator.
+
+    Used by the hallucination retry loop: when a hallucination is detected,
+    this function builds a feedback string that is prepended to the user
+    instructions on the next retry attempt.
+
+    Args:
+        hallucination_check: Result of check_hallucination().
+
+    Returns:
+        A string to append to user instructions, or None if no hallucinations.
+    """
+    if not hallucination_check.errors:
+        return None
+
+    error_lines = []
+    for error in hallucination_check.errors:
+        if error.correct_behavior:
+            error_lines.append(f"- [hallucination] {error.correct_behavior}")
+        else:
+            error_lines.append(f"- [hallucination] {error.reasoning[:200]}")
+
+    if not error_lines:
+        return None
+
+    return (
+        "IMPORTANT: In a previous attempt at this conversation, the user simulator "
+        "made these errors. You MUST avoid repeating them:\n" + "\n".join(error_lines)
+    )

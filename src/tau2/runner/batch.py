@@ -8,6 +8,7 @@ Uses Layer 2 (build) to construct instances and Layer 1 (simulation) to
 execute them.
 """
 
+import json
 import multiprocessing
 import random
 import uuid
@@ -31,6 +32,7 @@ from tau2.data_model.simulation import (
 from tau2.data_model.tasks import Task
 from tau2.data_model.voice import SynthesisConfig, VoiceSettings
 from tau2.evaluator.evaluator import EvaluationType
+from tau2.evaluator.reviewer import check_hallucination, format_hallucination_feedback
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.registry import registry
 from tau2.runner.build import build_orchestrator
@@ -263,6 +265,7 @@ def run_single_task(
     audio_debug: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
+    hallucination_feedback: Optional[str] = None,
 ) -> SimulationRun:
     """Run a single task simulation with logging and optional side effects.
 
@@ -306,6 +309,7 @@ def run_single_task(
             simulation_id=simulation_id,
             user_voice_settings=user_voice_settings,
             user_persona_config=user_persona_config,
+            hallucination_feedback=hallucination_feedback,
         )
 
         # Layer 1: Run the simulation
@@ -478,10 +482,22 @@ def run_tasks(
     monitor.set_results(simulation_results)
     monitor.start()
 
+    # Pre-register LiveKit plugins on main thread before workers spawn
+    if (
+        is_voice
+        and config.audio_native_config is not None
+        and config.audio_native_config.provider == "livekit"
+    ):
+        from tau2.voice.audio_native.livekit import preregister_livekit_plugins
+
+        preregister_livekit_plugins()
+
+    hallucination_retries = config.hallucination_retries
+
     def _run_tracked(
         task: Task, trial: int, seed: int, progress_str: str
     ) -> SimulationRun:
-        """Run a single task with tracking and retry."""
+        """Run a single task with tracking, retry, and hallucination retry."""
         task_key = f"{task.id}.{trial}"
         monitor.task_started(task_key, trial)
 
@@ -491,11 +507,14 @@ def run_tasks(
         )
         ConsoleDisplay.console.print(console_text)
 
-        def _execute():
+        def _execute(
+            run_seed: int = seed,
+            hallucination_feedback: Optional[str] = None,
+        ):
             return run_single_task(
                 config,
                 task,
-                seed=seed,
+                seed=run_seed,
                 evaluation_type=evaluation_type,
                 save_dir=save_dir,
                 user_voice_settings=user_voice_settings,
@@ -504,6 +523,7 @@ def run_tasks(
                 audio_debug=config.audio_debug if is_voice else False,
                 auto_review=config.auto_review,
                 review_mode=config.review_mode,
+                hallucination_feedback=hallucination_feedback,
             )
 
         try:
@@ -517,6 +537,78 @@ def run_tasks(
                 console_display=console_display,
                 save_fn=save_fn,
             )
+
+            # Hallucination retry: if check detects fabricated info, re-run
+            is_full_duplex = result.ticks is not None and len(result.ticks) > 0
+            if hallucination_retries > 0 and is_full_duplex:
+                hallucination_retry_count = 0
+                while hallucination_retry_count < hallucination_retries:
+                    h_check = check_hallucination(result, task)
+                    result.hallucination_check = h_check
+
+                    if not h_check.hallucination_found:
+                        break
+
+                    hallucination_retry_count += 1
+                    n_errors = len(h_check.errors)
+
+                    retry_text = Text(
+                        text=f"  Hallucination detected on task {task.id} ({n_errors} instance(s)). "
+                        f"Re-running with feedback ({hallucination_retry_count}/{hallucination_retries})...",
+                        style="yellow",
+                    )
+                    ConsoleDisplay.console.print(retry_text)
+
+                    # Save discarded run
+                    if save_dir is not None:
+                        discarded_dir = save_dir / "hallucination_discarded"
+                        discarded_dir.mkdir(parents=True, exist_ok=True)
+                        discarded_path = discarded_dir / "results.json"
+
+                        if discarded_path.exists():
+                            with open(discarded_path, "r") as fp:
+                                discarded_data = json.load(fp)
+                            discarded_data["simulations"].append(
+                                result.model_dump(mode="json")
+                            )
+                            existing_task_ids = {
+                                t["id"] for t in discarded_data["tasks"]
+                            }
+                            if task.id not in existing_task_ids:
+                                discarded_data["tasks"].append(
+                                    task.model_dump(mode="json")
+                                )
+                            with open(discarded_path, "w") as fp:
+                                json.dump(discarded_data, fp, indent=2)
+                        else:
+                            discarded_results = Results(
+                                info=simulation_results.info,
+                                tasks=[
+                                    t
+                                    for t in simulation_results.tasks
+                                    if t.id == task.id
+                                ],
+                                simulations=[result],
+                            )
+                            with open(discarded_path, "w") as fp:
+                                fp.write(discarded_results.model_dump_json(indent=2))
+
+                        logger.info(
+                            f"Saved discarded hallucination run to {discarded_path} "
+                            f"(task {task.id}, retry {hallucination_retry_count})"
+                        )
+
+                    # Build feedback and re-run
+                    feedback = format_hallucination_feedback(h_check)
+                    retry_seed = seed + hallucination_retry_count * 1000
+                    result = _execute(
+                        run_seed=retry_seed,
+                        hallucination_feedback=feedback,
+                    )
+                    result.trial = trial
+
+                result.hallucination_retries_used = hallucination_retry_count
+
             return result
         finally:
             monitor.task_finished(task_key)

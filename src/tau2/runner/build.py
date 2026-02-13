@@ -177,6 +177,7 @@ def build_voice_user(
     speech_complexity: SpeechComplexity = "regular",
     seed: int = 42,
     domain: Optional[str] = None,
+    hallucination_feedback: Optional[str] = None,
 ) -> FullDuplexUser:
     """Build a full-duplex voice user simulator.
 
@@ -198,6 +199,9 @@ def build_voice_user(
             seed + hash(task.id) % 1000000.
         domain: Domain name (used for loading pre-sampled voice configs).
             If None, extracted from environment.
+        hallucination_feedback: Optional feedback from a previous hallucination
+            check. If provided, appended to user instructions to help avoid
+            repeating the same errors on retry.
 
     Returns:
         A fully constructed VoiceStreamingUserSimulator.
@@ -248,9 +252,13 @@ def build_voice_user(
     if persona_config is None:
         persona_config = sampled_voice_config.persona_config
 
+    user_instructions = str(task.user_scenario)
+    if hallucination_feedback:
+        user_instructions += f"\n\n{hallucination_feedback}"
+
     return VoiceStreamingUserSimulator(
         tools=user_tools,
-        instructions=str(task.user_scenario),
+        instructions=user_instructions,
         llm=llm,
         llm_args=llm_args,
         voice_settings=task_voice_settings,
@@ -370,6 +378,7 @@ def build_voice_orchestrator(
     simulation_id: Optional[str] = None,
     user_voice_settings: Optional[VoiceSettings] = None,
     user_persona_config: Optional[PersonaConfig] = None,
+    hallucination_feedback: Optional[str] = None,
 ) -> FullDuplexOrchestrator:
     """Build a full-duplex (voice) orchestrator from a VoiceRunConfig.
 
@@ -418,6 +427,7 @@ def build_voice_orchestrator(
         speech_complexity=config.speech_complexity,
         seed=seed or 42,
         domain=domain,
+        hallucination_feedback=hallucination_feedback,
     )
 
     orchestrator = FullDuplexOrchestrator(
@@ -449,6 +459,7 @@ def build_orchestrator(
     simulation_id: Optional[str] = None,
     user_voice_settings: Optional[VoiceSettings] = None,
     user_persona_config: Optional[PersonaConfig] = None,
+    hallucination_feedback: Optional[str] = None,
 ) -> Union[Orchestrator, FullDuplexOrchestrator]:
     """Build a ready-to-run orchestrator from a RunConfig and task.
 
@@ -474,6 +485,7 @@ def build_orchestrator(
             simulation_id=simulation_id,
             user_voice_settings=user_voice_settings,
             user_persona_config=user_persona_config,
+            hallucination_feedback=hallucination_feedback,
         )
     else:
         return build_text_orchestrator(

@@ -60,6 +60,36 @@ from tau2.voice.audio_native.livekit.provider import (
     TurnTakingConfig,
 )
 
+
+def preregister_livekit_plugins() -> None:
+    """Pre-register LiveKit plugins on the main thread.
+
+    LiveKit requires plugins to be registered on the main thread. This function
+    imports the plugins before ThreadPoolExecutor workers are spawned, ensuring
+    they are available in worker threads without thread registration errors.
+
+    Must be called from the main thread before any workers are created.
+    """
+    from loguru import logger
+
+    try:
+        # Import the plugins - this triggers their registration
+        from livekit.plugins import (  # noqa: F401
+            anthropic,
+            deepgram,
+            elevenlabs,
+            openai,
+        )
+
+        logger.debug("LiveKit plugins pre-registered on main thread")
+    except ImportError as e:
+        logger.warning(
+            f"Failed to pre-register LiveKit plugins: {e}. "
+            "Install with: pip install livekit-plugins-openai livekit-plugins-deepgram "
+            "livekit-plugins-anthropic livekit-plugins-elevenlabs"
+        )
+
+
 __all__ = [
     # Main adapter for discrete-time simulation
     "LiveKitCascadedAdapter",
@@ -71,6 +101,8 @@ __all__ = [
     "ProviderState",
     "ConversationContext",
     "TurnTakingConfig",
+    # Utilities
+    "preregister_livekit_plugins",
     # Configuration
     "CascadedConfig",
     "STTConfig",
