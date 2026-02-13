@@ -19,6 +19,7 @@ from tau2.data_model.persona import InterruptTendency, PersonaConfig, Verbosity
 from tau2.data_model.simulation import (
     AgentInfo,
     AudioNativeConfig,
+    HallucinationCheck,
     Info,
     Results,
     RunConfig,
@@ -31,6 +32,7 @@ from tau2.data_model.tasks import Task
 from tau2.data_model.voice import SpeechEnvironment, SynthesisConfig, VoiceSettings
 from tau2.environment.environment import EnvironmentInfo
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
+from tau2.evaluator.reviewer import check_hallucination
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.orchestrator.full_duplex_orchestrator import FullDuplexOrchestrator
 from tau2.orchestrator.modes import CommunicationMode
@@ -61,6 +63,33 @@ from tau2.voice.utils.audio_debug import generate_audio_debug_info
 _current_simulation_id: ContextVar[Optional[str]] = ContextVar(
     "_current_simulation_id", default=None
 )
+
+
+def _preregister_livekit_plugins() -> None:
+    """Pre-register LiveKit plugins on the main thread.
+
+    LiveKit requires plugins to be registered on the main thread. This function
+    imports the plugins before ThreadPoolExecutor workers are spawned, ensuring
+    they are available in worker threads without thread registration errors.
+
+    Must be called from the main thread before any workers are created.
+    """
+    try:
+        # Import the plugins - this triggers their registration
+        from livekit.plugins import (  # noqa: F401
+            anthropic,
+            deepgram,
+            elevenlabs,
+            openai,
+        )
+
+        logger.debug("LiveKit plugins pre-registered on main thread")
+    except ImportError as e:
+        logger.warning(
+            f"Failed to pre-register LiveKit plugins: {e}. "
+            "Install with: pip install livekit-plugins-openai livekit-plugins-deepgram "
+            "livekit-plugins-anthropic livekit-plugins-elevenlabs"
+        )
 
 
 def create_speech_environment(
@@ -99,6 +128,32 @@ def create_speech_environment(
     )
 
     return sampled.to_speech_environment(seed)
+
+
+def _format_hallucination_feedback(
+    hallucination_check: "HallucinationCheck",
+) -> Optional[str]:
+    """Format hallucination errors into feedback for the user simulator.
+
+    Returns a string to append to user instructions, or None if no hallucinations.
+    """
+    if not hallucination_check.errors:
+        return None
+
+    error_lines = []
+    for error in hallucination_check.errors:
+        if error.correct_behavior:
+            error_lines.append(f"- [hallucination] {error.correct_behavior}")
+        else:
+            error_lines.append(f"- [hallucination] {error.reasoning[:200]}")
+
+    if not error_lines:
+        return None
+
+    return (
+        "IMPORTANT: In a previous attempt at this conversation, the user simulator "
+        "made these errors. You MUST avoid repeating them:\n" + "\n".join(error_lines)
+    )
 
 
 def run_auto_review(
@@ -394,6 +449,7 @@ def run_domain(config: RunConfig) -> Results:
         auto_review=config.auto_review,
         review_mode=config.review_mode,
         solo_mode=solo_mode,
+        hallucination_retries=config.hallucination_retries,
     )
     metrics = compute_metrics(simulation_results)
     ConsoleDisplay.display_agent_metrics(metrics)
@@ -431,6 +487,7 @@ def run_tasks(
     auto_review: bool = False,
     review_mode: str = "full",
     solo_mode: bool = False,
+    hallucination_retries: int = 0,
 ) -> Results:
     """
     Runs tasks for a given domain.
@@ -457,6 +514,7 @@ def run_tasks(
         audio_native_config (AudioNativeConfig): Configuration for audio-native mode.
         audio_debug (bool): Enable audio debugging (per-tick audio files and analysis).
         auto_resume (bool): Automatically resume from existing save file without prompting.
+        hallucination_retries (int): Max retries on user simulator hallucinations (full-duplex only).
     Returns:
         The simulation results.
     """
@@ -484,6 +542,11 @@ def run_tasks(
         logger.warning("Each trial will modify the seed for the user")
 
     lock = multiprocessing.Lock()
+
+    # Pre-register LiveKit plugins on main thread before workers spawn
+    # This must happen before ThreadPoolExecutor to avoid thread registration errors
+    if audio_native_config is not None and audio_native_config.provider == "livekit":
+        _preregister_livekit_plugins()
 
     # Create run-level voice settings and persona config for audio-native mode
     user_voice_settings = None
@@ -749,6 +812,108 @@ def run_tasks(
                     solo_mode=solo_mode,
                 )
                 simulation.trial = trial
+
+                # Hallucination retry: if hallucination check detects fabricated info, re-run
+                is_full_duplex = (
+                    simulation.ticks is not None and len(simulation.ticks) > 0
+                )
+                if hallucination_retries > 0 and is_full_duplex:
+                    hallucination_retry_count = 0
+                    while hallucination_retry_count < hallucination_retries:
+                        # Run focused hallucination check
+                        h_check = check_hallucination(simulation, task)
+                        simulation.hallucination_check = h_check
+
+                        if not h_check.hallucination_found:
+                            break
+
+                        hallucination_retry_count += 1
+                        n_errors = len(h_check.errors)
+
+                        retry_text = Text(
+                            text=f"  ⚠️  Hallucination detected on task {task.id} ({n_errors} instance(s)). "
+                            f"Re-running with feedback ({hallucination_retry_count}/{hallucination_retries})...",
+                            style="yellow",
+                        )
+                        ConsoleDisplay.console.print(retry_text)
+
+                        # Save the discarded run to a shared Results file for tau2 view
+                        if save_dir is not None:
+                            discarded_dir = save_dir / "hallucination_discarded"
+                            discarded_dir.mkdir(parents=True, exist_ok=True)
+                            discarded_path = discarded_dir / "results.json"
+
+                            # Append to existing discarded results file, or create new one
+                            if discarded_path.exists():
+                                with open(discarded_path, "r") as fp:
+                                    discarded_data = json.load(fp)
+                                discarded_data["simulations"].append(
+                                    simulation.model_dump(mode="json")
+                                )
+                                # Add task if not already present
+                                existing_task_ids = {
+                                    t["id"] for t in discarded_data["tasks"]
+                                }
+                                if task.id not in existing_task_ids:
+                                    discarded_data["tasks"].append(
+                                        task.model_dump(mode="json")
+                                    )
+                                with open(discarded_path, "w") as fp:
+                                    json.dump(discarded_data, fp, indent=2)
+                            else:
+                                discarded_results = Results(
+                                    info=simulation_results.info,
+                                    tasks=[
+                                        t
+                                        for t in simulation_results.tasks
+                                        if t.id == task.id
+                                    ],
+                                    simulations=[simulation],
+                                )
+                                with open(discarded_path, "w") as fp:
+                                    fp.write(
+                                        discarded_results.model_dump_json(indent=2)
+                                    )
+
+                            logger.info(
+                                f"Saved discarded hallucination run to {discarded_path} "
+                                f"(task {task.id}, retry {hallucination_retry_count})"
+                            )
+
+                        # Build feedback for the user simulator
+                        feedback = _format_hallucination_feedback(h_check)
+
+                        # Re-run with a different seed (and optionally feedback)
+                        retry_seed = seed + hallucination_retry_count * 1000
+                        simulation = run_task(
+                            domain=domain,
+                            task=task,
+                            agent=agent,
+                            user=user,
+                            llm_agent=llm_agent,
+                            llm_args_agent=llm_args_agent,
+                            llm_user=llm_user,
+                            llm_args_user=llm_args_user,
+                            max_steps=max_steps,
+                            max_errors=max_errors,
+                            evaluation_type=evaluation_type,
+                            seed=retry_seed,
+                            save_dir=save_dir,
+                            enforce_communication_protocol=enforce_communication_protocol,
+                            speech_complexity=speech_complexity,
+                            audio_native_config=audio_native_config,
+                            user_voice_settings=user_voice_settings,
+                            user_persona_config=user_persona_config,
+                            verbose_logs=verbose_logs,
+                            audio_debug=audio_debug,
+                            auto_review=auto_review,
+                            review_mode=review_mode,
+                            hallucination_feedback=feedback,
+                        )
+                        simulation.trial = trial
+
+                    simulation.hallucination_retries_used = hallucination_retry_count
+
                 if console_display:
                     ConsoleDisplay.display_simulation(simulation, show_details=False)
                 _save(simulation)
@@ -920,6 +1085,7 @@ def run_task(
     auto_review: bool = False,
     review_mode: str = "full",
     solo_mode: bool = False,
+    hallucination_feedback: Optional[str] = None,
 ) -> SimulationRun:
     """
     Runs a single task simulation.
@@ -1076,9 +1242,12 @@ def run_task(
             )
 
         # Create VoiceStreamingUserSimulator
+        user_instructions = str(task.user_scenario)
+        if hallucination_feedback:
+            user_instructions += f"\n\n{hallucination_feedback}"
         user_instance = VoiceStreamingUserSimulator(
             tools=user_tools,
-            instructions=str(task.user_scenario),
+            instructions=user_instructions,
             llm=llm_user,
             llm_args=llm_args_user,
             voice_settings=task_voice_settings,
@@ -1147,9 +1316,12 @@ def run_task(
         if issubclass(UserConstructor, DummyUser):
             assert solo_mode, "Dummy user can only be used with solo agent"
 
+        user_instructions = str(task.user_scenario)
+        if hallucination_feedback:
+            user_instructions += f"\n\n{hallucination_feedback}"
         user_kwargs = {
             "tools": user_tools,
-            "instructions": str(task.user_scenario),
+            "instructions": user_instructions,
             "llm": llm_user,
             "llm_args": llm_args_user,
         }

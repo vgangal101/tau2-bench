@@ -60,6 +60,7 @@ class RunConfig:
     provider: str = DEFAULT_AUDIO_NATIVE_PROVIDER
     model: Optional[str] = None
     num_tasks: Optional[int] = None
+    task_ids: Optional[list[str]] = None
     seed: int = DEFAULT_SEED
     max_steps_seconds: int = DEFAULT_MAX_STEPS_SECONDS
     max_concurrency: int = DEFAULT_MAX_CONCURRENCY
@@ -107,11 +108,15 @@ def build_command(config: RunConfig) -> list[str]:
     if config.effective_model:
         cmd.extend(["--audio-native-model", config.effective_model])
 
+    # Task selection
+    if config.task_ids:
+        cmd.extend(["--task-ids"] + config.task_ids)
+    elif config.num_tasks:
+        cmd.extend(["--num-tasks", str(config.num_tasks)])
+
     # Basic settings
     cmd.extend(
         [
-            "--num-tasks",
-            str(config.num_tasks),
             "--seed",
             str(config.seed),
             "--max-steps-seconds",
@@ -213,6 +218,13 @@ def main():
         help="Number of tasks to run",
     )
     parser.add_argument(
+        "--task-ids",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Specific task IDs to run (overrides --num-tasks)",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=DEFAULT_SEED,
@@ -247,7 +259,6 @@ def main():
         default=DEFAULT_LLM_USER,
         help=f"LLM to use for user simulator. Default is {DEFAULT_LLM_USER}.",
     )
-
     args = parser.parse_args()
 
     config = RunConfig(
@@ -256,6 +267,7 @@ def main():
         provider=args.provider,
         model=args.model,
         num_tasks=args.num_tasks,
+        task_ids=args.task_ids,
         seed=args.seed,
         max_steps_seconds=args.max_steps_seconds,
         max_concurrency=args.max_concurrency,

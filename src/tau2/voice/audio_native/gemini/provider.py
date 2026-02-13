@@ -17,6 +17,7 @@ from tau2.config import (
     DEFAULT_GEMINI_LOCATION,
     DEFAULT_GEMINI_MODEL,
     DEFAULT_GEMINI_MODEL_VERTEX,
+    DEFAULT_GEMINI_PROACTIVE_AUDIO,
     DEFAULT_GEMINI_VOICE,
 )
 from tau2.environment.tool import Tool
@@ -273,6 +274,9 @@ class GeminiLiveProvider:
         self._resumption_count = 0
         self._resumption_handle: Optional[str] = None
         self._connect_config: Optional[Dict[str, Any]] = None  # For reconnection
+
+        # Gemini doesn't expose a session ID; use timestamps + API key for debugging
+        self.session_id: Optional[str] = None
         self._go_away_received: bool = (
             False  # Track if GoAway was received before disconnect
         )
@@ -339,6 +343,7 @@ class GeminiLiveProvider:
             voice: Voice name for audio output. Defaults to DEFAULT_VOICE.
             _resumption_handle: Internal parameter for session resumption.
                 Pass the handle from a previous session to resume it.
+            proactive_audio: If True, allow model to ignore irrelevant audio input.
 
         Raises:
             RuntimeError: If connection fails.
@@ -407,12 +412,10 @@ class GeminiLiveProvider:
                     f"{[t.name for t in tool_declarations]}"
                 )
 
-            # Add context window compression for long sessions
+            # Enable context window compression for long sessions.
+            # Leave parameters unset so the API uses model-dependent defaults.
             config_kwargs["context_window_compression"] = (
-                types.ContextWindowCompressionConfig(
-                    trigger_tokens=25600,
-                    sliding_window=types.SlidingWindow(target_tokens=12800),
-                )
+                types.ContextWindowCompressionConfig()
             )
 
             # Add session resumption config (enables receiving resumption handles)
@@ -436,6 +439,12 @@ class GeminiLiveProvider:
             config_kwargs["output_audio_transcription"] = (
                 types.AudioTranscriptionConfig()
             )
+
+            # Enable proactive audio to allow model to ignore irrelevant input
+            if DEFAULT_GEMINI_PROACTIVE_AUDIO:
+                config_kwargs["proactivity"] = types.ProactivityConfig(
+                    proactive_audio=True,
+                )
 
             config = types.LiveConnectConfig(**config_kwargs)
 
@@ -841,6 +850,7 @@ class GeminiLiveProvider:
         call_id: str,
         name: str,
         result: str,
+        is_error: bool = False,
     ) -> None:
         """Send the result of a tool/function call back to the API.
 
@@ -848,6 +858,9 @@ class GeminiLiveProvider:
             call_id: The unique identifier of the function call.
             name: The name of the function that was called.
             result: The string result of the function execution.
+            is_error: If True, send the result as an error using the "error"
+                key instead of "output". This helps the model understand the
+                tool call failed and adjust its behavior accordingly.
 
         Raises:
             RuntimeError: If not connected to the API.
@@ -857,14 +870,19 @@ class GeminiLiveProvider:
 
         from google.genai import types
 
+        if is_error:
+            response_payload = {"error": result}
+        else:
+            response_payload = {"output": result}
+
         function_response = types.FunctionResponse(
             id=call_id,
             name=name,
-            response={"result": result},
+            response=response_payload,
         )
 
         await self._session.send_tool_response(function_responses=[function_response])
-        logger.debug(f"Sent tool response for {name}({call_id})")
+        logger.debug(f"Sent tool response for {name}({call_id}), is_error={is_error}")
 
     async def receive_events_for_duration(
         self, duration_seconds: float
@@ -983,10 +1001,10 @@ class GeminiLiveProvider:
         return result
 
     def _parse_response(self, response: Any) -> List[BaseGeminiEvent]:
-        """Parse a Gemini response into typed events.
+        """Parse a Gemini LiveServerMessage into typed events.
 
         Args:
-            response: Raw response from session.receive()
+            response: A LiveServerMessage from session.receive().
 
         Returns:
             List of typed event objects.
@@ -1004,16 +1022,9 @@ class GeminiLiveProvider:
 
         events: List[BaseGeminiEvent] = []
 
-        # Check for audio data - can be in 'data' or 'inline_data'
         audio_data = None
         if hasattr(response, "data") and response.data:
             audio_data = response.data
-        elif hasattr(response, "inline_data") and response.inline_data:
-            # inline_data may have a 'data' attribute containing the actual bytes
-            if hasattr(response.inline_data, "data"):
-                audio_data = response.inline_data.data
-            else:
-                audio_data = response.inline_data
 
         if audio_data:
             events.append(
@@ -1024,16 +1035,6 @@ class GeminiLiveProvider:
                         if isinstance(audio_data, bytes)
                         else bytes(audio_data)
                     ),
-                    item_id=self._current_item_id,
-                )
-            )
-
-        # Check for text content
-        if hasattr(response, "text") and response.text:
-            events.append(
-                GeminiTextDeltaEvent(
-                    type="text.delta",
-                    text=response.text,
                     item_id=self._current_item_id,
                 )
             )
@@ -1146,36 +1147,6 @@ class GeminiLiveProvider:
                             transcript=transcription.text,
                         )
                     )
-            # Check for function calls in model_turn.parts
-            # Tool calls come as: server_content.model_turn.parts[].function_call
-            if hasattr(server_content, "model_turn") and server_content.model_turn:
-                model_turn = server_content.model_turn
-                if hasattr(model_turn, "parts") and model_turn.parts:
-                    for part in model_turn.parts:
-                        if hasattr(part, "function_call") and part.function_call:
-                            func_call = part.function_call
-                            # Extract function call details
-                            call_id = getattr(func_call, "id", "") or ""
-                            name = getattr(func_call, "name", "") or ""
-                            # args can be a dict or a protobuf Struct
-                            args = getattr(func_call, "args", {})
-                            if hasattr(args, "items"):
-                                # It's already a dict-like object
-                                args_dict = dict(args)
-                            else:
-                                args_dict = args or {}
-                            logger.info(
-                                f"Gemini function call received: {name}({args_dict})"
-                            )
-                            events.append(
-                                GeminiFunctionCallDoneEvent(
-                                    type="function_call.done",
-                                    call_id=call_id,
-                                    name=name,
-                                    arguments=args_dict,
-                                )
-                            )
-
         # If no events were extracted, return unknown event with debug info
         if not events:
             # Collect all attributes for debugging

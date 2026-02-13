@@ -108,8 +108,12 @@ DEFAULT_SEND_AUDIO_INSTANT = True
 DEFAULT_SPEECH_COMPLEXITY = "regular"  # Options: "control", "regular"
 
 # OpenAI Realtime API configuration
-DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2025-08-28"
+DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2026-01-12"
 DEFAULT_OPENAI_REALTIME_BASE_URL = "wss://api.openai.com/v1/realtime"
+DEFAULT_OPENAI_VOICE = "alloy"
+DEFAULT_OPENAI_NOISE_REDUCTION = (
+    "near_field"  # Options: "near_field", "far_field", or None to disable
+)
 DEFAULT_OPENAI_VAD_THRESHOLD_LOW = (
     0.2  # Audio level threshold (0.0-1.0). OpenAI default is 0.5.
 )
@@ -122,6 +126,7 @@ DEFAULT_GEMINI_MODEL = "models/gemini-live-2.5-flash-native-audio"
 # See: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference
 DEFAULT_GEMINI_MODEL_VERTEX = "gemini-live-2.5-flash-native-audio"
 DEFAULT_GEMINI_VOICE = "Zephyr"
+DEFAULT_GEMINI_PROACTIVE_AUDIO = True  # Allow model to ignore irrelevant audio input
 DEFAULT_GEMINI_LOCATION = "us-central1"
 
 # xAI Grok Voice Agent API configuration
@@ -146,9 +151,7 @@ DEFAULT_DEEPGRAM_LLM_MODEL = "gpt-5.1"  # LLM used by Deepgram Voice Agent
 DEFAULT_DEEPGRAM_TTS_MODEL = "aura-2-thalia-en"  # TTS voice model
 
 # Audio-native provider
-DEFAULT_AUDIO_NATIVE_PROVIDER = (
-    "openai"  # Options: "openai", "gemini", "xai", "nova", "qwen"
-)
+DEFAULT_AUDIO_NATIVE_PROVIDER = "openai"  # Options: "openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"
 DEFAULT_AUDIO_NATIVE_MODELS = {
     "openai": DEFAULT_OPENAI_REALTIME_MODEL,
     "gemini": DEFAULT_GEMINI_MODEL_VERTEX,
@@ -156,11 +159,12 @@ DEFAULT_AUDIO_NATIVE_MODELS = {
     "nova": DEFAULT_NOVA_MODEL,
     "qwen": DEFAULT_QWEN_MODEL,
     "deepgram": DEFAULT_DEEPGRAM_LLM_MODEL,  # Cascaded: uses LLM model as identifier
+    "livekit": "dummy",  # We just need this key to register livekit as a provider
 }
 
 # Provider type classification
 # - "audio_native": Native audio-to-audio models (e.g., OpenAI Realtime, Gemini Live)
-# - "cascaded": STT→LLM→TTS pipeline (e.g., Deepgram Voice Agent)
+# - "cascaded": STT→LLM→TTS pipeline (e.g., Deepgram Voice Agent, LiveKit)
 AUDIO_NATIVE_PROVIDER_TYPES = {
     "openai": "audio_native",
     "gemini": "audio_native",
@@ -168,6 +172,7 @@ AUDIO_NATIVE_PROVIDER_TYPES = {
     "nova": "audio_native",
     "qwen": "audio_native",
     "deepgram": "cascaded",
+    "livekit": "cascaded",
 }
 # Providers that prefer plain text prompts (no XML tags) by default
 # Retry configuration for audio-native tasks

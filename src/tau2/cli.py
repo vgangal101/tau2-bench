@@ -224,13 +224,22 @@ def add_run_args(parser):
     parser.add_argument(
         "--audio-native-provider",
         type=str,
-        choices=["openai", "gemini", "xai", "nova", "qwen", "deepgram"],
+        choices=["openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"],
         default=DEFAULT_AUDIO_NATIVE_PROVIDER,
         help=f"Audio native API provider. 'openai' uses OpenAI Realtime API, "
         f"'gemini' uses Google Gemini Live API, 'xai' uses xAI Grok Voice Agent API, "
         f"'nova' uses Amazon Nova Sonic, 'qwen' uses Alibaba Qwen Omni Flash, "
-        f"'deepgram' uses Deepgram Voice Agent (cascaded STT→LLM→TTS). "
+        f"'deepgram' uses Deepgram Voice Agent (cascaded STT→LLM→TTS), "
+        f"'livekit' uses LiveKit-based cascaded pipeline (Deepgram STT + OpenAI/Anthropic LLM + Deepgram/ElevenLabs TTS). "
         f"Default is '{DEFAULT_AUDIO_NATIVE_PROVIDER}'.",
+    )
+    parser.add_argument(
+        "--cascaded-config",
+        type=str,
+        default=None,
+        help="Cascaded config preset name for livekit provider. "
+        "Available presets: 'default', 'openai-thinking', 'openai-thinking-high'. "
+        "See tau2.voice.audio_native.livekit.config for details.",
     )
     parser.add_argument(
         "--audio-native-model",
@@ -383,6 +392,12 @@ def add_run_args(parser):
         choices=["full", "user"],
         default="full",
         help="Review mode when --auto-review is enabled: 'full' (agent+user errors, default) or 'user' (user simulator only).",
+    )
+    parser.add_argument(
+        "--hallucination-retries",
+        type=int,
+        default=3,
+        help="Max retries when a user simulator hallucination is detected (full-duplex only). Set to 0 to disable.",
     )
 
 
@@ -565,6 +580,7 @@ def main():
                 # Provider
                 provider=args.audio_native_provider,
                 model=audio_native_model,
+                cascaded_config_name=args.cascaded_config,
                 # Timing
                 tick_duration_seconds=args.tick_duration,
                 max_steps_seconds=args.max_steps_seconds,
@@ -612,6 +628,7 @@ def main():
             auto_resume=args.auto_resume,
             auto_review=args.auto_review,
             review_mode=args.review_mode,
+            hallucination_retries=args.hallucination_retries,
         )
 
         if audio_native_config is not None:

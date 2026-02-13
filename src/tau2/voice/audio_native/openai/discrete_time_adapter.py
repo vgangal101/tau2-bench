@@ -409,6 +409,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
         call_id: str,
         result: str,
         request_response: bool = True,
+        is_error: bool = False,
     ) -> None:
         """Queue a tool result to be sent in the next tick.
 
@@ -419,6 +420,8 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
             call_id: The tool call ID.
             result: The tool result as a string.
             request_response: If True, request a response after sending.
+            is_error: If True, the tool call failed. Currently unused by OpenAI
+                (error info is embedded in the result string).
         """
         self._pending_tool_results.append((call_id, result, request_response))
         logger.debug(f"Queued tool result for call_id={call_id}")

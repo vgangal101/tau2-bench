@@ -1,5 +1,4 @@
 import json
-import re
 from typing import Literal
 
 from tau2.config import DEFAULT_LLM_EVAL_USER_SIMULATOR
@@ -7,7 +6,7 @@ from tau2.data_model.message import SystemMessage, Tick, UserMessage
 from tau2.data_model.simulation import Review, ReviewError, UserInfo
 from tau2.data_model.tasks import Task
 from tau2.utils.display import MarkdownDisplay
-from tau2.utils.llm_utils import generate
+from tau2.utils.llm_utils import extract_json_from_llm_response, generate
 
 # =============================================================================
 # Prompts for Full Conversation Review (Both User and Agent)
@@ -52,6 +51,11 @@ For each User Turn, check if the User Simulator:
 - Performed its task correctly
 - Acted consistently with previous turns
 
+### Important User Review Principles:
+1. **Fact-check every user claim**: For every factual detail the user provides (names, emails, zip codes, sizes, colors, product descriptions, etc.), verify it appears in or is derivable from the <User Instructions>. Any detail not grounded in the instructions is a hallucination — even if it sounds plausible. When the user lacks information, the correct behavior is to say "I don't know" or ask the agent.
+
+2. **Do not blame the user for agent failures**: If the agent is unresponsive, repeatedly fails, or makes critical errors, the user giving up or ending the conversation is a reasonable reaction — not a user error. Only flag premature_termination when the agent was actively working and making progress.
+
 ### User Error Severity:
 For each user error, classify its severity:
 - **critical_helped**: The user error helped the agent succeed inappropriately (e.g., user provided information they shouldn't have, making the task too easy).
@@ -71,7 +75,7 @@ For each agent error, classify its severity:
 
 ### Error Tags:
 For each error, assign one or more tags from the following list:
-- **hallucination**: Made up information not grounded in guidelines, instructions, or tool call results.
+- **hallucination**: Made up information not grounded in guidelines, instructions, or tool call results. For user errors specifically: provided factual details (e.g., zip codes, sizes, product descriptions) not present in or derivable from the user instructions.
 - **incorrect_interpretation**: Misinterpreted available information (e.g., misread a tool result or misunderstood a message).
 - **guideline_violation**: Message or action not consistent with the provided guidelines or policy.
 - **revealed_info_early**: Shared information before it was appropriate or before proper verification.
@@ -79,7 +83,7 @@ For each error, assign one or more tags from the following list:
 - **tool_call_schema_error**: Made a tool call with invalid tool name, missing arguments, or wrong argument types.
 - **tool_call_argument_error**: Made a tool call with correct schema but incorrect argument values.
 - **irrelevant_tool_call**: Made a tool call not relevant to the current task or conversation state.
-- **premature_termination**: Ended the conversation (e.g. via ###STOP### token) or accepted an outcome before the task was completed (while the other participant wanted to continue and was not stuck).
+- **premature_termination**: Ended the conversation or accepted an incomplete outcome while the other participant was actively working and making progress. Do NOT use this tag if the user ended the conversation because the agent was unresponsive or repeatedly failing.
 - **missed_required_action**: Did not take a required action that was expected.
 - **wrong_sequence**: Performed actions out of the expected order or sequence.
 - **other**: Use only when no other tag applies. Include a description of the error type in the reasoning.
@@ -87,11 +91,15 @@ For each error, assign one or more tags from the following list:
 ### Workflow
 Follow these steps to produce your analysis:
 
-1. **Analyze each turn**: Go through the conversation turn by turn. For each turn, check if the message contains an error based on the guidelines above. Note any errors you find.
+1. **Fact-check user claims**: Verify every factual claim the user makes against the <User Instructions>.
 
-2. **Summarize**: After analyzing all turns, summarize what happened at the conversation level. Consider the overall flow, whether the task was completed successfully, and what errors (if any) affected the outcome.
+2. **Analyze each turn**: Go through the conversation turn by turn. For each turn, check if the message contains an error based on the guidelines above. Note any errors you find.
 
-3. **Format output**: Compile your findings into the expected JSON format. Include only the turns where errors were found (discard turns with no errors from the errors list).
+3. **Assess context for termination**: If the user ended the conversation early, only flag premature_termination if the agent was actively making progress (not stalled or failing).
+
+4. **Summarize**: Summarize what happened at the conversation level, including what errors (if any) affected the outcome.
+
+5. **Format output**: Compile your findings into the expected JSON format. Include only the turns where errors were found (discard turns with no errors from the errors list).
 
 # Inputs
 - <Policy>: The policy the Agent must follow.
@@ -196,6 +204,11 @@ For each User segment, check if the User Simulator:
 - Performed its task correctly
 - Acted consistently with previous segments
 
+### Important User Review Principles:
+1. **Fact-check every user claim**: For every factual detail the user provides (names, emails, zip codes, sizes, colors, product descriptions, etc.), verify it appears in or is derivable from the <User Instructions>. Any detail not grounded in the instructions is a hallucination — even if it sounds plausible. When the user lacks information, the correct behavior is to say "I don't know" or ask the agent.
+
+2. **Do not blame the user for agent failures**: If the agent is unresponsive, repeatedly fails, or makes critical errors, the user giving up or ending the conversation is a reasonable reaction — not a user error. Only flag premature_termination when the agent was actively working and making progress.
+
 ### User Errors (Turn-Taking, only if interruption is enabled):
 - Interrupts the agent too frequently or unnecessarily
 - Interrupts when the agent has only spoken a few words (less than ~5 words)
@@ -222,7 +235,7 @@ For each agent error, classify its severity:
 
 ### Error Tags:
 For each error, assign one or more tags from the following list:
-- **hallucination**: Made up information not grounded in guidelines, instructions, or tool call results.
+- **hallucination**: Made up information not grounded in guidelines, instructions, or tool call results. For user errors specifically: provided factual details (e.g., zip codes, sizes, product descriptions) not present in or derivable from the user instructions.
 - **incorrect_interpretation**: Misinterpreted available information (e.g., misread a tool result or misunderstood a message).
 - **guideline_violation**: Message or action not consistent with the provided guidelines or policy.
 - **revealed_info_early**: Shared information before it was appropriate or before proper verification.
@@ -230,7 +243,7 @@ For each error, assign one or more tags from the following list:
 - **tool_call_schema_error**: Made a tool call with invalid tool name, missing arguments, or wrong argument types.
 - **tool_call_argument_error**: Made a tool call with correct schema but incorrect argument values.
 - **irrelevant_tool_call**: Made a tool call not relevant to the current task or conversation state.
-- **premature_termination**: Ended the conversation (e.g. via ###STOP### token) or accepted an outcome before the task was completed (while the other participant wanted to continue and was not stuck).
+- **premature_termination**: Ended the conversation or accepted an incomplete outcome while the other participant was actively working and making progress. Do NOT use this tag if the user ended the conversation because the agent was unresponsive or repeatedly failing.
 - **missed_required_action**: Did not take a required action that was expected.
 - **wrong_sequence**: Performed actions out of the expected order or sequence.
 - **interruption_error**: Interrupted inappropriately or failed to interrupt when appropriate (only for full-duplex with interruption enabled).
@@ -239,11 +252,15 @@ For each error, assign one or more tags from the following list:
 ### Workflow
 Follow these steps to produce your analysis:
 
-1. **Analyze each segment**: Go through the conversation segment by segment. For each segment, check if it contains an error based on the guidelines above. Note any errors you find.
+1. **Fact-check user claims**: Verify every factual claim the user makes against the <User Instructions>.
 
-2. **Summarize**: After analyzing all segments, summarize what happened at the conversation level. Consider the overall flow, whether the task was completed successfully, and what errors (if any) affected the outcome.
+2. **Analyze each segment**: Go through the conversation segment by segment. For each segment, check if it contains an error based on the guidelines above. Note any errors you find.
 
-3. **Format output**: Compile your findings into the expected JSON format. Include only the segments where errors were found (discard segments with no errors from the errors list).
+3. **Assess context for termination**: If the user ended the conversation early, only flag premature_termination if the agent was actively making progress (not stalled or failing).
+
+4. **Summarize**: Summarize what happened at the conversation level, including what errors (if any) affected the outcome.
+
+5. **Format output**: Compile your findings into the expected JSON format. Include only the segments where errors were found (discard segments with no errors from the errors list).
 
 # Inputs
 - <Policy>: The policy the Agent must follow.
@@ -318,25 +335,8 @@ Interruption enabled: {interruption_enabled}
 
 
 def _extract_json_from_response(response: str) -> str:
-    """
-    Extract JSON from LLM response, handling markdown code blocks.
-    """
-    # Try to extract JSON from markdown code blocks
-    # Match ```json ... ``` or ``` ... ```
-    pattern = r"```(?:json)?\s*([\s\S]*?)```"
-    match = re.search(pattern, response)
-    if match:
-        return match.group(1).strip()
-
-    # If no code block, try to find JSON object directly
-    # Look for content between first { and last }
-    start = response.find("{")
-    end = response.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return response[start : end + 1]
-
-    # Return original response as fallback
-    return response
+    """Extract JSON from LLM response. Delegates to shared utility."""
+    return extract_json_from_llm_response(response)
 
 
 def _parse_review_response(

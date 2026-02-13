@@ -15,9 +15,11 @@ from loguru import logger
 from pydantic import BaseModel
 
 from tau2.config import (
+    DEFAULT_OPENAI_NOISE_REDUCTION,
     DEFAULT_OPENAI_REALTIME_BASE_URL,
     DEFAULT_OPENAI_REALTIME_MODEL,
     DEFAULT_OPENAI_VAD_THRESHOLD,
+    DEFAULT_OPENAI_VOICE,
 )
 from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
 from tau2.environment.tool import Tool
@@ -130,6 +132,7 @@ class OpenAIRealtimeProvider:
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._current_vad_config: Optional[OpenAIVADConfig] = None
         self._audio_format: AudioFormat = TELEPHONY_AUDIO_FORMAT
+        self.session_id: Optional[str] = None
 
     @property
     def is_connected(self) -> bool:
@@ -178,6 +181,13 @@ class OpenAIRealtimeProvider:
         data = json.loads(response)
         if data.get("type") != "session.created":
             raise RuntimeError(f"Expected session.created, got {data.get('type')}")
+
+        # Store and log session ID for debugging with OpenAI
+        session_data = data.get("session", {})
+        self.session_id = session_data.get("id")
+        logger.info(
+            f"OpenAI Realtime API: session created (session_id={self.session_id})"
+        )
 
     async def disconnect(self) -> None:
         """Close the WebSocket connection.
@@ -317,22 +327,24 @@ class OpenAIRealtimeProvider:
         if modality in ("audio", "audio_in_text_out"):
             # Get OpenAI format string from AudioFormat
             openai_format = audio_format_to_openai_string(audio_format)
-            session_config["session"].update(
-                {
-                    "input_audio_format": openai_format,
-                    "input_audio_transcription": {
-                        "model": "gpt-4o-transcribe",
-                        "language": "en",
-                    },
-                }
-            )
+            input_config = {
+                "input_audio_format": openai_format,
+                "input_audio_transcription": {
+                    "model": "gpt-4o-transcribe",
+                    "language": "en",
+                },
+                "input_audio_noise_reduction": {
+                    "type": DEFAULT_OPENAI_NOISE_REDUCTION,
+                },
+            }
+            session_config["session"].update(input_config)
 
         if modality == "audio":
             # Get OpenAI format string from AudioFormat
             openai_format = audio_format_to_openai_string(audio_format)
             session_config["session"].update(
                 {
-                    "voice": "alloy",
+                    "voice": DEFAULT_OPENAI_VOICE,
                     "output_audio_format": openai_format,
                 }
             )

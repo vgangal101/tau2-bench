@@ -1,11 +1,14 @@
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import pandas as pd
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
+
+if TYPE_CHECKING:
+    from tau2.voice.audio_native.livekit.config import CascadedConfig
 
 from tau2.config import (
     DEFAULT_AUDIO_NATIVE_AGENT_IMPLEMENTATION,
@@ -63,9 +66,17 @@ class AudioNativeConfig(BaseModel):
     """
 
     # Provider selection
-    provider: Literal["openai", "gemini", "xai", "nova", "qwen", "deepgram"] = Field(
+    provider: Literal[
+        "openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"
+    ] = Field(
         default=DEFAULT_AUDIO_NATIVE_PROVIDER,
-        description="Audio native API provider: 'openai' (OpenAI Realtime), 'gemini' (Gemini Live), 'xai' (xAI Grok Voice Agent), 'nova' (Amazon Nova Sonic), 'qwen' (Alibaba Qwen Omni), or 'deepgram' (Deepgram Voice Agent)",
+        description="Audio native API provider: 'openai' (OpenAI Realtime), 'gemini' (Gemini Live), 'xai' (xAI Grok Voice Agent), 'nova' (Amazon Nova Sonic), 'qwen' (Alibaba Qwen Omni), 'deepgram' (Deepgram Voice Agent), or 'livekit' (LiveKit cascaded STT→LLM→TTS)",
+    )
+
+    # Cascaded config (for livekit provider)
+    cascaded_config_name: Optional[str] = Field(
+        default=None,
+        description="Name of cascaded config preset for livekit provider (e.g., 'default', 'openai-thinking', 'openai-thinking-high')",
     )
 
     model: str = Field(
@@ -236,6 +247,25 @@ class AudioNativeConfig(BaseModel):
         """Maximum steps in ticks."""
         return int(self.max_steps_seconds / self.tick_duration_seconds)
 
+    @property
+    def cascaded_config(self) -> Optional["CascadedConfig"]:
+        """Get the CascadedConfig for livekit provider.
+
+        Returns the config from CASCADED_CONFIGS if a name is specified,
+        otherwise returns None (will use defaults).
+        """
+        if self.cascaded_config_name is None:
+            return None
+
+        from tau2.voice.audio_native.livekit.config import CASCADED_CONFIGS
+
+        if self.cascaded_config_name not in CASCADED_CONFIGS:
+            raise ValueError(
+                f"Unknown cascaded config: '{self.cascaded_config_name}'. "
+                f"Available: {list(CASCADED_CONFIGS.keys())}"
+            )
+        return CASCADED_CONFIGS[self.cascaded_config_name]
+
 
 class BaseRunConfig(BaseModel):
     """Base configuration shared by both text (half-duplex) and voice (full-duplex) modes.
@@ -383,6 +413,15 @@ class BaseRunConfig(BaseModel):
         Field(
             description="Review mode when auto_review is enabled: 'full' (agent+user errors, default) or 'user' (user simulator only).",
             default="full",
+        ),
+    ]
+    hallucination_retries: Annotated[
+        int,
+        Field(
+            description="Maximum number of retries when a user simulator hallucination is detected. "
+            "Set to 0 to disable. "
+            "Each retry re-runs the simulation with a different seed and feedback.",
+            default=3,
         ),
     ]
 
@@ -802,6 +841,49 @@ class UserOnlyReview(BaseModel):
     )
 
 
+class HallucinationCheckError(BaseModel):
+    """
+    Represents a hallucination detected in the user simulator's messages.
+    """
+
+    reasoning: str = Field(description="Explanation of why this is a hallucination.")
+    user_message: Optional[str] = Field(
+        description="The problematic user message content.",
+        default=None,
+    )
+    correct_behavior: Optional[str] = Field(
+        description="What the user should have said or done instead.",
+        default=None,
+    )
+
+
+class HallucinationCheck(BaseModel):
+    """
+    Result of checking a conversation for user simulator hallucinations.
+    """
+
+    reasoning: str = Field(
+        description="Step-by-step reasoning about the conversation before the decision.",
+        default="",
+    )
+    hallucination_found: bool = Field(
+        description="Whether any hallucinations were detected.",
+        default=False,
+    )
+    errors: list[HallucinationCheckError] = Field(
+        description="List of hallucinations found.",
+        default_factory=list,
+    )
+    summary: str = Field(
+        description="Brief summary of the hallucination check.",
+        default="",
+    )
+    cost: Optional[float] = Field(
+        description="The cost of the hallucination check.",
+        default=None,
+    )
+
+
 class AuthenticationClassification(BaseModel):
     """
     Classification of user authentication outcome in a conversation.
@@ -1172,6 +1254,18 @@ class SimulationRun(BaseModel):
             description="Classification of user authentication outcome.",
             default=None,
         )
+    )
+    hallucination_retries_used: int = Field(
+        description="Number of retries triggered by user simulator hallucinations.",
+        default=0,
+    )
+    hallucination_check: Optional[HallucinationCheck] = Field(
+        description="Result of the hallucination check for this simulation.",
+        default=None,
+    )
+    provider_session_id: Optional[str] = Field(
+        description="Provider session ID (e.g., OpenAI session ID, xAI conversation ID) for debugging.",
+        default=None,
     )
 
 
