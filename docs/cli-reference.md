@@ -51,6 +51,7 @@ tau2 run \
 | `--auto-resume` | Automatically resume from existing save file without prompting |
 | `--auto-review` | Automatically run LLM conversation review after each simulation |
 | `--review-mode` | Review mode when `--auto-review` is on: `full` or `user` (default: `full`) |
+| `--hallucination-retries` | Max retries when user simulator hallucination is detected (full-duplex only, default: `3`). Set to `0` to disable |
 | `--audio-native` | Enable audio native mode (voice full-duplex) |
 
 ### Audio Native Options
@@ -58,7 +59,8 @@ tau2 run \
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--audio-native` | `false` | Enable audio native mode |
-| `--audio-native-provider` | `openai` | Provider: `openai`, `gemini`, `nova`, `xai`, `deepgram`, `qwen` |
+| `--audio-native-provider` | `openai` | Provider: `openai`, `gemini`, `nova`, `xai`, `deepgram`, `qwen`, `livekit` |
+| `--cascaded-config` | *(none)* | Cascaded config preset for `livekit` provider (e.g., `default`, `openai-thinking`, `openai-thinking-high`) |
 | `--audio-native-model` | *(per-provider)* | Model to use (defaults to provider-specific model if not set) |
 | `--tick-duration` | `0.2` | Tick duration in seconds (simulation timestep) |
 | `--max-steps-seconds` | `600` | Maximum conversation duration in seconds |
@@ -99,6 +101,13 @@ tau2 run --domain retail --audio-native --num-tasks 1 --verbose-logs
 tau2 run --domain retail --audio-native --audio-native-provider gemini \
   --tick-duration 0.2 --max-steps-seconds 240 --speech-complexity control \
   --verbose-logs --save-to my_audio_native_run
+
+# Audio native with LiveKit cascaded pipeline
+tau2 run --domain retail --audio-native --audio-native-provider livekit \
+  --cascaded-config default --num-tasks 1 --verbose-logs
+
+# Audio native with hallucination retries disabled
+tau2 run --domain retail --audio-native --hallucination-retries 0 --num-tasks 1
 ```
 
 > **Note**: Text full-duplex and voice half-duplex modes are available programmatically via the Python API but are not exposed as CLI flags. See the [Orchestrator documentation](../src/tau2/orchestrator/README.md) and [Voice documentation](../src/tau2/voice/README.md) for programmatic usage.

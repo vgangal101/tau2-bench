@@ -81,7 +81,23 @@ config = VoiceRunConfig(
 results = run_domain(config)
 ```
 
-Both types share a common `BaseRunConfig` with fields like `domain`, `num_trials`, `seed`, etc. The `RunConfig` type alias is `Union[TextRunConfig, VoiceRunConfig]`.
+#### With LiveKit cascaded pipeline
+
+```python
+config = VoiceRunConfig(
+    domain="airline",
+    audio_native_config=AudioNativeConfig(
+        provider="livekit",
+        cascaded_config_name="default",  # or "openai-thinking", "openai-thinking-high"
+    ),
+    llm_user="openai/gpt-4.1",
+    hallucination_retries=3,  # re-run if user simulator hallucinates (default: 3)
+)
+
+results = run_domain(config)
+```
+
+Both types share a common `BaseRunConfig` with fields like `domain`, `num_trials`, `seed`, `hallucination_retries`, etc. The `RunConfig` type alias is `Union[TextRunConfig, VoiceRunConfig]`.
 
 This handles everything: task loading, filtering, concurrency, checkpointing, metrics display.
 

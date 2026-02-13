@@ -66,7 +66,7 @@ src/tau2/
 ├── user/            # User simulator implementations
 ├── utils/           # Shared utilities
 └── voice/           # Voice synthesis, transcription, audio-native providers
-    └── audio_native/  # Real-time voice providers (openai, gemini, nova, xai, deepgram, qwen)
+    └── audio_native/  # Real-time voice providers (openai, gemini, nova, xai, deepgram, qwen, livekit)
 ```
 
 Other top-level directories:

@@ -40,7 +40,7 @@ Before starting, identify which architecture type the provider uses:
 | Type | Description | Examples |
 |------|-------------|----------|
 | **Native Multimodal** | Single model processes audio input → generates audio output directly | OpenAI Realtime, Gemini Live, xAI Grok Voice |
-| **Cascaded** | Orchestrated pipeline: STT → LLM → TTS (may be exposed as single API) | Deepgram Voice Agent, Amazon Nova Sonic |
+| **Cascaded** | Orchestrated pipeline: STT → LLM → TTS (may be exposed as single API) | Deepgram Voice Agent, Amazon Nova Sonic, LiveKit |
 
 Both types are valid. Document the type in the provider's `__init__.py` docstring.
 
@@ -229,4 +229,4 @@ Airline domain uses `$ref/$defs` in tool schemas. Verify:
 
 Study existing providers as patterns (but always verify against target provider's docs):
 - **Native multimodal**: `openai/`, `gemini/`, `xai/`
-- **Cascaded**: `deepgram/`
+- **Cascaded**: `deepgram/`, `livekit/`

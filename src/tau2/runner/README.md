@@ -63,6 +63,8 @@ High-level batch execution with all operational concerns:
 - **Concurrency**: Thread pool with configurable `max_concurrency`.
 - **Checkpointing**: Atomic save/resume via `checkpoint.py`.
 - **Retries**: Configurable retry with delay via `progress.py`.
+- **Hallucination retries**: When `hallucination_retries > 0` (full-duplex only), re-runs simulations where the user simulator hallucinates, using feedback from `check_hallucination()` in `evaluator.reviewer`.
+- **LiveKit pre-registration**: Calls `preregister_livekit_plugins()` on the main thread before spawning workers (required for LiveKit provider).
 - **Status monitoring**: Periodic progress display (every 30s).
 - **Side effects**: Auto-review, audio saving, per-task logging.
 
