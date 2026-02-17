@@ -196,7 +196,7 @@ cache-*.arrow
 data-*-of-*.arrow
 src/experiments/model_training/data/full-v1/*/cache-*.arrow
 src/experiments/model_training/data/full-v1/*/data-*.arrow
-data/.embeddings_cache
+data/.embeddings_cache/
 
 # Large JSONL training files
 src/experiments/model_training/data/train_full-v1.jsonl
