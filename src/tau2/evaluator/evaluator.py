@@ -89,6 +89,7 @@ def evaluate_simulation(
     solo_mode: bool,
     domain: str,
     mode: CommunicationMode = CommunicationMode.HALF_DUPLEX,
+    env_kwargs: dict = None,
 ) -> RewardInfo:
     """
     Evaluate the simulation based on the evaluation type.
@@ -123,6 +124,8 @@ def evaluate_simulation(
             reward_basis=None,
             info={"note": "No evaluation criteria"},
         )
+    if env_kwargs is None:
+        env_kwargs = {}
 
     # Select trajectory and evaluators based on mode
     is_full_duplex = mode == CommunicationMode.FULL_DUPLEX
@@ -143,7 +146,7 @@ def evaluate_simulation(
     # Get tool types from the environment for action evaluation
     tool_types: Optional[dict[str, ToolType]] = None
     try:
-        env = registry.get_env_constructor(domain)(solo_mode=solo_mode)
+        env = registry.get_env_constructor(domain)(solo_mode=solo_mode, **env_kwargs)
         if env.tools is not None:
             tool_types = get_tool_types(env.tools)
         if env.user_tools is not None:
@@ -162,6 +165,7 @@ def evaluate_simulation(
             task=task,
             full_trajectory=trajectory,
             solo_mode=solo_mode,
+            env_kwargs=env_kwargs,
         )
     elif evaluation_type == EvaluationType.NL_ASSERTIONS:
         reward_info = NLEvaluator.calculate_reward(
@@ -185,6 +189,7 @@ def evaluate_simulation(
             task=task,
             full_trajectory=trajectory,
             solo_mode=solo_mode,
+            env_kwargs=env_kwargs,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,
@@ -259,6 +264,7 @@ def evaluate_simulation(
             task=task,
             full_trajectory=trajectory,
             solo_mode=solo_mode,
+            env_kwargs=env_kwargs,
         )
         action_reward_info = ActEvaluator.calculate_reward(
             task=task,

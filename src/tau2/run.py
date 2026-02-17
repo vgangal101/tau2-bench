@@ -1,3 +1,6 @@
+import asyncio
+import asyncio.base_events
+import gc
 import json
 import multiprocessing
 import os
@@ -30,9 +33,15 @@ from tau2.data_model.simulation import (
 )
 from tau2.data_model.tasks import Task
 from tau2.data_model.voice import SpeechEnvironment, SynthesisConfig, VoiceSettings
+from tau2.domains.banking_knowledge.environment import get_knowledge_base
+from tau2.domains.banking_knowledge.retrieval import get_info_policy_override
 from tau2.environment.environment import EnvironmentInfo
 from tau2.evaluator.evaluator import EvaluationType, evaluate_simulation
 from tau2.evaluator.reviewer import check_hallucination
+from tau2.knowledge.embeddings_cache import (
+    get_unique_embedder_configs_for_retrieval_configs,
+    warm_kb_cache,
+)
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.orchestrator.full_duplex_orchestrator import FullDuplexOrchestrator
 from tau2.orchestrator.modes import CommunicationMode
@@ -249,6 +258,64 @@ def save_simulation_audio(
         logger.warning(f"Failed to save audio for task {task.id}: {e}")
 
 
+# Patch asyncio event loop __del__ to suppress AttributeError during cleanup.
+_original_del = asyncio.base_events.BaseEventLoop.__del__
+
+
+def _patched_del(self):
+    try:
+        _original_del(self)
+    except AttributeError:
+        pass
+
+
+asyncio.base_events.BaseEventLoop.__del__ = _patched_del
+
+
+def _close_event_loop_safely(loop):
+    if loop is None or loop.is_closed():
+        return
+    try:
+        if hasattr(loop, "_ssock") and loop._ssock is not None:
+            loop.close()
+        elif hasattr(loop, "_closed") and not loop._closed:
+            loop._closed = True
+            if hasattr(loop, "_selector") and loop._selector is not None:
+                loop._selector.close()
+                loop._selector = None
+    except (AttributeError, OSError):
+        pass
+
+
+def _init_thread_event_loop():
+    try:
+        old_loop = asyncio.get_event_loop_policy().get_event_loop()
+        _close_event_loop_safely(old_loop)
+    except RuntimeError:
+        pass
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    except Exception:
+        pass
+
+
+def _cleanup_thread_event_loop():
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        _close_event_loop_safely(loop)
+    except RuntimeError:
+        pass
+
+    try:
+        asyncio.set_event_loop(None)
+    except Exception:
+        pass
+
+    gc.collect()
+
+
 def get_options() -> RegistryInfo:
     """
     Returns options for the simulator.
@@ -257,12 +324,16 @@ def get_options() -> RegistryInfo:
 
 
 def get_environment_info(
-    domain_name: str, include_tool_info: bool = False
+    domain_name: str,
+    include_tool_info: bool = False,
+    env_kwargs: Optional[dict] = None,
 ) -> EnvironmentInfo:
     """Get information about the environment for a registered Domain"""
     global registry
     env_constructor = registry.get_env_constructor(domain_name)
-    return env_constructor().get_info(include_tool_info=include_tool_info)
+    if env_kwargs is None:
+        env_kwargs = {}
+    return env_constructor(**env_kwargs).get_info(include_tool_info=include_tool_info)
 
 
 def load_task_splits(task_set_name: str) -> Optional[dict[str, list[str]]]:
@@ -419,6 +490,8 @@ def run_domain(config: RunConfig) -> Results:
         review_mode=config.review_mode,
         solo_mode=solo_mode,
         hallucination_retries=config.hallucination_retries,
+        retrieval_config=config.retrieval_config,
+        retrieval_config_kwargs=config.retrieval_config_kwargs,
     )
     metrics = compute_metrics(simulation_results)
     ConsoleDisplay.display_agent_metrics(metrics)
@@ -457,6 +530,8 @@ def run_tasks(
     review_mode: str = "full",
     solo_mode: bool = False,
     hallucination_retries: int = 0,
+    retrieval_config: Optional[str] = None,
+    retrieval_config_kwargs: Optional[dict] = None,
 ) -> Results:
     """
     Runs tasks for a given domain.
@@ -484,6 +559,8 @@ def run_tasks(
         audio_debug (bool): Enable audio debugging (per-tick audio files and analysis).
         auto_resume (bool): Automatically resume from existing save file without prompting.
         hallucination_retries (int): Max retries on user simulator hallucinations (full-duplex only).
+        retrieval_config (str): Knowledge retrieval config name (knowledge domain only).
+        retrieval_config_kwargs (dict): Arguments to pass to the retrieval config constructor.
     Returns:
         The simulation results.
     """
@@ -536,6 +613,21 @@ def run_tasks(
             ),
         )
 
+    # Warm knowledge base cache for banking_knowledge domain
+    policy_override = None
+    if domain == "banking_knowledge":
+        kwargs = retrieval_config_kwargs or {}
+        embedder_configs = None
+        if retrieval_config:
+            embedder_configs = get_unique_embedder_configs_for_retrieval_configs(
+                [retrieval_config]
+            )
+        warm_kb_cache(embedder_configs)
+        knowledge_base = get_knowledge_base()
+        policy_override = get_info_policy_override(
+            retrieval_config, knowledge_base, **kwargs
+        )
+
     info = get_info(
         domain=domain,
         agent=agent,
@@ -552,6 +644,9 @@ def run_tasks(
         user_voice_settings=user_voice_settings,
         audio_native_config=audio_native_config,
         speech_complexity=speech_complexity if audio_native_config else None,
+        retrieval_config=retrieval_config,
+        retrieval_config_kwargs=retrieval_config_kwargs,
+        policy_override=policy_override,
     )
     simulation_results = Results(
         info=info,
@@ -582,12 +677,13 @@ def run_tasks(
             with open(save_to, "r") as fp:
                 prev_simulation_results = Results.model_validate_json(fp.read())
                 # Check if the run config has changed
-                if get_pydantic_hash(prev_simulation_results.info) != get_pydantic_hash(
-                    simulation_results.info
-                ):
+                exclude_fields = {"environment_info": {"policy"}}
+                if get_pydantic_hash(
+                    prev_simulation_results.info, exclude=exclude_fields
+                ) != get_pydantic_hash(simulation_results.info, exclude=exclude_fields):
                     diff = show_dict_diff(
-                        prev_simulation_results.info.model_dump(),
-                        simulation_results.info.model_dump(),
+                        prev_simulation_results.info.model_dump(exclude=exclude_fields),
+                        simulation_results.info.model_dump(exclude=exclude_fields),
                     )
                     if auto_resume:
                         # Log the diff but continue without prompting
@@ -732,7 +828,11 @@ def run_tasks(
                     os.unlink(tmp_path)
                 raise
 
-    def _run(task: Task, trial: int, seed: int, progress_str: str) -> SimulationRun:
+    def _run(
+        task: Task, trial: int, seed: int, progress_str: str
+    ) -> Optional[SimulationRun]:
+        _init_thread_event_loop()
+
         console_text = Text(
             text=f"{progress_str}. Running task {task.id}, trial {trial + 1}",
             style="bold green",
@@ -779,6 +879,8 @@ def run_tasks(
                     auto_review=auto_review,
                     review_mode=review_mode,
                     solo_mode=solo_mode,
+                    retrieval_config=retrieval_config,
+                    retrieval_config_kwargs=retrieval_config_kwargs,
                 )
                 simulation.trial = trial
 
@@ -879,6 +981,8 @@ def run_tasks(
                             review_mode=review_mode,
                             hallucination_feedback=feedback,
                             solo_mode=solo_mode,
+                            retrieval_config=retrieval_config,
+                            retrieval_config_kwargs=retrieval_config_kwargs,
                         )
                         simulation.trial = trial
 
@@ -943,7 +1047,8 @@ def run_tasks(
     args = []
     for trial in range(num_trials):
         for i, task in enumerate(tasks):
-            if (trial, task.id, seeds[trial]) in done_runs:
+            key = (trial, task.id, seeds[trial])
+            if key in done_runs:
                 console_text = Text(
                     text=f"Skipping task {task.id}, trial {trial} because it has already been run.",
                     style="bold yellow",
@@ -1025,7 +1130,7 @@ def run_tasks(
         status_thread.join(timeout=1.0)
 
     ConsoleDisplay.console.print(
-        "\n✨ [bold green]Successfully completed all simulations![/bold green]\n"
+        f"\n✨ [bold green]Completed {len(simulation_results.simulations)} simulations![/bold green]\n"
         "To review the simulations, run: [bold blue]tau2 view[/bold blue]"
     )
     return simulation_results
@@ -1056,6 +1161,8 @@ def run_task(
     review_mode: str = "full",
     solo_mode: bool = False,
     hallucination_feedback: Optional[str] = None,
+    retrieval_config: Optional[str] = None,
+    retrieval_config_kwargs: Optional[dict] = None,
 ) -> SimulationRun:
     """
     Runs a single task simulation.
@@ -1098,7 +1205,17 @@ def run_task(
         f"STARTING SIMULATION: Domain: {domain}, Task: {task.id}, Agent: {agent}, User: {user}"
     )
     environment_constructor = registry.get_env_constructor(domain)
-    environment = environment_constructor()
+
+    # Build env_kwargs generically — domain-specific params are only present
+    # when retrieval_config is set (banking_knowledge only).
+    env_kwargs = {}
+    if retrieval_config is not None:
+        env_kwargs["retrieval_variant"] = retrieval_config
+        env_kwargs["task"] = task  # needed for golden_retrieval policy
+        if retrieval_config_kwargs:
+            env_kwargs["retrieval_kwargs"] = retrieval_config_kwargs
+
+    environment = environment_constructor(**env_kwargs)
 
     # Generate simulation ID early for consistent directory structure
     simulation_id = str(uuid.uuid4())
@@ -1150,7 +1267,7 @@ def run_task(
         environment = environment_constructor(solo_mode=True)
 
     try:
-        user_tools = environment.get_user_tools()
+        user_tools = environment.get_user_tools(include=task.user_tools) or None
     except Exception:
         user_tools = None
 
@@ -1325,6 +1442,9 @@ def run_task(
             else CommunicationMode.HALF_DUPLEX
         )
 
+        # Save the actual policy used for this simulation.
+        simulation.policy = environment.get_policy()
+
         reward_info = evaluate_simulation(
             domain=domain,
             task=task,
@@ -1332,6 +1452,7 @@ def run_task(
             evaluation_type=evaluation_type,
             solo_mode=solo_mode,
             mode=eval_mode,
+            env_kwargs=env_kwargs,
         )
 
         simulation.reward_info = reward_info
@@ -1395,6 +1516,9 @@ def get_info(
     user_voice_settings: Optional[VoiceSettings] = None,
     audio_native_config: Optional[AudioNativeConfig] = None,
     speech_complexity: Optional[SpeechComplexity] = None,
+    retrieval_config: Optional[str] = None,
+    retrieval_config_kwargs: Optional[dict] = None,
+    policy_override: Optional[str] = None,
 ) -> Info:
     """Create Info object for storing run configuration.
 
@@ -1443,9 +1567,19 @@ def get_info(
         llm=agent_llm,
         llm_args=agent_llm_args,
     )
+    # Build env_kwargs so the environment is constructed with the correct
+    # retrieval variant (needed for banking_knowledge; no-op for other domains).
+    info_env_kwargs = {}
+    if retrieval_config is not None:
+        info_env_kwargs["retrieval_variant"] = retrieval_config
+        if retrieval_config_kwargs:
+            info_env_kwargs["retrieval_kwargs"] = retrieval_config_kwargs
+
     environment_info = get_environment_info(
-        domain, include_tool_info=False
+        domain, include_tool_info=False, env_kwargs=info_env_kwargs
     )  # NOTE: Not saving tool info to avoid clutter.
+    if policy_override is not None:
+        environment_info.policy = policy_override
 
     return Info(
         git_commit=get_commit_hash(),
@@ -1458,4 +1592,6 @@ def get_info(
         seed=seed,
         speech_complexity=speech_complexity,
         audio_native_config=audio_native_config,
+        retrieval_config=retrieval_config,
+        retrieval_config_kwargs=retrieval_config_kwargs,
     )

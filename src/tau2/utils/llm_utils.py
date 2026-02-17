@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -9,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
 import litellm
 from litellm import completion, completion_cost
 from litellm.caching.caching import Cache
@@ -46,6 +48,11 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
+# Configure httpx connection limits for LiteLLM
+httpx_limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
+litellm.client_session = httpx.Client(limits=httpx_limits)
+litellm.aclient_session = httpx.AsyncClient(limits=httpx_limits)
+
 # Context variable to store the directory where LLM debug logs should be written
 llm_log_dir: ContextVar[Optional[Path]] = ContextVar("llm_log_dir", default=None)
 
@@ -57,11 +64,17 @@ llm_log_mode: ContextVar[str] = ContextVar("llm_log_mode", default="latest")
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 if USE_LANGFUSE:
-    # set callbacks
     litellm.success_callback = ["langfuse"]
-    litellm.failure_callback = ["langfuse"]
+else:
+    litellm.success_callback = []
 
 litellm.drop_params = True
+
+warnings.filterwarnings(
+    "ignore",
+    message="Pydantic serializer warnings:",
+    category=UserWarning,
+)
 
 if LLM_CACHE_ENABLED:
     if DEFAULT_LLM_CACHE_TYPE == "redis":
@@ -366,9 +379,15 @@ def generate(
     if kwargs.get("num_retries") is None:
         kwargs["num_retries"] = DEFAULT_MAX_RETRIES
 
+    # Vertex AI Gemini 3 models require VERTEXAI_LOCATION="global"
+    if model.startswith("vertex_ai/gemini-3") and not os.environ.get(
+        "VERTEXAI_LOCATION"
+    ):
+        os.environ["VERTEXAI_LOCATION"] = "global"
+
     litellm_messages = to_litellm_messages(messages)
-    tools = [tool.openai_schema for tool in tools] if tools else None
-    if tools and tool_choice is None:
+    tools_schema = [tool.openai_schema for tool in tools] if tools else None
+    if tools_schema and tool_choice is None:
         tool_choice = "auto"
 
     # Prepare request data for logging
@@ -376,7 +395,7 @@ def generate(
     request_data = {
         "model": model,
         "messages": formatted_messages,
-        "tools": tools,
+        "tools": tools_schema,
         "tool_choice": tool_choice,
         "kwargs": {
             k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
@@ -390,7 +409,7 @@ def generate(
         response = completion(
             model=model,
             messages=litellm_messages,
-            tools=tools,
+            tools=tools_schema,
             tool_choice=tool_choice,
             **kwargs,
         )
@@ -400,26 +419,27 @@ def generate(
     generation_time_seconds = time.perf_counter() - start_time
     cost = get_response_cost(response)
     usage = get_response_usage(response)
-    response = response.choices[0]
+
+    response_choice = response.choices[0]
     try:
-        finish_reason = response.finish_reason
+        finish_reason = response_choice.finish_reason
         if finish_reason == "length":
             logger.warning("Output might be incomplete due to token limit!")
     except Exception as e:
         logger.error(e)
         raise e
-    assert response.message.role == "assistant", (
+    assert response_choice.message.role == "assistant", (
         "The response should be an assistant message"
     )
-    content = response.message.content
-    tool_calls = response.message.tool_calls or []
+    content = response_choice.message.content
+    raw_tool_calls = response_choice.message.tool_calls or []
     tool_calls = [
         ToolCall(
             id=tool_call.id,
             name=tool_call.function.name,
             arguments=json.loads(tool_call.function.arguments),
         )
-        for tool_call in tool_calls
+        for tool_call in raw_tool_calls
     ]
     tool_calls = tool_calls or None
 

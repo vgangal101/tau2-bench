@@ -42,8 +42,13 @@ from tau2.data_model.simulation import (
     TextRunConfig,
     VoiceRunConfig,
 )
+from tau2.domains.banking_knowledge.retrieval import get_all_variant_names
 from tau2.run import get_options, run_domain
 from tau2.scripts.leaderboard.verify_trajectories import VerificationMode
+
+
+def get_all_retrieval_config_names():
+    return get_all_variant_names()
 
 
 def add_run_args(parser):
@@ -371,6 +376,21 @@ def add_run_args(parser):
         help="Use plain text system prompt without XML tags (overrides auto-detection).",
     )
 
+    # Knowledge domain arguments
+    parser.add_argument(
+        "--retrieval-config",
+        type=str,
+        default=None,
+        choices=sorted(get_all_retrieval_config_names()),
+        help="Knowledge retrieval config name (knowledge domain only).",
+    )
+    parser.add_argument(
+        "--retrieval-config-kwargs",
+        type=json.loads,
+        default=None,
+        help="Arguments to pass to the retrieval config constructor as JSON (e.g., '{\"top_k\": 10}').",
+    )
+
     # Resume mode
     parser.add_argument(
         "--auto-resume",
@@ -629,6 +649,8 @@ def main():
             auto_review=args.auto_review,
             review_mode=args.review_mode,
             hallucination_retries=args.hallucination_retries,
+            retrieval_config=args.retrieval_config,
+            retrieval_config_kwargs=args.retrieval_config_kwargs,
         )
 
         if audio_native_config is not None:

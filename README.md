@@ -21,6 +21,7 @@
 
 ## What's New
 
+- **Knowledge Domain (`banking_knowledge`)** — A knowledge-retrieval-based customer service domain with configurable RAG pipelines, document search, embeddings, and agentic shell-based search. [Learn more →](src/tau2/knowledge/README.md)
 - **Voice Full-Duplex (Audio Native)** — End-to-end voice evaluation with multiple realtime providers (OpenAI, Gemini, Nova Sonic, xAI, Deepgram, Qwen). [Learn more →](src/tau2/voice/audio_native/README.md)
 - **Reinforcement Learning Support** — Gymnasium-compatible interface for training RL agents, interactive play mode, and train/test task splits. [Learn more →](src/tau2/gym/README.md)
 - **Live Leaderboard** — Compare model performance at [taubench.com](https://taubench.com). [Submit your results →](docs/leaderboard-submission.md)
@@ -41,7 +42,7 @@ Each domain specifies:
 - A set of **tasks** to evaluate the agent's performance
 - Optionally: a set of **user tools** for the user simulator
 
-**Available domains**: `mock` · `airline` · `retail` · `telecom`
+**Available domains**: `mock` · `airline` · `retail` · `telecom` · `banking_knowledge`
 
 | Modality | Half-Duplex | Full-Duplex |
 |----------|-------------|-------------|
@@ -93,6 +94,12 @@ Results are saved to `data/simulations/`. Use `tau2 view` to browse them.
 | [Agent Developer Guide](src/tau2/agent/README.md) | Build and evaluate your own agent |
 | [Domains](src/tau2/domains/README.md) | Domain structure, data format, and available domains |
 | [Orchestrator & Communication Modes](src/tau2/orchestrator/README.md) | Half-duplex, full-duplex, async-tool, and event-driven orchestration |
+
+### Knowledge Retrieval
+
+| Document | Description |
+|----------|-------------|
+| [Knowledge Retrieval](src/tau2/knowledge/README.md) | Retrieval pipeline configs, embeddings, RAG, and sandbox setup for the `banking_knowledge` domain |
 
 ### Voice & Audio
 
