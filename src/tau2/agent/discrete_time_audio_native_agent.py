@@ -267,6 +267,12 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.send_audio_instant = send_audio_instant
         self.buffer_until_complete = buffer_until_complete
         self.fast_forward_mode = fast_forward_mode
+        if self.fast_forward_mode:
+            logger.warning(
+                "Fast-forward mode is enabled. The simulation will run as fast as "
+                "possible rather than in real-time. This may affect timing-sensitive "
+                "behaviors and produce results that differ from real-time execution."
+            )
         self.provider = provider
         self.use_xml_prompt = use_xml_prompt
         self.model = model

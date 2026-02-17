@@ -25,6 +25,7 @@ from tau2.config import (
     DEFAULT_INTERRUPTION_CHECK_INTERVAL_SECONDS,
     DEFAULT_LLM_USER,
     DEFAULT_MAX_CONCURRENCY,
+    DEFAULT_MAX_ERRORS,
     DEFAULT_MAX_STEPS_SECONDS,
     DEFAULT_SEED,
     DEFAULT_SILENCE_ANNOTATION_THRESHOLD_SECONDS,
@@ -63,10 +64,15 @@ class RunConfig:
     task_ids: Optional[list[str]] = None
     seed: int = DEFAULT_SEED
     max_steps_seconds: int = DEFAULT_MAX_STEPS_SECONDS
+    max_errors: int = DEFAULT_MAX_ERRORS
     max_concurrency: int = DEFAULT_MAX_CONCURRENCY
     save_to: Optional[str] = None
     auto_resume: bool = False
-    user_llm: str = DEFAULT_LLM_USER  # LLM for user simulator
+    user_llm: str = DEFAULT_LLM_USER
+    cascaded_config: Optional[str] = None
+    use_xml_prompt: bool = False
+    review_mode: str = "full"
+    hallucination_retries: int = 3
     audio_native: AudioNativeSettings = field(default_factory=AudioNativeSettings)
 
     def __post_init__(self):
@@ -108,6 +114,10 @@ def build_command(config: RunConfig) -> list[str]:
     if config.effective_model:
         cmd.extend(["--audio-native-model", config.effective_model])
 
+    # Add cascaded config if specified (for livekit provider)
+    if config.cascaded_config:
+        cmd.extend(["--cascaded-config", config.cascaded_config])
+
     # Task selection
     if config.task_ids:
         cmd.extend(["--task-ids"] + config.task_ids)
@@ -121,6 +131,8 @@ def build_command(config: RunConfig) -> list[str]:
             str(config.seed),
             "--max-steps-seconds",
             str(config.max_steps_seconds),
+            "--max-errors",
+            str(config.max_errors),
             "--speech-complexity",
             config.speech_complexity,
             "--max-concurrency",
@@ -156,8 +168,21 @@ def build_command(config: RunConfig) -> list[str]:
     # Always enable verbose logs
     cmd.append("--verbose-logs")
 
-    # Always enable auto-review (full mode by default)
+    # Use latest LLM log mode to save space
+    cmd.extend(["--llm-log-mode", "latest"])
+
+    # Always enable auto-review
     cmd.append("--auto-review")
+    cmd.extend(["--review-mode", config.review_mode])
+
+    # Hallucination retries
+    cmd.extend(["--hallucination-retries", str(config.hallucination_retries)])
+
+    # Prompt format
+    if config.use_xml_prompt:
+        cmd.append("--xml-prompt")
+    else:
+        cmd.append("--no-xml-prompt")
 
     # Save path
     save_to = config.save_to or config.get_default_save_to()
@@ -195,14 +220,23 @@ def main():
         "--speech-complexity",
         type=str,
         default=DEFAULT_SPEECH_COMPLEXITY,
-        choices=["control", "regular"],
+        choices=[
+            "control",
+            "regular",
+            "control_audio",
+            "control_accents",
+            "control_behavior",
+            "control_audio_accents",
+            "control_audio_behavior",
+            "control_accents_behavior",
+        ],
         help=f"Speech complexity level. Default is '{DEFAULT_SPEECH_COMPLEXITY}'.",
     )
     parser.add_argument(
         "--provider",
         type=str,
         default=DEFAULT_AUDIO_NATIVE_PROVIDER,
-        choices=["openai", "gemini", "xai", "nova", "qwen"],
+        choices=["openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"],
         help=f"Audio native provider. Default is '{DEFAULT_AUDIO_NATIVE_PROVIDER}'.",
     )
     parser.add_argument(
@@ -254,12 +288,59 @@ def main():
         help="Automatically resume from existing save file",
     )
     parser.add_argument(
+        "--max-errors",
+        type=int,
+        default=DEFAULT_MAX_ERRORS,
+        help=f"Maximum errors allowed per simulation. Default is {DEFAULT_MAX_ERRORS}.",
+    )
+    parser.add_argument(
         "--user-llm",
         type=str,
         default=DEFAULT_LLM_USER,
         help=f"LLM to use for user simulator. Default is {DEFAULT_LLM_USER}.",
     )
+    parser.add_argument(
+        "--cascaded-config",
+        type=str,
+        default=None,
+        help="Cascaded config preset name for livekit provider. "
+        "Available presets: 'default', 'openai-thinking', 'openai-thinking-high'.",
+    )
+    parser.add_argument(
+        "--review-mode",
+        type=str,
+        choices=["full", "user"],
+        default="full",
+        help="Review mode when auto-review is enabled: 'full' (agent+user errors, default) or 'user' (user simulator only).",
+    )
+    parser.add_argument(
+        "--hallucination-retries",
+        type=int,
+        default=3,
+        help="Max retries when a user simulator hallucination is detected (full-duplex only). Set to 0 to disable. Default is 3.",
+    )
+
+    # Prompt format
+    prompt_format_group = parser.add_mutually_exclusive_group()
+    prompt_format_group.add_argument(
+        "--xml-prompt",
+        action="store_true",
+        default=False,
+        help="Use XML tags in system prompt (overrides auto-detection).",
+    )
+    prompt_format_group.add_argument(
+        "--no-xml-prompt",
+        action="store_true",
+        default=False,
+        help="Use plain text system prompt without XML tags (overrides auto-detection).",
+    )
+
     args = parser.parse_args()
+
+    # Determine use_xml_prompt: defaults to False (plain text)
+    use_xml_prompt = False
+    if args.xml_prompt:
+        use_xml_prompt = True
 
     config = RunConfig(
         domain=args.domain,
@@ -270,10 +351,15 @@ def main():
         task_ids=args.task_ids,
         seed=args.seed,
         max_steps_seconds=args.max_steps_seconds,
+        max_errors=args.max_errors,
         max_concurrency=args.max_concurrency,
         save_to=args.save_to,
         auto_resume=args.auto_resume,
         user_llm=args.user_llm,
+        cascaded_config=args.cascaded_config,
+        use_xml_prompt=use_xml_prompt,
+        review_mode=args.review_mode,
+        hallucination_retries=args.hallucination_retries,
     )
 
     return run(config)

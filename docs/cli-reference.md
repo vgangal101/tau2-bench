@@ -85,8 +85,8 @@ tau2 run \
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--no-buffer-until-complete` | `false` | Don't buffer audio until complete utterance |
-| `--no-fast-forward` | `false` | Disable fast-forward mode (run in real-time) |
-| `--no-send-audio-instant` | `false` | Simulate streaming audio instead of sending instantly |
+| `--fast-forward` | `false` | Enable fast-forward mode (run as fast as possible instead of real-time) |
+| `--send-audio-instant` | `false` | Send audio instantly (all at once per tick) instead of streaming at real-time rate |
 
 ### Examples
 
