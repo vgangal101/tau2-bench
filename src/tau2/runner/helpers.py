@@ -27,11 +27,15 @@ def get_options() -> RegistryInfo:
 
 
 def get_environment_info(
-    domain_name: str, include_tool_info: bool = False
+    domain_name: str,
+    include_tool_info: bool = False,
+    env_kwargs: Optional[dict] = None,
 ) -> EnvironmentInfo:
     """Get information about the environment for a registered domain."""
     env_constructor = registry.get_env_constructor(domain_name)
-    return env_constructor().get_info(include_tool_info=include_tool_info)
+    if env_kwargs is None:
+        env_kwargs = {}
+    return env_constructor(**env_kwargs).get_info(include_tool_info=include_tool_info)
 
 
 def load_task_splits(task_set_name: str) -> Optional[dict[str, list[str]]]:
@@ -165,7 +169,17 @@ def get_info(config: RunConfig, **overrides) -> Info:
         llm=agent_llm,
         llm_args=agent_llm_args,
     )
-    environment_info = get_environment_info(config.domain, include_tool_info=False)
+    # Build env_kwargs so the environment is constructed with the correct
+    # retrieval variant (needed for banking_knowledge; no-op for other domains).
+    info_env_kwargs: dict = {}
+    if getattr(config, "retrieval_config", None) is not None:
+        info_env_kwargs["retrieval_variant"] = config.retrieval_config
+        if getattr(config, "retrieval_config_kwargs", None):
+            info_env_kwargs["retrieval_kwargs"] = config.retrieval_config_kwargs
+
+    environment_info = get_environment_info(
+        config.domain, include_tool_info=False, env_kwargs=info_env_kwargs
+    )
 
     return Info(
         git_commit=get_commit_hash(),
@@ -178,4 +192,6 @@ def get_info(config: RunConfig, **overrides) -> Info:
         seed=config.seed,
         speech_complexity=speech_complexity,
         audio_native_config=config.audio_native_config,
+        retrieval_config=getattr(config, "retrieval_config", None),
+        retrieval_config_kwargs=getattr(config, "retrieval_config_kwargs", None),
     )

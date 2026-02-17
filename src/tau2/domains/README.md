@@ -47,6 +47,25 @@ To run tests:
 pytest tests/test_domains/test_<domain_name>
 ```
 
+## Available Domains
+
+| Domain | Description |
+|--------|-------------|
+| `mock` | Lightweight test domain for development |
+| `airline` | Flight booking, cancellation, and customer support |
+| `retail` | Order management, returns, and product inquiries |
+| `telecom` | Telecom account management and troubleshooting |
+| `banking_knowledge` | Knowledge-retrieval-based banking customer service with configurable RAG pipelines |
+
+### `banking_knowledge` Domain
+
+The `banking_knowledge` domain differs from standard domains in several ways:
+
+- **Configurable retrieval**: Uses `--retrieval-config` to select how the agent accesses the knowledge base (e.g., `qwen_embeddings`, `grep_only`, `terminal_use`). Different configs give the agent different tools and system prompts.
+- **Dual data sources**: A `TransactionalDB` for user/account data and a `KnowledgeBase` of 700+ documents for retrieval.
+- **Extended data directory**: Contains `documents/`, `prompts/` (per-variant policy templates), and `tasks/` subdirectories.
+- **Retrieval pipeline**: Uses the `src/tau2/knowledge/` module for embeddings, BM25, grep, reranking, and sandboxed shell access. See `src/tau2/knowledge/README.md` for config details.
+
 ## Registering your domain
 To make it easy for people to use your domain, you need to register your `get_environment`, `get_tasks`, and `get_tasks_split` functions in Tau2 `registry.py` file.
 

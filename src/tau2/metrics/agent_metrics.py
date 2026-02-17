@@ -187,6 +187,12 @@ def compute_metrics(results: Results) -> AgentMetrics:
     - DB match, authentication, termination stats
     - LLM judge review error stats
     """
+    if not results.simulations:
+        return AgentMetrics(
+            avg_reward=0.0,
+            pass_hat_ks={},
+            avg_agent_cost=0.0,
+        )
     df, df_pass_hat_k = prepare_dfs(results)
     avg_reward = df.reward.mean()
     pass_hat_ks = {}

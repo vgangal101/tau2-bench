@@ -12,7 +12,11 @@ tests/
 ├── test_tasks.py               # Task loading/validation
 ├── test_user.py                # User simulator tests
 ├── test_domains/               # Per-domain tool tests
-│   └── test_<domain>/
+│   ├── test_<domain>/
+│   └── test_banking_knowledge/ # Knowledge domain tests
+│       ├── tasks/              # Per-task scenario tests (test_task_*.py)
+│       ├── test_retrieval_system.py  # Retrieval pipeline tests
+│       └── test_tools_knowledge.py   # Domain tool tests
 ├── test_streaming/             # Full-duplex / streaming tests
 ├── test_gym/                   # Gymnasium interface tests
 └── test_voice/                 # Voice + audio native provider tests
@@ -60,6 +64,11 @@ Domain tool tests in `tests/test_domains/test_<domain>/`:
 - Test tools via `environment.get_response(ToolCall(...))`
 - Test both success and failure cases (wrong IDs, invalid amounts, etc.)
 - Use domain-specific fixtures for DB and environment setup
+
+The `banking_knowledge` domain has an extended test structure:
+- `test_tools_knowledge.py` — standard domain tool tests
+- `test_retrieval_system.py` — tests for the retrieval pipeline (embeddings, BM25, grep, reranking)
+- `tasks/test_task_*.py` — per-task scenario tests with shared fixtures in `tasks/conftest.py`
 
 ### Asyncio
 

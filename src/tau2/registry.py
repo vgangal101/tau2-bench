@@ -24,6 +24,12 @@ from tau2.domains.airline.environment import get_tasks as airline_domain_get_tas
 from tau2.domains.airline.environment import (
     get_tasks_split as airline_domain_get_tasks_split,
 )
+from tau2.domains.banking_knowledge.environment import (
+    get_environment as knowledge_domain_get_environment,
+)
+from tau2.domains.banking_knowledge.environment import (
+    get_tasks as knowledge_domain_get_tasks,
+)
 from tau2.domains.mock.environment import get_environment as mock_domain_get_environment
 from tau2.domains.mock.environment import get_tasks as mock_domain_get_tasks
 from tau2.domains.retail.environment import (
@@ -333,6 +339,9 @@ try:
         "telecom-workflow",
         get_task_splits=telecom_domain_get_tasks_split,
     )
+
+    registry.register_domain(knowledge_domain_get_environment, "banking_knowledge")
+    registry.register_tasks(knowledge_domain_get_tasks, "banking_knowledge")
 
     logger.debug(
         f"Default components registered successfully. Registry info: {json.dumps(registry.get_info().model_dump(), indent=2)}"

@@ -434,6 +434,22 @@ class BaseRunConfig(BaseModel):
         ),
     ]
 
+    # ---- Knowledge retrieval ----
+    retrieval_config: Annotated[
+        Optional[str],
+        Field(
+            description="Knowledge retrieval config name (knowledge domain only).",
+            default=None,
+        ),
+    ]
+    retrieval_config_kwargs: Annotated[
+        Optional[dict],
+        Field(
+            description="Arguments to pass to the retrieval config constructor (e.g., top_k for RAG configs).",
+            default=None,
+        ),
+    ]
+
     # ---- Abstract-ish properties (subclasses must override) ----
 
     @property
@@ -1179,6 +1195,14 @@ class Info(BaseModel):
         description="Configuration for audio-native mode",
         default=None,
     )
+    retrieval_config: Optional[str] = Field(
+        description="Knowledge retrieval config name (knowledge domain only).",
+        default=None,
+    )
+    retrieval_config_kwargs: Optional[dict] = Field(
+        description="Arguments passed to the retrieval config constructor.",
+        default=None,
+    )
 
 
 class TerminationReason(str, Enum):
@@ -1189,6 +1213,8 @@ class TerminationReason(str, Enum):
     AGENT_ERROR = "agent_error"
     USER_ERROR = "user_error"
     INFRASTRUCTURE_ERROR = "infrastructure_error"  # Task failed due to infrastructure (e.g., API disconnect)
+    CONTEXT_WINDOW_EXCEEDED = "context_window_exceeded"
+    UNEXPECTED_ERROR = "unexpected_error"
 
 
 class SimulationRun(BaseModel):
@@ -1265,6 +1291,10 @@ class SimulationRun(BaseModel):
     )
     provider_session_id: Optional[str] = Field(
         description="Provider session ID (e.g., OpenAI session ID, xAI conversation ID) for debugging.",
+        default=None,
+    )
+    policy: Optional[str] = Field(
+        description="The policy/system prompt used for this simulation (knowledge domain only).",
         default=None,
     )
 

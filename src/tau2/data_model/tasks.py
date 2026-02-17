@@ -539,6 +539,22 @@ class Task(BaseModel):
             default=None,
         ),
     ]
+    required_documents: Annotated[
+        Optional[list[str]],
+        Field(
+            description="List of document titles required to solve the task (knowledge domain).",
+            default=None,
+        ),
+    ]
+    user_tools: Annotated[
+        Optional[list[str]],
+        Field(
+            description="List of user tool names available to the user simulator for this task. "
+            "If None, all domain user tools are available (backward compatible). "
+            "If empty list, no user tools are available.",
+            default=None,
+        ),
+    ]
 
     def __str__(self) -> str:
         lines = []

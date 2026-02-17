@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-τ²-bench is a simulation framework for evaluating conversational customer service agents. It supports text and voice interactions in half-duplex (turn-based) and full-duplex (simultaneous/streaming) communication modes. Domains include `mock`, `airline`, `retail`, and `telecom`.
+τ²-bench is a simulation framework for evaluating conversational customer service agents. It supports text and voice interactions in half-duplex (turn-based) and full-duplex (simultaneous/streaming) communication modes. Domains include `mock`, `airline`, `retail`, `telecom`, and `banking_knowledge`.
 
 ## Setup
 
@@ -42,6 +42,9 @@ tau2 run --domain airline --agent-llm gpt-4.1 --user-llm gpt-4.1 --num-trials 1 
 
 # Voice full-duplex (audio native)
 tau2 run --domain retail --audio-native --num-tasks 1 --verbose-logs
+
+# Knowledge domain (requires --retrieval-config)
+tau2 run --domain banking_knowledge --retrieval-config qwen_embeddings --agent-llm gpt-4.1 --user-llm gpt-4.1 --num-tasks 5
 ```
 
 Results go to `data/simulations/`. Use `tau2 view` to browse them.
@@ -55,13 +58,15 @@ src/tau2/
 ├── config.py        # Central configuration (single source of truth for defaults)
 ├── cli.py           # CLI entry point (tau2 command)
 ├── data_model/      # Pydantic data models (messages, trajectories, etc.)
-├── domains/         # Domain definitions (airline, mock, retail, telecom)
+├── domains/         # Domain definitions (airline, mock, retail, telecom, banking_knowledge)
 ├── environment/     # Environment, DB, server, toolkit base classes
 ├── evaluator/       # Task evaluation logic
 ├── gym/             # Gymnasium-compatible RL interface
+├── knowledge/       # Knowledge retrieval pipeline (embedders, retrievers, postprocessors, sandbox)
 ├── metrics/         # Metrics computation
 ├── orchestrator/    # Simulation orchestrators (half-duplex, full-duplex)
 ├── registry.py      # Global registry for agents, domains, tasks, users
+├── runner/          # Simulation runner (batch execution, checkpointing, build helpers)
 ├── scripts/         # CLI command implementations
 ├── user/            # User simulator implementations
 ├── utils/           # Shared utilities
@@ -110,6 +115,8 @@ Each domain (`src/tau2/domains/<name>/`) contains:
 - `utils.py` — data paths and helpers
 
 Domain data lives in `data/tau2/domains/<name>/` (tasks.json, policy.md, db.json/toml, etc.).
+
+**Note:** The `banking_knowledge` domain extends the standard pattern with additional files (`retrieval.py`, `retrieval_mixins.py`, `retrieval_toolkits.py`, `db_query.py`), dynamic tools and policy that vary by `--retrieval-config`, and a separate `knowledge/` retrieval pipeline module. Its data directory also includes `documents/`, `prompts/`, and `tasks/` subdirectories. See `src/tau2/knowledge/README.md` for details.
 
 ### Orchestrators
 
@@ -168,3 +175,4 @@ test: add integration tests for retail domain
 - **Task splits**: The `base` split is the default for evaluation. The `train`/`test` splits are for RL experiments.
 - **Pre-commit hook**: Runs `make check-all` (ruff lint + format). Fix any issues before committing.
 - **Notebooks**: Excluded from ruff (`*.ipynb` in pyproject.toml exclude).
+- **`banking_knowledge` domain**: Requires `--retrieval-config` to specify how the agent accesses the knowledge base. Embedding cache lives in `data/.embeddings_cache` (gitignored). Some retrieval configs require additional API keys (`OPENROUTER_API_KEY` for `qwen_embeddings`) or external tools (`sandbox-runtime` for `terminal_use`). See `src/tau2/knowledge/README.md`.

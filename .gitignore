@@ -8,7 +8,7 @@ dumps/
 dump.rdb
 *.rdg
 logs/
-data/simulations/
+data/simulations/*
 data/exp/
 data/datasets/
 data/models/
@@ -204,6 +204,7 @@ src/experiments/model_training/data/test_full-v1.jsonl
 
 data/benchmark/
 data/simulations/.credentials/
+!data/simulations/knowledge/
 
 # LaTeX build artifacts
 *.aux
