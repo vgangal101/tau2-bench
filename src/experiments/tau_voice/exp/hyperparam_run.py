@@ -84,6 +84,9 @@ class HyperparamConfig:
     max_concurrency: int = DEFAULT_MAX_CONCURRENCY
     use_xml_prompt: bool = False  # True = XML, False = plain text (default)
     user_llm: str = DEFAULT_LLM_USER  # LLM for user simulator
+    cascaded_config: Optional[str] = None  # Cascaded config preset for livekit
+    review_mode: str = "full"  # Review mode: "full" or "user"
+    hallucination_retries: int = 3  # Max retries on user simulator hallucination
     audio_native: AudioNativeSettings = field(default_factory=AudioNativeSettings)
 
     # Set during initialization
@@ -120,6 +123,12 @@ class HyperparamConfig:
         settings["use_xml_prompt"] = self.use_xml_prompt
         # Include user_llm setting
         settings["user_llm"] = self.user_llm
+        # Include cascaded_config if set
+        if self.cascaded_config is not None:
+            settings["cascaded_config"] = self.cascaded_config
+        # Include review settings
+        settings["review_mode"] = self.review_mode
+        settings["hallucination_retries"] = self.hallucination_retries
 
         return {
             "experiment": {
@@ -202,6 +211,9 @@ class HyperparamConfig:
             max_concurrency=settings.get("max_concurrency", DEFAULT_MAX_CONCURRENCY),
             use_xml_prompt=settings.get("use_xml_prompt"),
             user_llm=settings.get("user_llm", DEFAULT_LLM_USER),
+            cascaded_config=settings.get("cascaded_config"),
+            review_mode=settings.get("review_mode", "full"),
+            hallucination_retries=settings.get("hallucination_retries", 3),
             audio_native=audio_native,
             timestamp=experiment.get("timestamp", ""),
             resume_mode=True,
@@ -260,6 +272,10 @@ def build_command(
     if model:
         cmd.extend(["--audio-native-model", model])
 
+    # Add cascaded config if specified (for livekit provider)
+    if config.cascaded_config:
+        cmd.extend(["--cascaded-config", config.cascaded_config])
+
     # Task selection: either specific task IDs or num_tasks
     if config.task_ids:
         cmd.extend(["--task-ids"] + config.task_ids)
@@ -313,8 +329,12 @@ def build_command(
     # Use latest LLM log mode to save space during hyperparameter sweeps
     cmd.extend(["--llm-log-mode", "latest"])
 
-    # Always enable auto-review (full mode by default)
+    # Always enable auto-review
     cmd.append("--auto-review")
+    cmd.extend(["--review-mode", config.review_mode])
+
+    # Hallucination retries
+    cmd.extend(["--hallucination-retries", str(config.hallucination_retries)])
 
     # Prompt format
     if config.use_xml_prompt:
@@ -529,6 +549,26 @@ Examples:
         default=DEFAULT_LLM_USER,
         help=f"LLM to use for user simulator. Default is {DEFAULT_LLM_USER}.",
     )
+    parser.add_argument(
+        "--cascaded-config",
+        type=str,
+        default=None,
+        help="Cascaded config preset name for livekit provider. "
+        "Available presets: 'default', 'openai-thinking', 'openai-thinking-high'.",
+    )
+    parser.add_argument(
+        "--review-mode",
+        type=str,
+        choices=["full", "user"],
+        default="full",
+        help="Review mode when auto-review is enabled: 'full' (agent+user errors, default) or 'user' (user simulator only).",
+    )
+    parser.add_argument(
+        "--hallucination-retries",
+        type=int,
+        default=3,
+        help="Max retries when a user simulator hallucination is detected (full-duplex only). Set to 0 to disable. Default is 3.",
+    )
 
     # Prompt format
     prompt_format_group = parser.add_mutually_exclusive_group()
@@ -668,6 +708,9 @@ Examples:
             max_concurrency=args.max_concurrency,
             use_xml_prompt=use_xml_prompt,
             user_llm=args.user_llm,
+            cascaded_config=args.cascaded_config,
+            review_mode=args.review_mode,
+            hallucination_retries=args.hallucination_retries,
         )
         # Use custom save_to (relative to cwd) or default to data/exp/timestamp
         if args.save_to:

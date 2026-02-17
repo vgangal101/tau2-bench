@@ -165,7 +165,7 @@ class AudioNativeConfig(BaseModel):
     )
     send_audio_instant: bool = Field(
         default=DEFAULT_SEND_AUDIO_INSTANT,
-        description="Send audio instantly (no streaming simulation)",
+        description="If True, send all audio at once per tick. If False (default), stream audio in 20ms chunks at real-time rate.",
     )
 
     # Derived properties (computed from seconds and tick_duration)
