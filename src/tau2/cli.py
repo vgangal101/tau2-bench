@@ -25,7 +25,6 @@ from tau2.config import (
     DEFAULT_RETRY_ATTEMPTS,
     DEFAULT_RETRY_MIN_WAIT,
     DEFAULT_SEED,
-    DEFAULT_SEND_AUDIO_INSTANT,
     DEFAULT_SILENCE_ANNOTATION_THRESHOLD_SECONDS,
     DEFAULT_SPEECH_COMPLEXITY,
     DEFAULT_TELEPHONY_RATE,
@@ -350,10 +349,10 @@ def add_run_args(parser):
         help=f"Disable fast-forward mode (run in real-time instead of as fast as possible). Default is {DEFAULT_FAST_FORWARD_MODE}.",
     )
     parser.add_argument(
-        "--no-send-audio-instant",
+        "--send-audio-instant",
         action="store_true",
         default=False,
-        help=f"Simulate streaming audio instead of sending instantly. Default is {DEFAULT_SEND_AUDIO_INSTANT}.",
+        help="Send audio instantly (all at once per tick) instead of streaming at real-time rate. Default is streaming (non-instant).",
     )
 
     # Prompt format
@@ -598,7 +597,7 @@ def main():
                 # Agent behavior
                 buffer_until_complete=not args.no_buffer_until_complete,
                 fast_forward_mode=not args.no_fast_forward,
-                send_audio_instant=not args.no_send_audio_instant,
+                send_audio_instant=args.send_audio_instant,
                 use_xml_prompt=use_xml_prompt,
             )
 
