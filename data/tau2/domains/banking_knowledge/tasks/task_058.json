@@ -75,7 +75,7 @@
         "name": "call_discoverable_agent_tool",
         "arguments": {
           "agent_tool_name": "open_bank_account_4821",
-          "arguments": "{\"user_id\": \"tb58a3c9d2\", \"account_type\": \"savings\", \"account_class\": \"Silver Account\", \"initial_deposit\": 20000}"
+          "arguments": "{\"user_id\": \"tb58a3c9d2\", \"account_type\": \"savings\", \"account_class\": \"Silver Account\"}"
         },
         "requestor": "assistant",
         "action_id": "058_4"
