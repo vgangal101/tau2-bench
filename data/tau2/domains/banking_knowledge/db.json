@@ -3247,7 +3247,7 @@
         "transaction_date": "10/15/2025",
         "category": "Shopping",
         "status": "COMPLETED",
-        "rewards_earned": "89 points"
+        "rewards_earned": "223 points"
       },
       "txn_f2a3b4c5d6e7": {
         "transaction_id": "txn_f2a3b4c5d6e7",
@@ -3269,7 +3269,7 @@
         "transaction_date": "10/18/2025",
         "category": "Dining",
         "status": "COMPLETED",
-        "rewards_earned": "18 points"
+        "rewards_earned": "86 points"
       },
       "txn_b4c5d6e7f8a9": {
         "transaction_id": "txn_b4c5d6e7f8a9",
@@ -3291,7 +3291,7 @@
         "transaction_date": "10/21/2025",
         "category": "Travel",
         "status": "COMPLETED",
-        "rewards_earned": "1150 points"
+        "rewards_earned": "718 points"
       },
       "txn_d6e7f8a9b0c1": {
         "transaction_id": "txn_d6e7f8a9b0c1",
@@ -3335,7 +3335,7 @@
         "transaction_date": "10/28/2025",
         "category": "Travel",
         "status": "COMPLETED",
-        "rewards_earned": "1424 points"
+        "rewards_earned": "890 points"
       },
       "txn_f093f96e2001": {
         "transaction_id": "txn_f093f96e2001",
@@ -3412,7 +3412,7 @@
         "transaction_date": "11/04/2025",
         "category": "Travel",
         "status": "COMPLETED",
-        "rewards_earned": "1651 points"
+        "rewards_earned": "1032 points"
       },
       "txn_d4e5f6a7b8c9": {
         "transaction_id": "txn_d4e5f6a7b8c9",
@@ -3434,7 +3434,7 @@
         "transaction_date": "11/07/2025",
         "category": "Dining",
         "status": "COMPLETED",
-        "rewards_earned": "42 points"
+        "rewards_earned": "196 points"
       },
       "txn_f6a7b8c9d0e1": {
         "transaction_id": "txn_f6a7b8c9d0e1",
@@ -3456,7 +3456,7 @@
         "transaction_date": "11/10/2025",
         "category": "Travel",
         "status": "COMPLETED",
-        "rewards_earned": "1298 points"
+        "rewards_earned": "811 points"
       },
       "txn_b8c9d0e1f2a3": {
         "transaction_id": "txn_b8c9d0e1f2a3",
