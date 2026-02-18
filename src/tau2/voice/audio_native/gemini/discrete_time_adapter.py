@@ -35,7 +35,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 
 from tau2.config import TELEPHONY_ULAW_SILENCE
-from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -44,7 +43,6 @@ from tau2.voice.audio_native.gemini.audio_utils import (
     TELEPHONY_BYTES_PER_SECOND,
     StreamingGeminiConverter,
     calculate_gemini_bytes_per_tick,
-    calculate_telephony_bytes_per_tick,
 )
 from tau2.voice.audio_native.gemini.events import (
     GeminiAudioDeltaEvent,
@@ -114,16 +112,10 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
                 (indicated by a GoAway message). If False, attempt resumption
                 on any connection close.
         """
-        if tick_duration_ms <= 0:
-            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+        super().__init__(tick_duration_ms)
 
-        self.tick_duration_ms = tick_duration_ms
         self.send_audio_instant = send_audio_instant
         self.fast_forward_mode = fast_forward_mode
-
-        # We work in telephony format externally (8kHz μ-law)
-        self.audio_format = TELEPHONY_AUDIO_FORMAT
-        self.bytes_per_tick = calculate_telephony_bytes_per_tick(tick_duration_ms)
 
         # Gemini output format (24kHz PCM16) - for internal processing
         self._gemini_output_bytes_per_tick = calculate_gemini_bytes_per_tick(

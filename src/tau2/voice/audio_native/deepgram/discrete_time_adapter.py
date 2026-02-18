@@ -40,7 +40,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 
 from tau2.config import TELEPHONY_ULAW_SILENCE
-from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -49,7 +48,6 @@ from tau2.voice.audio_native.deepgram.audio_utils import (
     TELEPHONY_BYTES_PER_SECOND,
     StreamingDeepgramConverter,
     calculate_deepgram_bytes_per_tick,
-    calculate_telephony_bytes_per_tick,
 )
 from tau2.voice.audio_native.deepgram.events import (
     DeepgramAgentAudioDoneEvent,
@@ -110,19 +108,13 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
             llm_model: LLM model (e.g., "gpt-4o-mini").
             tts_model: TTS model including voice (e.g., "aura-2-thalia-en").
         """
-        if tick_duration_ms <= 0:
-            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+        super().__init__(tick_duration_ms)
 
-        self.tick_duration_ms = tick_duration_ms
         self.send_audio_instant = send_audio_instant
         self.fast_forward_mode = fast_forward_mode
         self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.tts_model = tts_model
-
-        # We work in telephony format externally (8kHz μ-law)
-        self.audio_format = TELEPHONY_AUDIO_FORMAT
-        self.bytes_per_tick = calculate_telephony_bytes_per_tick(tick_duration_ms)
 
         # Deepgram output format (16kHz PCM16) - for internal processing
         self._deepgram_output_bytes_per_tick = calculate_deepgram_bytes_per_tick(

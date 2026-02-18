@@ -38,7 +38,7 @@ from typing import Any, List, Optional
 from loguru import logger
 
 from tau2.config import DEFAULT_OPENAI_VAD_THRESHOLD
-from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
+from tau2.data_model.audio import AudioFormat
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
 from tau2.voice.audio_native.openai.provider import (
@@ -114,24 +114,11 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
         Raises:
             ValueError: If tick_duration_ms is <= 0.
         """
-        if tick_duration_ms <= 0:
-            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+        super().__init__(tick_duration_ms, audio_format=audio_format)
 
-        # Default to telephony format if not specified
-        if audio_format is None:
-            audio_format = TELEPHONY_AUDIO_FORMAT
-
-        self.tick_duration_ms = tick_duration_ms
         self.send_audio_instant = send_audio_instant
         self.buffer_until_complete = buffer_until_complete
-        self.audio_format = audio_format
         self.fast_forward_mode = fast_forward_mode
-
-        # Calculate bytes per tick using audio format's bytes_per_second
-        # bytes_per_tick = bytes_per_second * tick_duration_ms / 1000
-        self.bytes_per_tick = int(
-            audio_format.bytes_per_second * tick_duration_ms / 1000
-        )
 
         if model is not None and provider is not None:
             raise ValueError("model and provider cannot be provided together")

@@ -8,6 +8,7 @@ DiscreteTimeAdapter: Tick-based pattern for discrete-time simulation.
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, List, Optional
 
+from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
 from tau2.environment.tool import Tool
 
 if TYPE_CHECKING:
@@ -24,7 +25,15 @@ class DiscreteTimeAdapter(ABC):
 
     The primary method is run_tick(), which handles one tick of the simulation.
 
+    Attributes:
+        tick_duration_ms: Duration of each tick in milliseconds.
+        audio_format: Audio format for the external interface (user audio in,
+            agent audio out). Defaults to telephony (8kHz μ-law).
+        bytes_per_tick: Maximum agent audio bytes per tick, derived from
+            tick_duration_ms and audio_format.
+
     Usage:
+        adapter = SomeAdapter(tick_duration_ms=200)
         adapter.connect(system_prompt, tools, vad_config, modality="audio")
 
         for tick in range(max_ticks):
@@ -36,6 +45,31 @@ class DiscreteTimeAdapter(ABC):
 
         adapter.disconnect()
     """
+
+    def __init__(
+        self,
+        tick_duration_ms: int,
+        audio_format: Optional[AudioFormat] = None,
+    ):
+        """Initialize the adapter.
+
+        Args:
+            tick_duration_ms: Duration of each tick in milliseconds. Must be > 0.
+            audio_format: Audio format for the external interface. Defaults to
+                telephony (8kHz μ-law). Subclasses may pass a different format
+                if their provider uses a non-telephony external format.
+
+        Raises:
+            ValueError: If tick_duration_ms is <= 0.
+        """
+        if tick_duration_ms <= 0:
+            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+
+        self.tick_duration_ms = tick_duration_ms
+        self.audio_format = audio_format or TELEPHONY_AUDIO_FORMAT
+        self.bytes_per_tick = int(
+            self.audio_format.bytes_per_second * tick_duration_ms / 1000
+        )
 
     @abstractmethod
     def connect(
@@ -76,8 +110,15 @@ class DiscreteTimeAdapter(ABC):
 
         This is the primary method for discrete-time interaction.
 
+        Guarantees imposed by tick_duration_ms:
+        - Agent audio output is capped to at most bytes_per_tick bytes per
+          tick. Any excess is buffered for the next tick.
+        - Each tick takes at least tick_duration_ms of wall-clock time to
+          maintain real-time pacing. Implementations achieve this either via
+          an explicit sleep or by collecting events for the full duration.
+
         Args:
-            user_audio: User audio bytes for this tick (telephony format, 8kHz μ-law).
+            user_audio: User audio bytes for this tick (in audio_format encoding).
             tick_number: Optional tick number for logging/tracking.
 
         Returns:

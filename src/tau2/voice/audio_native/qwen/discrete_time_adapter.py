@@ -43,13 +43,11 @@ from typing import Any, List, Optional, Tuple
 from loguru import logger
 
 from tau2.config import DEFAULT_TELEPHONY_RATE
-from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
 from tau2.voice.audio_native.qwen.audio_utils import (
     StreamingQwenConverter,
-    calculate_telephony_bytes_per_tick,
 )
 from tau2.voice.audio_native.qwen.events import (
     QwenAudioDeltaEvent,
@@ -111,17 +109,11 @@ class DiscreteTimeQwenAdapter(DiscreteTimeAdapter):
             voice: Voice to use. Default: Cherry.
             fast_forward_mode: If True, exit tick early when we have enough audio.
         """
-        if tick_duration_ms <= 0:
-            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+        super().__init__(tick_duration_ms)
 
-        self.tick_duration_ms = tick_duration_ms
         self.send_audio_instant = send_audio_instant
         self.fast_forward_mode = fast_forward_mode
         self.voice = voice
-
-        # Audio format - we expose telephony format externally
-        self.audio_format = TELEPHONY_AUDIO_FORMAT
-        self.bytes_per_tick = calculate_telephony_bytes_per_tick(tick_duration_ms)
 
         # Audio converter for telephony ↔ Qwen format
         self._audio_converter = StreamingQwenConverter()
