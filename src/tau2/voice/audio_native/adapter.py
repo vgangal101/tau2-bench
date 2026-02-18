@@ -113,9 +113,12 @@ class DiscreteTimeAdapter(ABC):
         Guarantees imposed by tick_duration_ms:
         - Agent audio output is capped to at most bytes_per_tick bytes per
           tick. Any excess is buffered for the next tick.
-        - Each tick takes at least tick_duration_ms of wall-clock time to
-          maintain real-time pacing. Implementations achieve this either via
-          an explicit sleep or by collecting events for the full duration.
+        - For streaming providers (bidirectional WebSocket), each tick takes
+          at least tick_duration_ms of wall-clock time to maintain real-time
+          pacing. Implementations achieve this either via an explicit sleep
+          or by collecting events for the full duration. Cascaded providers
+          (e.g., STT → LLM → TTS pipelines) may complete ticks faster since
+          processing is request/response rather than continuous streaming.
 
         Args:
             user_audio: User audio bytes for this tick (in audio_format encoding).

@@ -89,7 +89,6 @@ class DiscreteTimeQwenAdapter(DiscreteTimeAdapter):
         bytes_per_tick: Audio bytes per tick in telephony format (8kHz μ-law).
         send_audio_instant: If True, send audio in one call per tick.
         provider: Optional provider instance. Created lazily if not provided.
-        fast_forward_mode: If True, exit tick early when we have enough audio.
     """
 
     def __init__(
@@ -98,7 +97,6 @@ class DiscreteTimeQwenAdapter(DiscreteTimeAdapter):
         send_audio_instant: bool = True,
         provider: Optional[QwenRealtimeProvider] = None,
         voice: str = "Cherry",
-        fast_forward_mode: bool = False,
     ):
         """Initialize the discrete-time Qwen adapter.
 
@@ -107,12 +105,10 @@ class DiscreteTimeQwenAdapter(DiscreteTimeAdapter):
             send_audio_instant: If True, send audio in one call (discrete-time mode).
             provider: Optional provider instance. Created lazily if not provided.
             voice: Voice to use. Default: Cherry.
-            fast_forward_mode: If True, exit tick early when we have enough audio.
         """
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
         self.voice = voice
 
         # Audio converter for telephony ↔ Qwen format

@@ -86,7 +86,6 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         cascaded_config: Optional[CascadedConfig] = None,
         turn_taking_config: Optional[TurnTakingConfig] = None,
         send_audio_instant: bool = True,
-        fast_forward_mode: bool = False,
         audio_format: Optional[AudioFormat] = None,
     ):
         """Initialize the cascaded adapter.
@@ -96,7 +95,6 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
             cascaded_config: Configuration for the cascade. Uses defaults if None.
             turn_taking_config: Turn-taking behavior config. Uses defaults if None.
             send_audio_instant: If True, send audio in one call per tick.
-            fast_forward_mode: If True, exit tick early when enough audio is buffered.
             audio_format: External audio format. Defaults to telephony (8kHz μ-law).
         """
         super().__init__(tick_duration_ms, audio_format=audio_format)
@@ -104,7 +102,6 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         self.cascaded_config = cascaded_config or CascadedConfig()
         self.turn_taking_config = turn_taking_config or TurnTakingConfig()
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
 
         # Core provider (contains all pipeline logic)
         self._provider: Optional[CascadedVoiceProvider] = None

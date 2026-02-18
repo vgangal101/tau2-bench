@@ -84,7 +84,6 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         bytes_per_tick: Audio bytes per tick in telephony format (8kHz μ-law).
         send_audio_instant: If True, send audio in one call per tick.
         provider: Optional provider instance. Created lazily if not provided.
-        fast_forward_mode: If True, exit tick early when we have enough audio.
     """
 
     def __init__(
@@ -92,7 +91,6 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         tick_duration_ms: int,
         send_audio_instant: bool = True,
         provider: Optional[DeepgramVoiceAgentProvider] = None,
-        fast_forward_mode: bool = False,
         llm_provider: Optional[str] = None,
         llm_model: Optional[str] = None,
         tts_model: Optional[str] = None,
@@ -103,7 +101,6 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
             tick_duration_ms: Duration of each tick in milliseconds. Must be > 0.
             send_audio_instant: If True, send audio in one call (discrete-time mode).
             provider: Optional provider instance. Created lazily if not provided.
-            fast_forward_mode: If True, exit tick early when we have enough audio.
             llm_provider: LLM provider (e.g., "open_ai", "anthropic").
             llm_model: LLM model (e.g., "gpt-4o-mini").
             tts_model: TTS model including voice (e.g., "aura-2-thalia-en").
@@ -111,7 +108,6 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
         self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.tts_model = tts_model

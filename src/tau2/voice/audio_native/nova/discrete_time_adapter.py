@@ -86,7 +86,6 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         bytes_per_tick: Audio bytes per tick (8kHz μ-law = 8000 bytes/sec).
         send_audio_instant: If True, send audio in one call per tick.
         provider: Optional provider instance. Created lazily if not provided.
-        fast_forward_mode: If True, exit tick early when we have enough audio.
     """
 
     def __init__(
@@ -95,7 +94,6 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         send_audio_instant: bool = True,
         provider: Optional[NovaSonicProvider] = None,
         voice: str = "tiffany",
-        fast_forward_mode: bool = False,
     ):
         """Initialize the discrete-time Nova Sonic adapter.
 
@@ -104,12 +102,10 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
             send_audio_instant: If True, send audio in one call (discrete-time mode).
             provider: Optional provider instance. Created lazily if not provided.
             voice: Voice to use. Options: matthew, tiffany, amy. Default: tiffany.
-            fast_forward_mode: If True, exit tick early when we have enough audio.
         """
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
         self.voice = voice
 
         # Provider - created lazily if not provided

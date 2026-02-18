@@ -81,7 +81,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         provider: Optional provider instance. Created lazily if not provided.
             If not provided, auto-detects auth from env vars (GEMINI_API_KEY
             or GOOGLE_APPLICATION_CREDENTIALS).
-        fast_forward_mode: If True, exit tick early when we have enough audio.
     """
 
     def __init__(
@@ -90,7 +89,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         send_audio_instant: bool = True,
         model: Optional[str] = None,
         provider: Optional[GeminiLiveProvider] = None,
-        fast_forward_mode: bool = False,
         max_resumptions: int = 3,
         resume_only_on_timeout: bool = True,
     ):
@@ -103,7 +101,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
             provider: Optional provider instance. Created lazily if not provided.
                 If not provided, auto-detects auth from env vars (GEMINI_API_KEY
                 or GOOGLE_APPLICATION_CREDENTIALS).
-            fast_forward_mode: If True, exit tick early when we have enough audio.
             max_resumptions: Maximum number of session resumptions to attempt
                 when the WebSocket connection is closed. Set to 0 to disable
                 session resumption. Defaults to 3.
@@ -115,7 +112,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
 
         # Gemini output format (24kHz PCM16) - for internal processing
         self._gemini_output_bytes_per_tick = calculate_gemini_bytes_per_tick(
