@@ -60,6 +60,7 @@ from tau2.voice.audio_native.deepgram.events import (
     DeepgramUserStartedSpeakingEvent,
 )
 from tau2.voice.audio_native.deepgram.provider import (
+    DEEPGRAM_INPUT_BYTES_PER_SECOND,
     DeepgramVADConfig,
     DeepgramVoiceAgentProvider,
 )
@@ -83,8 +84,11 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         tick_duration_ms: Duration of each tick in milliseconds.
         bytes_per_tick: Audio bytes per tick in telephony format (8kHz μ-law).
         send_audio_instant: If True, send audio in one call per tick.
+            If False, send in 20ms chunks with sleeps (VoIP-style streaming).
         provider: Optional provider instance. Created lazily if not provided.
     """
+
+    CHUNK_INTERVAL_MS = 20
 
     def __init__(
         self,
@@ -108,6 +112,9 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
+        self._chunk_size = int(
+            DEEPGRAM_INPUT_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000
+        )
         self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.tts_model = tts_model
@@ -368,19 +375,30 @@ class DiscreteTimeDeepgramAdapter(DiscreteTimeAdapter):
         # Carry over skip state from previous tick
         result.skip_item_id = self._skip_item_id
 
-        # Send audio to Deepgram
-        if len(deepgram_audio) > 0:
-            await self.provider.send_audio(deepgram_audio)
-
         # Receive events for tick duration
         deepgram_audio_received: List[Tuple[bytes, Optional[str]]] = []
 
-        # Calculate remaining time for this tick
-        elapsed_so_far = asyncio.get_running_loop().time() - tick_start
-        remaining_duration = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+        # Send audio and receive events concurrently
+        async def send_audio():
+            """Send audio (instant or chunked based on config)."""
+            if len(deepgram_audio) == 0:
+                return
+            if self.send_audio_instant:
+                await self.provider.send_audio(deepgram_audio)
+            else:
+                offset = 0
+                while offset < len(deepgram_audio):
+                    chunk = deepgram_audio[offset : offset + self._chunk_size]
+                    await self.provider.send_audio(chunk)
+                    offset += len(chunk)
+                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
 
-        # Receive events for the remaining tick duration
-        events = await self.provider.receive_events_for_duration(remaining_duration)
+        async def receive_events():
+            elapsed_so_far = asyncio.get_running_loop().time() - tick_start
+            remaining = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+            return await self.provider.receive_events_for_duration(remaining)
+
+        _, events = await asyncio.gather(send_audio(), receive_events())
 
         # Process ALL received events
         for event in events:

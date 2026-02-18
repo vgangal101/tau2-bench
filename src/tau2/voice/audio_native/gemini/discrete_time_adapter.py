@@ -39,6 +39,7 @@ from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
 from tau2.voice.audio_native.gemini.audio_utils import (
+    GEMINI_INPUT_BYTES_PER_SECOND,
     GEMINI_OUTPUT_BYTES_PER_SECOND,
     TELEPHONY_BYTES_PER_SECOND,
     StreamingGeminiConverter,
@@ -77,11 +78,14 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         tick_duration_ms: Duration of each tick in milliseconds.
         bytes_per_tick: Audio bytes per tick in telephony format (8kHz μ-law).
         send_audio_instant: If True, send audio in one call per tick.
+            If False, send in 20ms chunks with sleeps (VoIP-style streaming).
         model: Model to use. Defaults to None. If provider is also provided, this is ignored.
         provider: Optional provider instance. Created lazily if not provided.
             If not provided, auto-detects auth from env vars (GEMINI_API_KEY
             or GOOGLE_APPLICATION_CREDENTIALS).
     """
+
+    CHUNK_INTERVAL_MS = 20
 
     def __init__(
         self,
@@ -112,6 +116,9 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
+        self._chunk_size = int(
+            GEMINI_INPUT_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000
+        )
 
         # Gemini output format (24kHz PCM16) - for internal processing
         self._gemini_output_bytes_per_tick = calculate_gemini_bytes_per_tick(
@@ -381,19 +388,29 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         # Carry over skip state from previous tick
         result.skip_item_id = self._skip_item_id
 
-        # Send audio to Gemini
-        if len(gemini_audio) > 0:
-            await self.provider.send_audio(gemini_audio)
-
         # Receive events for tick duration
         gemini_audio_received: List[Tuple[bytes, Optional[str]]] = []
 
-        # Calculate remaining time for this tick
-        elapsed_so_far = asyncio.get_running_loop().time() - tick_start
-        remaining_duration = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+        async def send_audio():
+            """Send audio (instant or chunked based on config)."""
+            if len(gemini_audio) == 0:
+                return
+            if self.send_audio_instant:
+                await self.provider.send_audio(gemini_audio)
+            else:
+                offset = 0
+                while offset < len(gemini_audio):
+                    chunk = gemini_audio[offset : offset + self._chunk_size]
+                    await self.provider.send_audio(chunk)
+                    offset += len(chunk)
+                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
 
-        # Receive events for the remaining tick duration
-        events = await self.provider.receive_events_for_duration(remaining_duration)
+        async def receive_events():
+            elapsed_so_far = asyncio.get_running_loop().time() - tick_start
+            remaining = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+            return await self.provider.receive_events_for_duration(remaining)
+
+        _, events = await asyncio.gather(send_audio(), receive_events())
 
         # Process ALL received events - don't break early
         # Text events (transcripts) and audio events must all be processed

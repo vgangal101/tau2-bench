@@ -87,8 +87,11 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         tick_duration_ms: Duration of each tick in milliseconds.
         bytes_per_tick: Audio bytes per tick (8kHz μ-law = 8000 bytes/sec).
         send_audio_instant: If True, send audio in one call per tick.
+            If False, send in 20ms chunks with sleeps (VoIP-style streaming).
         provider: Optional provider instance. Created lazily if not provided.
     """
+
+    CHUNK_INTERVAL_MS = 20
 
     def __init__(
         self,
@@ -108,6 +111,9 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
+        self._chunk_size = int(
+            XAI_TELEPHONY_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000
+        )
         self.voice = voice
 
         # Provider - created lazily if not provided
@@ -335,15 +341,27 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         # Carry over skip state from previous tick
         result.skip_item_id = self._skip_item_id
 
-        # Send audio to xAI (no conversion needed - native G.711 μ-law!)
-        if len(user_audio) > 0:
-            await self.provider.send_audio(user_audio)
+        # Send audio and receive events concurrently
+        async def send_audio():
+            """Send audio (instant or chunked based on config)."""
+            if len(user_audio) == 0:
+                return
+            if self.send_audio_instant:
+                await self.provider.send_audio(user_audio)
+            else:
+                offset = 0
+                while offset < len(user_audio):
+                    chunk = user_audio[offset : offset + self._chunk_size]
+                    await self.provider.send_audio(chunk)
+                    offset += len(chunk)
+                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
 
-        # Receive events for tick duration
-        elapsed_so_far = asyncio.get_running_loop().time() - tick_start
-        remaining_duration = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+        async def receive_events():
+            elapsed_so_far = asyncio.get_running_loop().time() - tick_start
+            remaining = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+            return await self.provider.receive_events_for_duration(remaining)
 
-        events = await self.provider.receive_events_for_duration(remaining_duration)
+        _, events = await asyncio.gather(send_audio(), receive_events())
 
         # Process all received events
         for event in events:

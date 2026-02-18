@@ -56,6 +56,7 @@ from tau2.voice.audio_native.nova.events import (
     NovaToolUseEvent,
 )
 from tau2.voice.audio_native.nova.provider import (
+    NOVA_BYTES_PER_SECOND,
     NovaSonicProvider,
     NovaVADConfig,
 )
@@ -85,8 +86,11 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         tick_duration_ms: Duration of each tick in milliseconds.
         bytes_per_tick: Audio bytes per tick (8kHz μ-law = 8000 bytes/sec).
         send_audio_instant: If True, send audio in one call per tick.
+            If False, send in 20ms chunks with sleeps (VoIP-style streaming).
         provider: Optional provider instance. Created lazily if not provided.
     """
+
+    CHUNK_INTERVAL_MS = 20
 
     def __init__(
         self,
@@ -106,6 +110,7 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
+        self._chunk_size = int(NOVA_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000)
         self.voice = voice
 
         # Provider - created lazily if not provided
@@ -433,29 +438,40 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         result.skip_item_id = self._skip_content_id
 
         # Convert telephony audio to Nova format (8kHz μ-law → 16kHz PCM16)
-        if len(user_audio) > 0:
-            nova_audio = self._audio_converter.convert_input(user_audio)
-            if nova_audio and self._audio_content_id:
+        nova_audio = self._audio_converter.convert_input(user_audio)
+
+        # Send audio and receive events concurrently
+        async def send_audio():
+            """Send audio (instant or chunked based on config)."""
+            if not nova_audio or not self._audio_content_id:
+                return
+            if self.send_audio_instant:
                 await self.provider.send_audio(nova_audio, self._audio_content_id)
+            else:
+                offset = 0
+                while offset < len(nova_audio):
+                    chunk = nova_audio[offset : offset + self._chunk_size]
+                    await self.provider.send_audio(chunk, self._audio_content_id)
+                    offset += len(chunk)
+                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
 
-        # Pull events from the queue for tick duration
-        # Events are collected by the background receive task
-        elapsed_so_far = asyncio.get_running_loop().time() - tick_start
-        remaining_duration = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
-        end_time = asyncio.get_running_loop().time() + remaining_duration
+        async def receive_events():
+            elapsed_so_far = asyncio.get_running_loop().time() - tick_start
+            remaining = max(0.01, (self.tick_duration_ms / 1000) - elapsed_so_far)
+            end_time = asyncio.get_running_loop().time() + remaining
+            collected = []
+            while asyncio.get_running_loop().time() < end_time:
+                try:
+                    event = await asyncio.wait_for(
+                        self._event_queue.get(),
+                        timeout=0.05,
+                    )
+                    collected.append(event)
+                except asyncio.TimeoutError:
+                    continue
+            return collected
 
-        events = []
-        while asyncio.get_running_loop().time() < end_time:
-            try:
-                # Try to get an event with short timeout
-                event = await asyncio.wait_for(
-                    self._event_queue.get(),
-                    timeout=0.05,  # 50ms check interval
-                )
-                events.append(event)
-            except asyncio.TimeoutError:
-                # No event available, continue waiting
-                continue
+        _, events = await asyncio.gather(send_audio(), receive_events())
 
         # Process all received events
         for event in events:
