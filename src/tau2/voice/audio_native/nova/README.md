@@ -203,7 +203,6 @@ adapter = DiscreteTimeNovaAdapter(
     tick_duration_ms=200,     # Duration of each tick
     send_audio_instant=True,  # Send all audio at once per tick
     voice="tiffany",          # Voice: matthew, tiffany, amy
-    fast_forward_mode=False,  # If True, exit tick early when enough audio
 )
 
 adapter.connect(

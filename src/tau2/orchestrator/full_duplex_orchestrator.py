@@ -336,6 +336,21 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         # Record wall clock duration for this tick
         tick.wall_clock_duration_seconds = time.perf_counter() - tick_start_time
 
+        logger.debug(
+            f"[Tick {tick_id}] Wall-clock duration: "
+            f"{tick.wall_clock_duration_seconds:.3f}s"
+        )
+        if (
+            self.tick_duration_seconds is not None
+            and tick.wall_clock_duration_seconds < self.tick_duration_seconds
+        ):
+            logger.warning(
+                f"[Tick {tick_id}] Completed in "
+                f"{tick.wall_clock_duration_seconds:.3f}s, which is less than "
+                f"the expected tick duration of {self.tick_duration_seconds:.3f}s. "
+                f"Wall-clock pacing may not be enforced by the adapter."
+            )
+
         self.ticks.append(tick)
 
         self.step_count += 1

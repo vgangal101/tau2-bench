@@ -157,7 +157,7 @@ class AudioNativeConfig(BaseModel):
     )
     fast_forward_mode: bool = Field(
         default=DEFAULT_FAST_FORWARD_MODE,
-        description="Skip wall-clock waiting when enough audio is buffered",
+        description="Skip wall-clock waiting when enough audio is buffered (OpenAI only)",
     )
     use_xml_prompt: bool = Field(
         default=False,

@@ -350,7 +350,7 @@ def add_run_args(parser):
         "--fast-forward",
         action="store_true",
         default=False,
-        help="Enable fast-forward mode (run as fast as possible instead of real-time). Default is disabled.",
+        help="Enable fast-forward mode — OpenAI provider only (run as fast as possible instead of real-time). Default is disabled.",
     )
     parser.add_argument(
         "--send-audio-instant",

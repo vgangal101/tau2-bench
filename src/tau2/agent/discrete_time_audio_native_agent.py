@@ -245,6 +245,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                 formats (16kHz/24kHz PCM16) with automatic conversion.
             fast_forward_mode: If True, exit tick early when we have enough audio
                 buffered (>= bytes_per_tick), rather than waiting for wall-clock time.
+                Only supported by the OpenAI provider.
             provider: Audio native provider to use. Options:
                 - "openai": OpenAI Realtime API (DEFAULT_AUDIO_NATIVE_PROVIDER)
                 - "gemini": Google Gemini Live API
@@ -268,6 +269,11 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.buffer_until_complete = buffer_until_complete
         self.fast_forward_mode = fast_forward_mode
         if self.fast_forward_mode:
+            if provider != "openai":
+                raise ValueError(
+                    f"fast_forward_mode is only supported by the 'openai' provider, "
+                    f"got provider='{provider}'."
+                )
             logger.warning(
                 "Fast-forward mode is enabled. The simulation will run as fast as "
                 "possible rather than in real-time. This may affect timing-sensitive "
@@ -377,31 +383,26 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                     tick_duration_ms=self.tick_duration_ms,
                     send_audio_instant=self.send_audio_instant,
                     model=self.model,
-                    fast_forward_mode=self.fast_forward_mode,
                 )
             elif self.provider == "xai":
                 self._adapter = DiscreteTimeXAIAdapter(
                     tick_duration_ms=self.tick_duration_ms,
                     send_audio_instant=self.send_audio_instant,
-                    fast_forward_mode=self.fast_forward_mode,
                 )
             elif self.provider == "nova":
                 self._adapter = DiscreteTimeNovaAdapter(
                     tick_duration_ms=self.tick_duration_ms,
                     send_audio_instant=self.send_audio_instant,
-                    fast_forward_mode=self.fast_forward_mode,
                 )
             elif self.provider == "qwen":
                 self._adapter = DiscreteTimeQwenAdapter(
                     tick_duration_ms=self.tick_duration_ms,
                     send_audio_instant=self.send_audio_instant,
-                    fast_forward_mode=self.fast_forward_mode,
                 )
             elif self.provider == "deepgram":
                 self._adapter = DiscreteTimeDeepgramAdapter(
                     tick_duration_ms=self.tick_duration_ms,
                     send_audio_instant=self.send_audio_instant,
-                    fast_forward_mode=self.fast_forward_mode,
                     llm_model=self.model,
                 )
             elif self.provider == "livekit":
@@ -415,7 +416,6 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                     tick_duration_ms=self.tick_duration_ms,
                     cascaded_config=config,
                     send_audio_instant=self.send_audio_instant,
-                    fast_forward_mode=self.fast_forward_mode,
                     audio_format=self.audio_format,
                 )
             else:
