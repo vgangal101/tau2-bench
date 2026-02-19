@@ -114,6 +114,65 @@ def _collect_speech_segments(
     return segments
 
 
+@dataclass
+class ToolCallSegment:
+    """A tool call event anchored to a tick range."""
+
+    start_tick: int
+    end_tick: int  # inclusive — spans all ticks where this tool call's results arrive
+    tool_name: str
+    role: str  # "user" or "assistant"
+
+
+def _collect_tool_call_segments(
+    ticks: list[Tick],
+    role: str,
+) -> list[ToolCallSegment]:
+    """
+    Collect tool call segments for a given role.
+
+    Each tool call becomes a segment starting at the tick where the call was
+    issued and ending at the tick where the corresponding result arrives
+    (matched by tool call id). If no result is found, the segment is a
+    single tick.
+
+    Args:
+        ticks: List of simulation ticks.
+        role: Either "user" or "assistant".
+
+    Returns:
+        List of ToolCallSegment objects.
+    """
+    segments: list[ToolCallSegment] = []
+
+    # Build a map from tool_call_id -> tick where the result appears
+    result_tick_map: dict[str, int] = {}
+    for tick in ticks:
+        results = (
+            tick.agent_tool_results if role == "assistant" else tick.user_tool_results
+        )
+        for result in results:
+            if result.id:
+                result_tick_map[result.id] = tick.tick_id
+
+    for tick in ticks:
+        tool_calls = (
+            tick.agent_tool_calls if role == "assistant" else tick.user_tool_calls
+        )
+        for tc in tool_calls:
+            end_tick = result_tick_map.get(tc.id, tick.tick_id)
+            segments.append(
+                ToolCallSegment(
+                    start_tick=tick.tick_id,
+                    end_tick=end_tick,
+                    tool_name=tc.name,
+                    role=role,
+                )
+            )
+
+    return segments
+
+
 def generate_audacity_labels(
     ticks: list[Tick],
     tick_duration_ms: float,
@@ -143,35 +202,51 @@ def generate_audacity_labels(
     label_files: dict[str, Path] = {}
 
     for role in ["user", "assistant"]:
+        # Speech labels
         segments = _collect_speech_segments(ticks, role)
 
         if not segments:
             logger.debug(f"No speech segments found for {role}")
+        else:
+            labels = []
+            for seg in segments:
+                start_sec = seg.start_tick * tick_duration_ms / 1000.0
+                end_sec = (seg.end_tick + 1) * tick_duration_ms / 1000.0
+
+                label_text = seg.text.replace("\n", " ").replace("\t", " ").strip()
+                if len(label_text) > 200:
+                    label_text = label_text[:197] + "..."
+
+                labels.append(f"{start_sec:.3f}\t{end_sec:.3f}\t{label_text}")
+
+            label_path = output_dir / f"{role}_labels.txt"
+            with open(label_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(labels))
+
+            label_files[role] = label_path
+            logger.debug(f"Generated {len(segments)} labels for {role}: {label_path}")
+
+        # Tool call labels
+        tc_segments = _collect_tool_call_segments(ticks, role)
+
+        if not tc_segments:
+            logger.debug(f"No tool call segments found for {role}")
             continue
 
-        # Generate Audacity labels
-        labels = []
-        for seg in segments:
-            # Calculate times in seconds
+        tc_labels = []
+        for seg in tc_segments:
             start_sec = seg.start_tick * tick_duration_ms / 1000.0
-            # end_tick is inclusive, so add 1 tick duration
             end_sec = (seg.end_tick + 1) * tick_duration_ms / 1000.0
+            tc_labels.append(f"{start_sec:.3f}\t{end_sec:.3f}\t{seg.tool_name}")
 
-            # Clean up the text for the label (remove newlines, limit length)
-            label_text = seg.text.replace("\n", " ").replace("\t", " ").strip()
-            # Truncate very long labels (Audacity can handle them but display is messy)
-            if len(label_text) > 200:
-                label_text = label_text[:197] + "..."
+        tc_label_path = output_dir / f"{role}_tool_calls_labels.txt"
+        with open(tc_label_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(tc_labels))
 
-            labels.append(f"{start_sec:.3f}\t{end_sec:.3f}\t{label_text}")
-
-        # Write label file
-        label_path = output_dir / f"{role}_labels.txt"
-        with open(label_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(labels))
-
-        label_files[role] = label_path
-        logger.debug(f"Generated {len(segments)} labels for {role}: {label_path}")
+        label_files[f"{role}_tool_calls"] = tc_label_path
+        logger.debug(
+            f"Generated {len(tc_segments)} tool call labels for {role}: {tc_label_path}"
+        )
 
     return label_files
 

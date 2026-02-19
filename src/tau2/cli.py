@@ -178,6 +178,14 @@ def add_run_args(parser):
         "analysis report for diagnosing alignment issues. Requires --audio-native.",
     )
     parser.add_argument(
+        "--audio-taps",
+        action="store_true",
+        default=False,
+        help="Enable audio tap recording for audio-native mode. Saves WAV files at each pipeline "
+        "stage (pre-effects, post-noise, post-telephony, final, agent-input) for diagnosing "
+        "signal property differences. Requires --audio-native.",
+    )
+    parser.add_argument(
         "--llm-log-mode",
         type=str,
         choices=["all", "latest"],
@@ -656,6 +664,7 @@ def main():
                 audio_native_config=audio_native_config,
                 speech_complexity=args.speech_complexity,
                 audio_debug=getattr(args, "audio_debug", False),
+                audio_taps=getattr(args, "audio_taps", False),
             )
         else:
             config = TextRunConfig(

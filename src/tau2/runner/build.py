@@ -8,6 +8,7 @@ this layer and construct instances directly.
 
 import uuid
 from copy import deepcopy
+from pathlib import Path
 from typing import Optional, Union
 
 from loguru import logger
@@ -64,6 +65,7 @@ def build_agent(
     task: Optional[Task] = None,
     audio_native_config: Optional[AudioNativeConfig] = None,
     solo_mode: bool = False,
+    audio_taps_dir: Optional[Path] = None,
 ) -> Union[HalfDuplexAgent, FullDuplexAgent]:
     """Build an agent from a registered name and an environment.
 
@@ -110,6 +112,7 @@ def build_agent(
         llm_args=llm_args,
         task=task,
         audio_native_config=audio_native_config,
+        audio_taps_dir=audio_taps_dir,
     )
 
 
@@ -178,6 +181,7 @@ def build_voice_user(
     seed: int = 42,
     domain: Optional[str] = None,
     hallucination_feedback: Optional[str] = None,
+    audio_taps_dir: Optional[Path] = None,
 ) -> FullDuplexUser:
     """Build a full-duplex voice user simulator.
 
@@ -283,6 +287,7 @@ def build_voice_user(
         silence_annotation_threshold_ticks=audio_native_config.silence_annotation_threshold_ticks,
         tick_duration_seconds=audio_native_config.tick_duration_seconds,
         persona_config=persona_config,
+        audio_taps_dir=audio_taps_dir,
     )
 
 
@@ -379,6 +384,7 @@ def build_voice_orchestrator(
     user_voice_settings: Optional[VoiceSettings] = None,
     user_persona_config: Optional[PersonaConfig] = None,
     hallucination_feedback: Optional[str] = None,
+    audio_taps_dir: Optional[Path] = None,
 ) -> FullDuplexOrchestrator:
     """Build a full-duplex (voice) orchestrator from a VoiceRunConfig.
 
@@ -431,6 +437,7 @@ def build_voice_orchestrator(
         config.effective_agent,
         environment,
         audio_native_config=config.audio_native_config,
+        audio_taps_dir=audio_taps_dir,
     )
 
     user = build_voice_user(
@@ -445,6 +452,7 @@ def build_voice_orchestrator(
         seed=seed or 42,
         domain=domain,
         hallucination_feedback=hallucination_feedback,
+        audio_taps_dir=audio_taps_dir,
     )
 
     orchestrator = FullDuplexOrchestrator(
@@ -477,6 +485,7 @@ def build_orchestrator(
     user_voice_settings: Optional[VoiceSettings] = None,
     user_persona_config: Optional[PersonaConfig] = None,
     hallucination_feedback: Optional[str] = None,
+    audio_taps_dir: Optional[Path] = None,
 ) -> Union[Orchestrator, FullDuplexOrchestrator]:
     """Build a ready-to-run orchestrator from a RunConfig and task.
 
@@ -505,6 +514,7 @@ def build_orchestrator(
             user_voice_settings=user_voice_settings,
             user_persona_config=user_persona_config,
             hallucination_feedback=hallucination_feedback,
+            audio_taps_dir=audio_taps_dir,
         )
     else:
         return build_text_orchestrator(

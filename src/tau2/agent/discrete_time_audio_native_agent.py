@@ -39,6 +39,7 @@ See docs/architecture/discrete_time_audio_native_agent.md for design details.
 """
 
 import base64
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Literal, Optional, Tuple, Union
 
 from loguru import logger
@@ -214,6 +215,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         cascaded_config: Optional["CascadedConfig"] = None,
         buffer_until_complete: bool = DEFAULT_BUFFER_UNTIL_COMPLETE,
         fast_forward_mode: bool = DEFAULT_FAST_FORWARD_MODE,
+        audio_taps_dir: Optional[Path] = None,
     ):
         """Initialize the discrete-time audio native agent.
 
@@ -244,6 +246,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             cascaded_config: Configuration for cascaded (STT→LLM→TTS) providers.
                 Only used when provider="livekit". Ignored for other providers.
                 Can be a CascadedConfig instance or None to use defaults.
+            audio_taps_dir: Directory to save audio taps. Only used when audio_taps_dir is not None.
             buffer_until_complete: If True, wait until an utterance is complete
                         before including its audio/text in results.
                         Only supported by the OpenAI provider.
@@ -305,6 +308,20 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.system_prompt = self._build_system_prompt()
 
         self.done = False
+
+        # Audio tap for recording the exact bytes sent to the provider
+        self._agent_input_tap: Optional["AudioTap"] = None
+        if audio_taps_dir is not None:
+            from tau2.voice.utils.audio_tap import AudioTap
+
+            audio_taps_dir.mkdir(parents=True, exist_ok=True)
+            self._agent_input_tap = AudioTap(
+                name="agent_input",
+                output_dir=audio_taps_dir,
+                sample_rate=self.audio_format.sample_rate,
+                encoding=self.audio_format.encoding,
+            )
+            logger.info(f"Agent audio tap enabled, output dir: {audio_taps_dir}")
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt from domain policy with voice instructions.
@@ -406,6 +423,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         # Extract user audio from incoming chunk
         user_audio = self._extract_user_audio(incoming_chunk)
         state.total_user_audio_bytes += len(user_audio)
+
+        if self._agent_input_tap:
+            self._agent_input_tap.record(user_audio)
 
         # Run tick through adapter
         try:
@@ -699,6 +719,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             message: The last message to the agent (unused).
             state: The final agent state (unused).
         """
+        if self._agent_input_tap:
+            self._agent_input_tap.save()
+            logger.info("Saved agent_input audio tap")
         self.cleanup()
 
     def cleanup(self) -> None:
@@ -755,6 +778,7 @@ def create_discrete_time_audio_native_agent(tools, domain_policy, **kwargs):
             - Individual overrides for any of the above fields.
     """
     audio_native_config = kwargs.get("audio_native_config")
+    audio_taps_dir = kwargs.get("audio_taps_dir")
     if audio_native_config is not None:
         return DiscreteTimeAudioNativeAgent(
             tools=tools,
@@ -768,6 +792,7 @@ def create_discrete_time_audio_native_agent(tools, domain_policy, **kwargs):
             model=audio_native_config.model,
             use_xml_prompt=audio_native_config.use_xml_prompt,
             cascaded_config=getattr(audio_native_config, "cascaded_config", None),
+            audio_taps_dir=audio_taps_dir,
         )
     else:
         # Fallback: use individual kwargs or defaults
@@ -778,4 +803,5 @@ def create_discrete_time_audio_native_agent(tools, domain_policy, **kwargs):
             modality=kwargs.get("modality", "audio"),
             provider=kwargs.get("provider", DEFAULT_AUDIO_NATIVE_PROVIDER),
             model=kwargs.get("model"),
+            audio_taps_dir=audio_taps_dir,
         )

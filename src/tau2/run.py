@@ -477,12 +477,13 @@ def run_domain(config: RunConfig) -> Results:
         max_concurrency=config.max_concurrency,
         seed=config.seed,
         log_level=config.log_level,
-        enforce_communication_protocol=config.enforce_communication_protocol
-        if not is_voice
-        else False,
+        enforce_communication_protocol=(
+            config.enforce_communication_protocol if not is_voice else False
+        ),
         speech_complexity=config.speech_complexity if is_voice else "regular",
         audio_native_config=config.audio_native_config if is_voice else None,
         verbose_logs=config.verbose_logs,
+        audio_taps=config.audio_taps if is_voice else False,
         max_retries=config.max_retries,
         retry_delay=config.retry_delay,
         auto_resume=config.auto_resume,
@@ -523,6 +524,7 @@ def run_tasks(
     audio_native_config: Optional[AudioNativeConfig] = None,
     verbose_logs: bool = False,
     audio_debug: bool = False,
+    audio_taps: bool = False,
     max_retries: int = 3,
     retry_delay: float = 1.0,
     auto_resume: bool = False,
@@ -557,6 +559,7 @@ def run_tasks(
         speech_complexity (SpeechComplexity): Speech environment complexity level.
         audio_native_config (AudioNativeConfig): Configuration for audio-native mode.
         audio_debug (bool): Enable audio debugging (per-tick audio files and analysis).
+        audio_taps (bool): Enable audio tap recording at each pipeline stage.
         auto_resume (bool): Automatically resume from existing save file without prompting.
         hallucination_retries (int): Max retries on user simulator hallucinations (full-duplex only).
         retrieval_config (str): Knowledge retrieval config name (knowledge domain only).
@@ -876,6 +879,7 @@ def run_tasks(
                     user_persona_config=user_persona_config,
                     verbose_logs=verbose_logs,
                     audio_debug=audio_debug,
+                    audio_taps=audio_taps,
                     auto_review=auto_review,
                     review_mode=review_mode,
                     solo_mode=solo_mode,
@@ -977,6 +981,7 @@ def run_tasks(
                             user_persona_config=user_persona_config,
                             verbose_logs=verbose_logs,
                             audio_debug=audio_debug,
+                            audio_taps=audio_taps,
                             auto_review=auto_review,
                             review_mode=review_mode,
                             hallucination_feedback=feedback,
@@ -1157,6 +1162,7 @@ def run_task(
     user_persona_config: Optional[PersonaConfig] = None,
     verbose_logs: bool = False,
     audio_debug: bool = False,
+    audio_taps: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
     solo_mode: bool = False,
@@ -1190,6 +1196,9 @@ def run_task(
         verbose_logs: Enable verbose logging (per-task logs, ticks, etc.).
         audio_debug: Enable audio debugging. Saves per-tick audio files and analysis
             report for diagnosing timing issues. Only works for audio-native mode.
+        audio_taps: Enable audio tap recording. Saves WAV files at each pipeline stage
+            (pre-effects, post-noise, post-telephony, final, agent-input) for
+            diagnosing signal property differences. Only works for audio-native mode.
         solo_mode: If True, the agent runs without a user simulator. The environment
             is rebuilt with solo_mode=True and user tools are merged into agent tools.
 
@@ -1314,6 +1323,18 @@ def run_task(
         if user_persona_config is None:
             user_persona_config = sampled_voice_config.persona_config
 
+        # Compute audio taps directory if enabled
+        audio_taps_dir = None
+        if audio_taps and save_dir:
+            audio_taps_dir = (
+                save_dir
+                / "tasks"
+                / f"task_{task.id}"
+                / f"sim_{simulation_id}"
+                / "audio"
+                / "taps"
+            )
+
         # Create voice agent via factory
         agent_factory = registry.get_agent_factory(agent)
         if agent_factory is not None:
@@ -1321,6 +1342,7 @@ def run_task(
                 tools=environment.get_tools(),
                 domain_policy=environment.get_policy(),
                 audio_native_config=audio_native_config,
+                audio_taps_dir=audio_taps_dir,
             )
         else:
             raise ValueError(
@@ -1359,6 +1381,7 @@ def run_task(
             silence_annotation_threshold_ticks=audio_native_config.silence_annotation_threshold_ticks,
             tick_duration_seconds=audio_native_config.tick_duration_seconds,
             persona_config=user_persona_config,
+            audio_taps_dir=audio_taps_dir,
         )
 
         # Use FullDuplexOrchestrator for audio-native mode

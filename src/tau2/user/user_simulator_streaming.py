@@ -1,6 +1,7 @@
 import random
 import time
 from copy import deepcopy
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from loguru import logger
@@ -16,7 +17,12 @@ from tau2.agent.base.streaming import (
     merge_homogeneous_chunks,
 )
 from tau2.agent.base.voice import VoiceMixin, VoiceState
-from tau2.data_model.audio import PCM_SAMPLE_RATE, AudioData, audio_bytes_to_string
+from tau2.data_model.audio import (
+    PCM_SAMPLE_RATE,
+    AudioData,
+    AudioEncoding,
+    audio_bytes_to_string,
+)
 from tau2.data_model.audio_effects import ChannelEffectsResult
 from tau2.data_model.message import (
     AssistantMessage,
@@ -28,10 +34,7 @@ from tau2.data_model.message import (
 from tau2.data_model.persona import InterruptTendency, PersonaConfig
 from tau2.data_model.voice import VoiceSettings
 from tau2.environment.tool import Tool
-from tau2.user.user_simulator import (
-    SYSTEM_PROMPT,
-    get_global_user_sim_guidelines_voice,
-)
+from tau2.user.user_simulator import SYSTEM_PROMPT, get_global_user_sim_guidelines_voice
 from tau2.user.user_simulator_base import (
     OUT_OF_SCOPE,
     STOP,
@@ -50,6 +53,7 @@ from tau2.voice.synthesis.audio_effects import (
     create_streaming_audio_generators,
 )
 from tau2.voice.synthesis.audio_effects.effects import StreamingTelephonyConverter
+from tau2.voice.utils.audio_tap import AudioTap
 from tau2.voice_config import (
     BACKCHANNEL_PHRASES,
     resolve_background_noise_path,
@@ -439,6 +443,7 @@ class VoiceStreamingUserSimulator(
         silence_annotation_threshold_ticks: Optional[int] = None,
         tick_duration_seconds: float = 0.05,
         persona_config: Optional[PersonaConfig] = None,
+        audio_taps_dir: Optional["Path"] = None,
     ):
         """
         Initialize the streaming user simulator.
@@ -467,6 +472,7 @@ class VoiceStreamingUserSimulator(
             tick_duration_seconds: Duration of each tick in seconds. Used for backchanneling Poisson calculations.
             voice_settings: Voice settings for the user.
             persona_config: Runtime persona configuration for user behavior (e.g., verbosity level, interrupt tendency)
+            audio_taps_dir: If set, record audio at each pipeline stage to WAV files in this directory.
         """
         # Initialize mixin and base class
         super().__init__(
@@ -513,6 +519,39 @@ class VoiceStreamingUserSimulator(
             # No persona config or interrupt_tendency is None
             self.enable_user_initiated_interruption = False
         self.validate_turn_taking_settings()
+
+        # Audio taps for pipeline diagnostics (None = disabled, zero cost)
+        self._audio_taps: Optional[dict[str, AudioTap]] = None
+        if audio_taps_dir is not None:
+            from tau2.data_model.audio import TELEPHONY_SAMPLE_RATE
+
+            self._audio_taps = {
+                "pre_effects": AudioTap(
+                    "pre_effects",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
+                ),
+                "post_noise": AudioTap(
+                    "post_noise",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
+                ),
+                "post_telephony": AudioTap(
+                    "post_telephony",
+                    audio_taps_dir,
+                    TELEPHONY_SAMPLE_RATE,
+                    AudioEncoding.ULAW,
+                ),
+                "user_output": AudioTap(
+                    "user_output",
+                    audio_taps_dir,
+                    TELEPHONY_SAMPLE_RATE,
+                    AudioEncoding.ULAW,
+                ),
+            }
+            logger.info(f"Audio taps enabled, output dir: {audio_taps_dir}")
 
     def validate_turn_taking_settings(self) -> None:
         """Validate the turn-taking settings."""
@@ -583,6 +622,21 @@ class VoiceStreamingUserSimulator(
             or TRANSFER in message.content
             or OUT_OF_SCOPE in message.content
         )
+
+    def stop(
+        self,
+        message: Optional[ValidUserInputMessage] = None,
+        state: Optional["UserAudioStreamingState"] = None,
+    ) -> None:
+        """Stop the user simulator and save any audio taps."""
+        if self._audio_taps:
+            for tap in self._audio_taps.values():
+                tap.save()
+            logger.info(
+                f"Saved {len(self._audio_taps)} audio taps: "
+                f"{list(self._audio_taps.keys())}"
+            )
+        super().stop(message, state)
 
     def get_init_state(
         self, message_history: Optional[list[Message]] = None
@@ -846,18 +900,30 @@ class VoiceStreamingUserSimulator(
                 has_active_burst=state.noise_generator.has_active_burst(),
             )
 
+        if self._audio_taps:
+            self._audio_taps["pre_effects"].record_message(chunk)
+
         # Apply background noise + out-of-turn effects
         chunk = self._add_background_noise(chunk, state, scheduled_effects)
+
+        if self._audio_taps:
+            self._audio_taps["post_noise"].record_message(chunk)
 
         # Apply telephony compression
         if self.voice_settings.speech_environment.telephony_enabled:
             chunk = self._add_telephony_compression(chunk, state.telephony_converter)
+
+        if self._audio_taps:
+            self._audio_taps["post_telephony"].record_message(chunk)
 
         # Apply frame drops after telephony
         for effect in scheduled_effects:
             if effect.effect_type == "frame_drop" and effect.frame_drop_duration_ms:
                 chunk = self._apply_frame_drop(chunk, effect.frame_drop_duration_ms)
                 logger.debug(f"Applied frame drop: {effect.frame_drop_duration_ms}ms")
+
+        if self._audio_taps:
+            self._audio_taps["user_output"].record_message(chunk)
 
         # Update elapsed samples
         state.elapsed_samples += self.chunk_size

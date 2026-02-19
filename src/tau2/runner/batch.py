@@ -263,6 +263,7 @@ def run_single_task(
     user_persona_config: Optional[PersonaConfig] = None,
     verbose_logs: bool = False,
     audio_debug: bool = False,
+    audio_taps: bool = False,
     auto_review: bool = False,
     review_mode: str = "full",
     hallucination_feedback: Optional[str] = None,
@@ -301,6 +302,18 @@ def run_single_task(
     )
 
     with _TaskLogContext(simulation_id, save_dir, task, verbose_logs):
+        # Compute audio taps directory if enabled
+        taps_dir = None
+        if audio_taps and save_dir:
+            taps_dir = (
+                save_dir
+                / "tasks"
+                / f"task_{task.id}"
+                / f"sim_{simulation_id}"
+                / "audio"
+                / "taps"
+            )
+
         # Layer 2: Build the orchestrator
         orchestrator = build_orchestrator(
             config,
@@ -310,6 +323,7 @@ def run_single_task(
             user_voice_settings=user_voice_settings,
             user_persona_config=user_persona_config,
             hallucination_feedback=hallucination_feedback,
+            audio_taps_dir=taps_dir,
         )
 
         # Layer 1: Run the simulation
@@ -521,6 +535,7 @@ def run_tasks(
                 user_persona_config=user_persona_config,
                 verbose_logs=config.verbose_logs,
                 audio_debug=config.audio_debug if is_voice else False,
+                audio_taps=config.audio_taps if is_voice else False,
                 auto_review=config.auto_review,
                 review_mode=config.review_mode,
                 hallucination_feedback=hallucination_feedback,

@@ -622,6 +622,13 @@ class VoiceRunConfig(BaseRunConfig):
             default=False,
         ),
     ]
+    audio_taps: Annotated[
+        bool,
+        Field(
+            description="Enable audio tap recording at each pipeline stage for signal analysis.",
+            default=False,
+        ),
+    ]
 
     # ---- Properties ----
 
