@@ -28,7 +28,6 @@ Usage:
 """
 
 import asyncio
-import threading
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -38,6 +37,7 @@ from tau2.config import TELEPHONY_ULAW_SILENCE
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
+from tau2.voice.audio_native.async_loop import BackgroundAsyncLoop
 from tau2.voice.audio_native.gemini.audio_utils import (
     GEMINI_INPUT_BYTES_PER_SECOND,
     GEMINI_OUTPUT_BYTES_PER_SECOND,
@@ -58,7 +58,12 @@ from tau2.voice.audio_native.gemini.events import (
     GeminiTurnCompleteEvent,
 )
 from tau2.voice.audio_native.gemini.provider import GeminiLiveProvider, GeminiVADConfig
-from tau2.voice.audio_native.tick_result import TickResult, UtteranceTranscript
+from tau2.voice.audio_native.tick_result import (
+    TickResult,
+    UtteranceTranscript,
+    buffer_excess_audio,
+    get_proportional_transcript,
+)
 
 
 class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
@@ -140,8 +145,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         self._audio_converter = StreamingGeminiConverter()
 
         # Async event loop management
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
+        self._bg_loop = BackgroundAsyncLoop()
         self._connected = False
 
         # Tick state
@@ -177,7 +181,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
     @property
     def is_connected(self) -> bool:
         """Check if connected to the API."""
-        return self._connected and self._loop is not None
+        return self._connected and self._bg_loop.is_running
 
     def connect(
         self,
@@ -202,26 +206,13 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         if vad_config is None:
             vad_config = GeminiVADConfig()
 
-        # Store config for async initialization
-        self._connect_config = {
-            "system_prompt": system_prompt,
-            "tools": tools,
-            "vad_config": vad_config,
-            "modality": modality,
-        }
+        self._bg_loop.start()
 
-        # Start background thread with event loop
-        self._start_background_loop()
-
-        # Connect and configure in background loop
-        future = asyncio.run_coroutine_threadsafe(
-            self._async_connect(**self._connect_config),
-            self._loop,
-        )
-
-        # Wait for connection with timeout
         try:
-            future.result(timeout=30.0)
+            self._bg_loop.run_coroutine(
+                self._async_connect(system_prompt, tools, vad_config, modality),
+                timeout=30.0,
+            )
             self._connected = True
             logger.info(
                 f"DiscreteTimeGeminiAdapter connected to Gemini Live API "
@@ -232,7 +223,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
                 f"DiscreteTimeGeminiAdapter failed to connect to Gemini Live API: "
                 f"{type(e).__name__}: {e}"
             )
-            self._stop_background_loop()
+            self._bg_loop.stop()
             raise RuntimeError(f"Failed to connect to Gemini Live API: {e}") from e
 
     async def _async_connect(
@@ -255,19 +246,13 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         if not self._connected:
             return
 
-        # Disconnect in background loop
-        if self._loop is not None:
-            future = asyncio.run_coroutine_threadsafe(
-                self._async_disconnect(),
-                self._loop,
-            )
+        if self._bg_loop.is_running:
             try:
-                future.result(timeout=5.0)
+                self._bg_loop.run_coroutine(self._async_disconnect(), timeout=5.0)
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
-        # Stop background loop
-        self._stop_background_loop()
+        self._bg_loop.stop()
         self._connected = False
         self._tick_count = 0
         self._cumulative_user_audio_ms = 0
@@ -281,34 +266,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         """Async disconnection."""
         if self._owns_provider and self._provider is not None:
             await self.provider.disconnect()
-
-    def _start_background_loop(self) -> None:
-        """Start the background thread with async event loop."""
-        if self._loop is not None:
-            return
-
-        def run_loop():
-            self._loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._loop)
-            self._loop.run_forever()
-
-        self._thread = threading.Thread(target=run_loop, daemon=True)
-        self._thread.start()
-
-        # Wait for loop to be ready
-        import time
-
-        while self._loop is None:
-            time.sleep(0.01)
-
-    def _stop_background_loop(self) -> None:
-        """Stop the background thread and event loop."""
-        if self._loop is not None:
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            if self._thread is not None:
-                self._thread.join(timeout=2.0)
-            self._loop = None
-            self._thread = None
 
     def run_tick(
         self, user_audio: bytes, tick_number: Optional[int] = None
@@ -331,16 +288,11 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
             tick_number = self._tick_count
         self._tick_count = tick_number + 1
 
-        # Run tick in background loop
-        future = asyncio.run_coroutine_threadsafe(
-            self._async_run_tick(user_audio, tick_number),
-            self._loop,
-        )
-
-        # Wait for result
         try:
-            result = future.result(timeout=self.tick_duration_ms / 1000 + 30.0)
-            return result
+            return self._bg_loop.run_coroutine(
+                self._async_run_tick(user_audio, tick_number),
+                timeout=self.tick_duration_ms / 1000 + 30.0,
+            )
         except Exception as e:
             logger.error(f"Error in run_tick (tick={tick_number}): {e}")
             raise
@@ -429,10 +381,12 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         result.tick_sim_duration_ms = result.audio_sent_duration_ms
 
         # Move excess agent audio to buffer for next tick
-        self._buffer_excess_audio(result)
+        self._buffered_agent_audio = buffer_excess_audio(result, self.bytes_per_tick)
 
         # Calculate proportional transcript
-        result.proportional_transcript = self._get_proportional_transcript(result)
+        result.proportional_transcript = get_proportional_transcript(
+            result.agent_audio_chunks, self._utterance_transcripts
+        )
 
         # Update skip state for next tick
         self._skip_item_id = result.skip_item_id
@@ -559,77 +513,6 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
 
         else:
             logger.debug(f"Event {type(event).__name__} received")
-
-    def _buffer_excess_audio(self, result: TickResult) -> None:
-        """Move agent audio exceeding tick cap to buffer for next tick."""
-        # If interrupted, don't buffer - discard excess
-        if result.was_truncated:
-            total_bytes = 0
-            keep_chunks: List[Tuple[bytes, Optional[str]]] = []
-            discarded_bytes = 0
-
-            for chunk in result.agent_audio_chunks:
-                chunk_data, item_id = chunk
-                if total_bytes + len(chunk_data) <= self.bytes_per_tick:
-                    keep_chunks.append(chunk)
-                    total_bytes += len(chunk_data)
-                else:
-                    space_left = self.bytes_per_tick - total_bytes
-                    if space_left > 0:
-                        keep_chunks.append((chunk_data[:space_left], item_id))
-                        discarded_bytes += len(chunk_data) - space_left
-                    else:
-                        discarded_bytes += len(chunk_data)
-                    total_bytes = self.bytes_per_tick
-
-            result.agent_audio_chunks = keep_chunks
-            result.truncated_audio_bytes += discarded_bytes
-            self._buffered_agent_audio = []
-            return
-
-        # Normal case: buffer excess for next tick
-        total_bytes = 0
-        keep_chunks: List[Tuple[bytes, Optional[str]]] = []
-        buffer_chunks: List[Tuple[bytes, Optional[str]]] = []
-
-        for chunk in result.agent_audio_chunks:
-            chunk_data, item_id = chunk
-            if total_bytes + len(chunk_data) <= self.bytes_per_tick:
-                keep_chunks.append(chunk)
-                total_bytes += len(chunk_data)
-            else:
-                space_left = self.bytes_per_tick - total_bytes
-                if space_left > 0:
-                    keep_chunks.append((chunk_data[:space_left], item_id))
-                    buffer_chunks.append((chunk_data[space_left:], item_id))
-                else:
-                    buffer_chunks.append(chunk)
-                total_bytes = self.bytes_per_tick
-
-        result.agent_audio_chunks = keep_chunks
-        self._buffered_agent_audio = buffer_chunks
-
-    def _get_proportional_transcript(self, result: TickResult) -> str:
-        """Get proportional transcript for the audio played this tick."""
-        if not result.agent_audio_chunks:
-            return ""
-
-        # Group audio bytes by item_id
-        audio_by_item: dict[str, int] = {}
-        for chunk_data, item_id in result.agent_audio_chunks:
-            if item_id:
-                audio_by_item[item_id] = audio_by_item.get(item_id, 0) + len(chunk_data)
-
-        # Get proportional transcript for each utterance
-        transcript_parts = []
-        for item_id, audio_bytes in audio_by_item.items():
-            if item_id in self._utterance_transcripts:
-                ut = self._utterance_transcripts[item_id]
-                text = ut.get_transcript_for_audio(audio_bytes)
-                if text:
-                    transcript_parts.append(text)
-
-        return " ".join(transcript_parts)
 
     def send_tool_result(
         self,

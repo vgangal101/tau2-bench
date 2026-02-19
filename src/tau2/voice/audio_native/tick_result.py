@@ -384,3 +384,101 @@ class TickResult(BaseModel):
             for tc in self.tool_calls:
                 parts.append(f"    - {tc.name}({tc.id})")
         return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Shared helper functions used by multiple discrete-time adapters
+# ---------------------------------------------------------------------------
+
+
+def buffer_excess_audio(
+    result: TickResult,
+    bytes_per_tick: int,
+) -> List[Tuple[bytes, Optional[str]]]:
+    """Cap *result.agent_audio_chunks* to *bytes_per_tick* bytes.
+
+    Splits the chunk list into a "keep" portion (written back to
+    ``result.agent_audio_chunks``) and an "excess" portion that is returned
+    for the caller to buffer until the next tick.
+
+    When ``result.was_truncated`` is True the excess is discarded instead
+    (byte count added to ``result.truncated_audio_bytes``) and an empty list
+    is returned.
+    """
+    if result.was_truncated:
+        total_bytes = 0
+        keep_chunks: List[Tuple[bytes, Optional[str]]] = []
+        discarded_bytes = 0
+
+        for chunk_data, item_id in result.agent_audio_chunks:
+            if total_bytes + len(chunk_data) <= bytes_per_tick:
+                keep_chunks.append((chunk_data, item_id))
+                total_bytes += len(chunk_data)
+            else:
+                space_left = bytes_per_tick - total_bytes
+                if space_left > 0:
+                    keep_chunks.append((chunk_data[:space_left], item_id))
+                    discarded_bytes += len(chunk_data) - space_left
+                else:
+                    discarded_bytes += len(chunk_data)
+                total_bytes = bytes_per_tick
+
+        result.agent_audio_chunks = keep_chunks
+        result.truncated_audio_bytes += discarded_bytes
+        return []
+
+    # Normal (non-truncated) case: buffer excess for next tick.
+    total_bytes = 0
+    keep_chunks: List[Tuple[bytes, Optional[str]]] = []
+    buffer_chunks: List[Tuple[bytes, Optional[str]]] = []
+
+    for chunk_data, item_id in result.agent_audio_chunks:
+        if total_bytes + len(chunk_data) <= bytes_per_tick:
+            keep_chunks.append((chunk_data, item_id))
+            total_bytes += len(chunk_data)
+        else:
+            space_left = bytes_per_tick - total_bytes
+            if space_left > 0:
+                keep_chunks.append((chunk_data[:space_left], item_id))
+                buffer_chunks.append((chunk_data[space_left:], item_id))
+            else:
+                buffer_chunks.append((chunk_data, item_id))
+            total_bytes = bytes_per_tick
+
+    result.agent_audio_chunks = keep_chunks
+    return buffer_chunks
+
+
+def get_proportional_transcript(
+    agent_audio_chunks: List[Tuple[bytes, Optional[str]]],
+    utterance_transcripts: dict[str, UtteranceTranscript],
+    item_id_map: Optional[dict[str, str]] = None,
+) -> str:
+    """Compute proportional transcript for the audio chunks played this tick.
+
+    Args:
+        agent_audio_chunks: The ``(data, item_id)`` pairs kept for this tick.
+        utterance_transcripts: Mapping of item/content IDs to their
+            ``UtteranceTranscript`` trackers.
+        item_id_map: Optional mapping from the ID carried on audio chunks to
+            the ID used as key in *utterance_transcripts*.  Nova needs this
+            because it sends text and audio under different content IDs.
+    """
+    if not agent_audio_chunks:
+        return ""
+
+    audio_by_item: dict[str, int] = {}
+    for chunk_data, item_id in agent_audio_chunks:
+        if item_id:
+            audio_by_item[item_id] = audio_by_item.get(item_id, 0) + len(chunk_data)
+
+    transcript_parts: list[str] = []
+    for item_id, audio_bytes in audio_by_item.items():
+        lookup_id = item_id_map.get(item_id, item_id) if item_id_map else item_id
+        if lookup_id in utterance_transcripts:
+            ut = utterance_transcripts[lookup_id]
+            text = ut.get_transcript_for_audio(audio_bytes)
+            if text:
+                transcript_parts.append(text)
+
+    return " ".join(transcript_parts)

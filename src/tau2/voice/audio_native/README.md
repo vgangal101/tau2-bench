@@ -67,7 +67,9 @@ audio_native/
 ├── adapter.py                   # Abstract base class + factory:
 │                                #   - DiscreteTimeAdapter (tick-based)
 │                                #   - create_adapter() factory function
-├── tick_result.py               # Shared TickResult, UtteranceTranscript
+├── async_loop.py                # BackgroundAsyncLoop helper class
+├── tick_result.py               # TickResult, UtteranceTranscript,
+│                                #   buffer_excess_audio(), get_proportional_transcript()
 ├── openai/
 │   ├── __init__.py              # Public exports for OpenAI implementation
 │   ├── provider.py              # OpenAIRealtimeProvider (async WebSocket)
@@ -561,6 +563,68 @@ Errors are surfaced through:
 response = adapter.collect_response()
 if response.error:
     logger.error(f"API error: {response.error}")
+```
+
+---
+
+## Shared Adapter Utilities
+
+Most discrete-time adapters (xAI, Qwen, Gemini, Nova, Deepgram) share the same
+tick lifecycle logic.  Common building blocks are factored into two modules so
+new providers can reuse them instead of copying boilerplate.
+
+### `BackgroundAsyncLoop` (`async_loop.py`)
+
+Manages a daemon thread running an `asyncio` event loop.  Adapters that expose
+a synchronous interface (`connect`, `run_tick`, `disconnect`) but talk to an
+async provider use this to bridge the two worlds:
+
+```python
+from tau2.voice.audio_native.async_loop import BackgroundAsyncLoop
+
+self._bg_loop = BackgroundAsyncLoop()
+self._bg_loop.start()
+
+# Schedule an async coroutine and block for the result:
+result = self._bg_loop.run_coroutine(some_async_fn(), timeout=30.0)
+
+self._bg_loop.stop()
+```
+
+`run_coroutine()` wraps the common `asyncio.run_coroutine_threadsafe` +
+`future.result(timeout=...)` pattern into a single call.
+
+### `buffer_excess_audio()` (`tick_result.py`)
+
+Caps `result.agent_audio_chunks` to `bytes_per_tick` and returns the excess
+for the caller to buffer until the next tick.  When the tick was truncated
+(interruption), excess is discarded instead.
+
+```python
+from tau2.voice.audio_native.tick_result import buffer_excess_audio
+
+self._buffered_agent_audio = buffer_excess_audio(result, self.bytes_per_tick)
+```
+
+### `get_proportional_transcript()` (`tick_result.py`)
+
+Computes the proportional transcript for the audio chunks kept in this tick.
+An optional `item_id_map` handles providers (Nova) where audio and text arrive
+under different content IDs.
+
+```python
+from tau2.voice.audio_native.tick_result import get_proportional_transcript
+
+# Most providers:
+result.proportional_transcript = get_proportional_transcript(
+    result.agent_audio_chunks, self._utterance_transcripts
+)
+
+# Nova (audio and text use different content IDs):
+result.proportional_transcript = get_proportional_transcript(
+    result.agent_audio_chunks, self._utterance_transcripts,
+    item_id_map=self._audio_to_text_map,
+)
 ```
 
 ---

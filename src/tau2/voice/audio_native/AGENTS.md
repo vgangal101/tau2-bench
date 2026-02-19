@@ -20,6 +20,16 @@ When modifying or creating `events.py`, base models exclusively on that provider
 
 Add user-facing config defaults (model names, tick durations, etc.) to `src/tau2/config.py` — the single source of truth. Import constants from there; do not define local duplicates in provider modules.
 
+### Shared Adapter Utilities
+
+New adapters should reuse the shared building blocks instead of reimplementing them:
+
+- **`BackgroundAsyncLoop`** (`async_loop.py`) — manages a background thread + asyncio event loop. Use `self._bg_loop = BackgroundAsyncLoop()` and call `start()`, `run_coroutine()`, `stop()` instead of manually creating threads and calling `asyncio.run_coroutine_threadsafe`.
+- **`buffer_excess_audio()`** (`tick_result.py`) — caps `result.agent_audio_chunks` to `bytes_per_tick`, returns excess to buffer. Handles both normal and truncated (interruption) cases.
+- **`get_proportional_transcript()`** (`tick_result.py`) — computes proportional transcript from audio chunks and `UtteranceTranscript` trackers. Accepts an optional `item_id_map` for providers where audio and text arrive under different IDs (e.g., Nova).
+
+See the "Shared Adapter Utilities" section in `README.md` for usage examples.
+
 ### Modifying Existing Providers
 
 When fixing bugs or updating an existing provider:
@@ -177,7 +187,12 @@ Bridge provider to `DiscreteTimeAdapter` interface:
 - Proportional transcript distribution across ticks
 - Tool call coordination
 
-Reference: `src/tau2/voice/audio_native/adapter.py` for interface definition.
+Use the shared utilities instead of reimplementing common logic:
+- `BackgroundAsyncLoop` from `async_loop.py` for the background event loop
+- `buffer_excess_audio()` from `tick_result.py` for audio capping/buffering
+- `get_proportional_transcript()` from `tick_result.py` for transcript distribution
+
+Reference: `src/tau2/voice/audio_native/adapter.py` for interface definition. Study an existing adapter (e.g., `xai/discrete_time_adapter.py`) for the standard tick lifecycle pattern.
 
 #### Step 6: Add Audio Conversion Utilities (`audio_utils.py`)
 
