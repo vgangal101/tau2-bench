@@ -1,13 +1,24 @@
-"""Abstract base classes for audio native adapters.
+"""Abstract base classes and factory for audio native adapters.
 DiscreteTimeAdapter: Tick-based pattern for discrete-time simulation.
    - run_tick() as the primary method
    - Audio time is the primary clock
    - Used by DiscreteTimeAudioNativeAgent
+
+create_adapter(): Factory function that validates parameters and constructs
+   the appropriate adapter subclass for a given provider.
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
+from loguru import logger
+
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_MODELS,
+    DEFAULT_BUFFER_UNTIL_COMPLETE,
+    DEFAULT_FAST_FORWARD_MODE,
+    DEFAULT_SEND_AUDIO_INSTANT,
+)
 from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
 from tau2.environment.tool import Tool
 
@@ -154,3 +165,166 @@ class DiscreteTimeAdapter(ABC):
             is_error: If True, the tool call failed and result contains error details.
         """
         raise NotImplementedError
+
+
+# ---------------------------------------------------------------------------
+# Adapter factory
+# ---------------------------------------------------------------------------
+
+# Providers where model selection is not wired through the adapter
+_PROVIDERS_WITHOUT_MODEL_SELECTION = ("xai", "nova", "qwen")
+
+
+def create_adapter(
+    provider: str,
+    tick_duration_ms: int,
+    send_audio_instant: bool = DEFAULT_SEND_AUDIO_INSTANT,
+    buffer_until_complete: bool = DEFAULT_BUFFER_UNTIL_COMPLETE,
+    fast_forward_mode: bool = DEFAULT_FAST_FORWARD_MODE,
+    model: Optional[str] = None,
+    audio_format: Optional[AudioFormat] = None,
+    cascaded_config: Any = None,
+) -> Tuple[DiscreteTimeAdapter, str]:
+    """Create a discrete-time adapter for the given provider.
+
+    Validates parameter/provider compatibility, resolves the model default,
+    constructs the appropriate adapter subclass, and returns both the adapter
+    and the resolved model name.
+
+    Args:
+        provider: Provider identifier (openai, gemini, xai, nova, qwen,
+            deepgram, livekit).
+        tick_duration_ms: Duration of each tick in milliseconds.
+        send_audio_instant: If True, send audio in one call per tick.
+        buffer_until_complete: If True, wait for complete utterances before
+            releasing audio. Only supported by the OpenAI provider.
+        fast_forward_mode: If True, exit tick early when enough audio is
+            buffered. Only supported by the OpenAI provider.
+        model: Model identifier. If None, uses the provider's default.
+        audio_format: Audio format for external communication. Defaults to
+            telephony (8kHz μ-law).
+        cascaded_config: Configuration for cascaded providers (livekit).
+
+    Returns:
+        Tuple of (adapter, resolved_model).
+
+    Raises:
+        ValueError: If buffer_until_complete or fast_forward_mode is used
+            with a non-OpenAI provider, or if the provider is unknown.
+    """
+    # --- Validate OpenAI-only parameters ---
+    if buffer_until_complete and provider != "openai":
+        raise ValueError(
+            f"buffer_until_complete is only supported by the 'openai' provider, "
+            f"got provider='{provider}'."
+        )
+    if fast_forward_mode:
+        if provider != "openai":
+            raise ValueError(
+                f"fast_forward_mode is only supported by the 'openai' provider, "
+                f"got provider='{provider}'."
+            )
+        logger.warning(
+            "Fast-forward mode is enabled. The simulation will run as fast as "
+            "possible rather than in real-time. This may affect timing-sensitive "
+            "behaviors and produce results that differ from real-time execution."
+        )
+
+    # --- Resolve model default ---
+    if model is None:
+        if provider == "livekit":
+            from tau2.voice.audio_native.livekit.config import CascadedConfig
+
+            config = cascaded_config or CascadedConfig()
+            model = config.llm.model
+        else:
+            model = DEFAULT_AUDIO_NATIVE_MODELS[provider]
+        logger.debug(
+            f"No model provided, using default model for provider {provider}: {model}"
+        )
+    elif provider in _PROVIDERS_WITHOUT_MODEL_SELECTION:
+        logger.warning(
+            f"model='{model}' was provided but the '{provider}' adapter "
+            f"does not support model selection — the provider's default model will "
+            f"be used. Model selection is supported by: openai, gemini, deepgram, livekit."
+        )
+
+    # --- Construct adapter ---
+    adapter: DiscreteTimeAdapter
+    if provider == "openai":
+        from tau2.voice.audio_native.openai.discrete_time_adapter import (
+            DiscreteTimeAudioNativeAdapter,
+        )
+
+        adapter = DiscreteTimeAudioNativeAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+            buffer_until_complete=buffer_until_complete,
+            model=model,
+            audio_format=audio_format,
+            fast_forward_mode=fast_forward_mode,
+        )
+    elif provider == "gemini":
+        from tau2.voice.audio_native.gemini.discrete_time_adapter import (
+            DiscreteTimeGeminiAdapter,
+        )
+
+        adapter = DiscreteTimeGeminiAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+            model=model,
+        )
+    elif provider == "xai":
+        from tau2.voice.audio_native.xai.discrete_time_adapter import (
+            DiscreteTimeXAIAdapter,
+        )
+
+        adapter = DiscreteTimeXAIAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+        )
+    elif provider == "nova":
+        from tau2.voice.audio_native.nova.discrete_time_adapter import (
+            DiscreteTimeNovaAdapter,
+        )
+
+        adapter = DiscreteTimeNovaAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+        )
+    elif provider == "qwen":
+        from tau2.voice.audio_native.qwen.discrete_time_adapter import (
+            DiscreteTimeQwenAdapter,
+        )
+
+        adapter = DiscreteTimeQwenAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+        )
+    elif provider == "deepgram":
+        from tau2.voice.audio_native.deepgram.discrete_time_adapter import (
+            DiscreteTimeDeepgramAdapter,
+        )
+
+        adapter = DiscreteTimeDeepgramAdapter(
+            tick_duration_ms=tick_duration_ms,
+            send_audio_instant=send_audio_instant,
+            llm_model=model,
+        )
+    elif provider == "livekit":
+        from tau2.voice.audio_native.livekit.config import CascadedConfig
+        from tau2.voice.audio_native.livekit.discrete_time_adapter import (
+            LiveKitCascadedAdapter,
+        )
+
+        config = cascaded_config or CascadedConfig()
+        adapter = LiveKitCascadedAdapter(
+            tick_duration_ms=tick_duration_ms,
+            cascaded_config=config,
+            send_audio_instant=send_audio_instant,
+            audio_format=audio_format,
+        )
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+    return adapter, model

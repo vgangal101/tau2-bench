@@ -185,13 +185,19 @@ Only needed if provider doesn't support 8kHz μ-law (G.711). Convert between:
 - Telephony format: 8kHz mono μ-law
 - Provider format: Usually 16kHz/24kHz mono linear16 PCM
 
-#### Step 7: Wire into Agent Factory
+#### Step 7: Register in Adapter Factory
 
-1. Add provider to `DiscreteTimeAudioNativeAgent` factory
-2. Add CLI option: `--audio-native-provider {provider_name}`
-3. Update `cli.py` with new provider choice
-4. **Add user-facing config default to `src/tau2/config.py`** (single source of truth):
-   - Import these constants in your `provider.py` instead of defining local duplicates
+Add the new adapter to the `create_adapter()` factory function in `src/tau2/voice/audio_native/adapter.py`. This is the **single entry point** for adapter construction — `DiscreteTimeAudioNativeAgent` delegates to it.
+
+1. Add a new `elif provider == "{provider_name}":` branch in `create_adapter()` with a lazy import of your adapter class (inside the branch body, to avoid circular imports).
+2. Pass the relevant parameters to your adapter's constructor. If the provider doesn't support model selection, add it to `_PROVIDERS_WITHOUT_MODEL_SELECTION` at the top of the file so users get a warning.
+3. Add CLI option: `--audio-native-provider {provider_name}` in `cli.py`.
+4. **Add user-facing config defaults to `src/tau2/config.py`** (single source of truth):
+   - Add the default model to `DEFAULT_AUDIO_NATIVE_MODELS` dict.
+   - Add the provider name to `AUDIO_NATIVE_PROVIDER_TYPES`.
+   - Import these constants in your `provider.py` instead of defining local duplicates.
+
+**Do NOT** add adapter construction or parameter validation logic in `DiscreteTimeAudioNativeAgent` — all of that belongs in `create_adapter()`.
 
 #### Step 8: End-to-End Testing
 

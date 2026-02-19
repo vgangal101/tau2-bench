@@ -53,9 +53,11 @@ from tau2.agent.base_agent import FullDuplexAgent, ValidAgentInputMessage
 from tau2.config import (
     AUDIO_NATIVE_PROVIDER_TYPES,
     DEFAULT_AUDIO_NATIVE_MAX_INACTIVE_SECONDS,
-    DEFAULT_AUDIO_NATIVE_MODELS,
     DEFAULT_AUDIO_NATIVE_PROVIDER,
+    DEFAULT_BUFFER_UNTIL_COMPLETE,
+    DEFAULT_FAST_FORWARD_MODE,
     DEFAULT_OPENAI_VAD_THRESHOLD,
+    DEFAULT_SEND_AUDIO_INSTANT,
 )
 from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioEncoding, AudioFormat
 from tau2.data_model.message import (
@@ -69,25 +71,13 @@ from tau2.data_model.message import (
 )
 from tau2.environment.tool import Tool
 from tau2.utils.utils import get_now
-from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
-from tau2.voice.audio_native.deepgram.discrete_time_adapter import (
-    DiscreteTimeDeepgramAdapter,
-)
+from tau2.voice.audio_native.adapter import DiscreteTimeAdapter, create_adapter
 from tau2.voice.audio_native.deepgram.provider import DeepgramVADConfig
-from tau2.voice.audio_native.gemini.discrete_time_adapter import (
-    DiscreteTimeGeminiAdapter,
-)
 from tau2.voice.audio_native.gemini.provider import GeminiVADConfig
-from tau2.voice.audio_native.nova.discrete_time_adapter import DiscreteTimeNovaAdapter
 from tau2.voice.audio_native.nova.provider import NovaVADConfig
-from tau2.voice.audio_native.openai.discrete_time_adapter import (
-    DiscreteTimeAudioNativeAdapter,
-)
 from tau2.voice.audio_native.openai.provider import OpenAIVADConfig, OpenAIVADMode
-from tau2.voice.audio_native.qwen.discrete_time_adapter import DiscreteTimeQwenAdapter
 from tau2.voice.audio_native.qwen.provider import QwenVADConfig
 from tau2.voice.audio_native.tick_result import TickResult
-from tau2.voice.audio_native.xai.discrete_time_adapter import DiscreteTimeXAIAdapter
 from tau2.voice.audio_native.xai.provider import XAIVADConfig
 
 # Provider type alias
@@ -215,15 +205,15 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         modality: str = "audio",
         adapter: Optional[DiscreteTimeAdapter] = None,
         vad_config: Optional[VADConfig] = None,
-        send_audio_instant: bool = True,
-        buffer_until_complete: bool = False,
+        send_audio_instant: bool = DEFAULT_SEND_AUDIO_INSTANT,
         audio_format: Optional[AudioFormat] = None,
-        fast_forward_mode: bool = False,
         provider: AudioNativeProvider = DEFAULT_AUDIO_NATIVE_PROVIDER,
         model: Optional[str] = None,
         max_inactive_seconds: float = DEFAULT_AUDIO_NATIVE_MAX_INACTIVE_SECONDS,
         use_xml_prompt: bool = False,
         cascaded_config: Optional["CascadedConfig"] = None,
+        buffer_until_complete: bool = DEFAULT_BUFFER_UNTIL_COMPLETE,
+        fast_forward_mode: bool = DEFAULT_FAST_FORWARD_MODE,
     ):
         """Initialize the discrete-time audio native agent.
 
@@ -237,15 +227,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                 - OpenAI: OpenAIVADConfig (defaults to SERVER_VAD)
                 - Gemini: GeminiVADConfig (defaults to automatic VAD)
             send_audio_instant: If True, send audio instantly (discrete-time mode).
-            buffer_until_complete: If True, wait until an utterance is complete
-                                   before including its audio/text in results.
-                                   Only supported by the OpenAI provider.
             audio_format: Audio format for external communication. Defaults to
                 telephony (8kHz μ-law). Note: Gemini uses different internal
                 formats (16kHz/24kHz PCM16) with automatic conversion.
-            fast_forward_mode: If True, exit tick early when we have enough audio
-                buffered (>= bytes_per_tick), rather than waiting for wall-clock time.
-                Only supported by the OpenAI provider.
             provider: Audio native provider to use. Options:
                 - "openai": OpenAI Realtime API (DEFAULT_AUDIO_NATIVE_PROVIDER)
                 - "gemini": Google Gemini Live API
@@ -260,6 +244,12 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             cascaded_config: Configuration for cascaded (STT→LLM→TTS) providers.
                 Only used when provider="livekit". Ignored for other providers.
                 Can be a CascadedConfig instance or None to use defaults.
+            buffer_until_complete: If True, wait until an utterance is complete
+                        before including its audio/text in results.
+                        Only supported by the OpenAI provider.
+            fast_forward_mode: If True, exit tick early when we have enough audio
+                buffered (>= bytes_per_tick), rather than waiting for wall-clock time.
+                Only supported by the OpenAI provider.
         """
         self.tools = tools
         self.domain_policy = domain_policy
@@ -267,40 +257,12 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.modality = modality
         self.send_audio_instant = send_audio_instant
         self.buffer_until_complete = buffer_until_complete
-        if self.buffer_until_complete and provider != "openai":
-            raise ValueError(
-                f"buffer_until_complete is only supported by the 'openai' provider, "
-                f"got provider='{provider}'."
-            )
         self.fast_forward_mode = fast_forward_mode
-        if self.fast_forward_mode:
-            if provider != "openai":
-                raise ValueError(
-                    f"fast_forward_mode is only supported by the 'openai' provider, "
-                    f"got provider='{provider}'."
-                )
-            logger.warning(
-                "Fast-forward mode is enabled. The simulation will run as fast as "
-                "possible rather than in real-time. This may affect timing-sensitive "
-                "behaviors and produce results that differ from real-time execution."
-            )
         self.provider = provider
         self.use_xml_prompt = use_xml_prompt
         self.model = model
         self.max_inactive_seconds = max_inactive_seconds
         self.cascaded_config = cascaded_config
-        if self.model is None:
-            if self.provider == "livekit":
-                # LiveKit uses CascadedConfig for model selection
-                from tau2.voice.audio_native.livekit.config import CascadedConfig
-
-                config = self.cascaded_config or CascadedConfig()
-                self.model = config.llm.model
-            else:
-                self.model = DEFAULT_AUDIO_NATIVE_MODELS[self.provider]
-            logger.debug(
-                f"No model provided, using default model for provider {self.provider}: {self.model}"
-            )
 
         # Audio format (defaults to telephony)
         self.audio_format = audio_format or TELEPHONY_AUDIO_FORMAT
@@ -374,57 +336,16 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
     def adapter(self) -> DiscreteTimeAdapter:
         """Get the adapter, creating it if needed based on provider."""
         if self._adapter is None:
-            if self.provider == "openai":
-                self._adapter = DiscreteTimeAudioNativeAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                    buffer_until_complete=self.buffer_until_complete,
-                    model=self.model,
-                    audio_format=self.audio_format,
-                    fast_forward_mode=self.fast_forward_mode,
-                )
-            elif self.provider == "gemini":
-                self._adapter = DiscreteTimeGeminiAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                    model=self.model,
-                )
-            elif self.provider == "xai":
-                self._adapter = DiscreteTimeXAIAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                )
-            elif self.provider == "nova":
-                self._adapter = DiscreteTimeNovaAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                )
-            elif self.provider == "qwen":
-                self._adapter = DiscreteTimeQwenAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                )
-            elif self.provider == "deepgram":
-                self._adapter = DiscreteTimeDeepgramAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    send_audio_instant=self.send_audio_instant,
-                    llm_model=self.model,
-                )
-            elif self.provider == "livekit":
-                from tau2.voice.audio_native.livekit.config import CascadedConfig
-                from tau2.voice.audio_native.livekit.discrete_time_adapter import (
-                    LiveKitCascadedAdapter,
-                )
-
-                config = self.cascaded_config or CascadedConfig()
-                self._adapter = LiveKitCascadedAdapter(
-                    tick_duration_ms=self.tick_duration_ms,
-                    cascaded_config=config,
-                    send_audio_instant=self.send_audio_instant,
-                    audio_format=self.audio_format,
-                )
-            else:
-                raise ValueError(f"Unknown provider: {self.provider}")
+            self._adapter, self.model = create_adapter(
+                provider=self.provider,
+                tick_duration_ms=self.tick_duration_ms,
+                send_audio_instant=self.send_audio_instant,
+                buffer_until_complete=self.buffer_until_complete,
+                fast_forward_mode=self.fast_forward_mode,
+                model=self.model,
+                audio_format=self.audio_format,
+                cascaded_config=self.cascaded_config,
+            )
         return self._adapter
 
     def get_init_state(

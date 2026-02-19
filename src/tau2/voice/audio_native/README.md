@@ -64,8 +64,9 @@ This module provides end-to-end audio processing via provider-specific realtime 
 audio_native/
 ├── README.md                    # This file
 ├── __init__.py                  # Re-exports from openai/
-├── adapter.py                   # Abstract base class:
+├── adapter.py                   # Abstract base class + factory:
 │                                #   - DiscreteTimeAdapter (tick-based)
+│                                #   - create_adapter() factory function
 ├── tick_result.py               # Shared TickResult, UtteranceTranscript
 ├── openai/
 │   ├── __init__.py              # Public exports for OpenAI implementation
@@ -195,6 +196,27 @@ The key difference is that `DiscreteTimeAdapter.run_tick()` handles one complete
 - Collects events for tick duration
 - Returns agent audio (capped to tick duration)
 - Returns proportional transcript
+
+#### `create_adapter()` (Factory Function)
+
+Creates the correct adapter subclass for a given provider, handling parameter validation and model default resolution in one place. This is the single entry point for adapter construction — `DiscreteTimeAudioNativeAgent` delegates to it, and new providers must register here.
+
+```python
+from tau2.voice.audio_native import create_adapter
+
+adapter, resolved_model = create_adapter(
+    provider="gemini",
+    tick_duration_ms=1000,
+    send_audio_instant=True,
+    model=None,  # uses provider default
+)
+```
+
+The factory:
+1. **Validates parameters** — raises `ValueError` if OpenAI-only parameters (`buffer_until_complete`, `fast_forward_mode`) are used with other providers.
+2. **Resolves model defaults** — uses `DEFAULT_AUDIO_NATIVE_MODELS[provider]` when no model is given, or the `CascadedConfig` default for livekit.
+3. **Warns on unsupported model selection** — logs a warning if `model` is provided for providers that ignore it (xai, nova, qwen).
+4. **Constructs the adapter** — returns `(adapter, resolved_model)` so callers also get the effective model name.
 
 #### `AudioNativeResponse`
 
@@ -545,7 +567,7 @@ if response.error:
 
 ## Adding New Providers
 
-For detailed requirements and implementation steps, see [`.cursor/rules/audio-native-provider.md`](../../../.cursor/rules/audio-native-provider.md).
+For detailed requirements and implementation steps, see [`.cursor/rules/audio-native-provider.md`](../../../.cursor/rules/audio-native-provider.md) and [AGENTS.md](AGENTS.md).
 
 Quick overview:
 1. Create `audio_native/<provider>/` directory
@@ -553,6 +575,8 @@ Quick overview:
 3. Implement `provider.py` with async API client
 4. Implement `discrete_time_adapter.py` extending `DiscreteTimeAdapter`
 5. Add audio conversion utilities if needed (`audio_utils.py`)
-6. Wire into `DiscreteTimeAudioNativeAgent` and CLI
+6. Register the new adapter in `create_adapter()` in `adapter.py`
+7. Add provider config defaults to `src/tau2/config.py`
+8. Add CLI option in `cli.py`
 
-The abstract `DiscreteTimeAdapter` interface ensures agents can work with any provider.
+The `create_adapter()` factory in `adapter.py` is the central place where all adapter construction and parameter validation lives. The `DiscreteTimeAudioNativeAgent` delegates to it, so new providers only need to be added to the factory — not to the agent itself.

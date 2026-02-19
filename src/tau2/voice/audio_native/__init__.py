@@ -4,7 +4,7 @@ Native voice providers for end-to-end voice/text processing.
 Contains adapter and provider implementations for native voice APIs like OpenAI Realtime.
 """
 
-from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
+from tau2.voice.audio_native.adapter import DiscreteTimeAdapter, create_adapter
 from tau2.voice.audio_native.openai import (
     AudioDeltaEvent,
     AudioDoneEvent,
@@ -34,8 +34,9 @@ from tau2.voice.audio_native.openai import (
 from tau2.voice.audio_native.tick_result import TickResult, UtteranceTranscript
 
 __all__ = [
-    # Abstract adapters (discrete-time pattern only)
+    # Abstract adapters and factory (discrete-time pattern only)
     "DiscreteTimeAdapter",
+    "create_adapter",
     # OpenAI adapters
     "DiscreteTimeAudioNativeAdapter",
     # Config (OpenAI-specific)
