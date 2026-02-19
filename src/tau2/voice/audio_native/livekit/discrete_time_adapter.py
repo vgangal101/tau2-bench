@@ -37,7 +37,7 @@ from pydantic import BaseModel
 # This is handled by _preregister_livekit_plugins() in tau2/run.py, which is called
 # before ThreadPoolExecutor creates worker threads. Do NOT import livekit.plugins
 # at module level here as this module may be imported from worker threads.
-from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioFormat
+from tau2.data_model.audio import AudioFormat
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -86,7 +86,6 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         cascaded_config: Optional[CascadedConfig] = None,
         turn_taking_config: Optional[TurnTakingConfig] = None,
         send_audio_instant: bool = True,
-        fast_forward_mode: bool = False,
         audio_format: Optional[AudioFormat] = None,
     ):
         """Initialize the cascaded adapter.
@@ -96,23 +95,13 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
             cascaded_config: Configuration for the cascade. Uses defaults if None.
             turn_taking_config: Turn-taking behavior config. Uses defaults if None.
             send_audio_instant: If True, send audio in one call per tick.
-            fast_forward_mode: If True, exit tick early when enough audio is buffered.
             audio_format: External audio format. Defaults to telephony (8kHz μ-law).
         """
-        if tick_duration_ms <= 0:
-            raise ValueError(f"tick_duration_ms must be > 0, got {tick_duration_ms}")
+        super().__init__(tick_duration_ms, audio_format=audio_format)
 
-        self.tick_duration_ms = tick_duration_ms
         self.cascaded_config = cascaded_config or CascadedConfig()
         self.turn_taking_config = turn_taking_config or TurnTakingConfig()
         self.send_audio_instant = send_audio_instant
-        self.fast_forward_mode = fast_forward_mode
-
-        # Audio format (external interface)
-        self.audio_format = audio_format or TELEPHONY_AUDIO_FORMAT
-        self.bytes_per_tick = int(
-            self.audio_format.bytes_per_second * tick_duration_ms / 1000
-        )
 
         # Core provider (contains all pipeline logic)
         self._provider: Optional[CascadedVoiceProvider] = None

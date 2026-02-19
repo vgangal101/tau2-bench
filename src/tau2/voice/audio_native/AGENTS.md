@@ -20,6 +20,16 @@ When modifying or creating `events.py`, base models exclusively on that provider
 
 Add user-facing config defaults (model names, tick durations, etc.) to `src/tau2/config.py` — the single source of truth. Import constants from there; do not define local duplicates in provider modules.
 
+### Shared Adapter Utilities
+
+New adapters should reuse the shared building blocks instead of reimplementing them:
+
+- **`BackgroundAsyncLoop`** (`async_loop.py`) — manages a background thread + asyncio event loop. Use `self._bg_loop = BackgroundAsyncLoop()` and call `start()`, `run_coroutine()`, `stop()` instead of manually creating threads and calling `asyncio.run_coroutine_threadsafe`.
+- **`buffer_excess_audio()`** (`tick_result.py`) — caps `result.agent_audio_chunks` to `bytes_per_tick`, returns excess to buffer. Handles both normal and truncated (interruption) cases.
+- **`get_proportional_transcript()`** (`tick_result.py`) — computes proportional transcript from audio chunks and `UtteranceTranscript` trackers. Accepts an optional `item_id_map` for providers where audio and text arrive under different IDs (e.g., Nova).
+
+See the "Shared Adapter Utilities" section in `README.md` for usage examples.
+
 ### Modifying Existing Providers
 
 When fixing bugs or updating an existing provider:
@@ -177,7 +187,12 @@ Bridge provider to `DiscreteTimeAdapter` interface:
 - Proportional transcript distribution across ticks
 - Tool call coordination
 
-Reference: `src/tau2/voice/audio_native/adapter.py` for interface definition.
+Use the shared utilities instead of reimplementing common logic:
+- `BackgroundAsyncLoop` from `async_loop.py` for the background event loop
+- `buffer_excess_audio()` from `tick_result.py` for audio capping/buffering
+- `get_proportional_transcript()` from `tick_result.py` for transcript distribution
+
+Reference: `src/tau2/voice/audio_native/adapter.py` for interface definition. Study an existing adapter (e.g., `xai/discrete_time_adapter.py`) for the standard tick lifecycle pattern.
 
 #### Step 6: Add Audio Conversion Utilities (`audio_utils.py`)
 
@@ -185,13 +200,19 @@ Only needed if provider doesn't support 8kHz μ-law (G.711). Convert between:
 - Telephony format: 8kHz mono μ-law
 - Provider format: Usually 16kHz/24kHz mono linear16 PCM
 
-#### Step 7: Wire into Agent Factory
+#### Step 7: Register in Adapter Factory
 
-1. Add provider to `DiscreteTimeAudioNativeAgent` factory
-2. Add CLI option: `--audio-native-provider {provider_name}`
-3. Update `cli.py` with new provider choice
-4. **Add user-facing config default to `src/tau2/config.py`** (single source of truth):
-   - Import these constants in your `provider.py` instead of defining local duplicates
+Add the new adapter to the `create_adapter()` factory function in `src/tau2/voice/audio_native/adapter.py`. This is the **single entry point** for adapter construction — `DiscreteTimeAudioNativeAgent` delegates to it.
+
+1. Add a new `elif provider == "{provider_name}":` branch in `create_adapter()` with a lazy import of your adapter class (inside the branch body, to avoid circular imports).
+2. Pass the relevant parameters to your adapter's constructor. If the provider doesn't support model selection, add it to `_PROVIDERS_WITHOUT_MODEL_SELECTION` at the top of the file so users get a warning.
+3. Add CLI option: `--audio-native-provider {provider_name}` in `cli.py`.
+4. **Add user-facing config defaults to `src/tau2/config.py`** (single source of truth):
+   - Add the default model to `DEFAULT_AUDIO_NATIVE_MODELS` dict.
+   - Add the provider name to `AUDIO_NATIVE_PROVIDER_TYPES`.
+   - Import these constants in your `provider.py` instead of defining local duplicates.
+
+**Do NOT** add adapter construction or parameter validation logic in `DiscreteTimeAudioNativeAgent` — all of that belongs in `create_adapter()`.
 
 #### Step 8: End-to-End Testing
 

@@ -571,12 +571,11 @@ class TestCleanup:
         When an external adapter is provided, the agent does NOT disconnect it.
         """
         # Create agent without adapter - it will create and own one
+        mock_adapter_instance = MagicMock()
         with patch(
-            "tau2.agent.discrete_time_audio_native_agent.DiscreteTimeAudioNativeAdapter"
-        ) as MockAdapter:
-            mock_adapter_instance = MagicMock()
-            MockAdapter.return_value = mock_adapter_instance
-
+            "tau2.agent.discrete_time_audio_native_agent.create_adapter",
+            return_value=(mock_adapter_instance, "gpt-realtime-2026-01-12"),
+        ):
             agent = DiscreteTimeAudioNativeAgent(
                 tools=mock_tools,
                 domain_policy=domain_policy,
@@ -617,12 +616,11 @@ class TestCleanup:
         domain_policy: str,
     ):
         """Test that cleanup() disconnects the adapter when the agent owns it."""
+        mock_adapter_instance = MagicMock()
         with patch(
-            "tau2.agent.discrete_time_audio_native_agent.DiscreteTimeAudioNativeAdapter"
-        ) as MockAdapter:
-            mock_adapter_instance = MagicMock()
-            MockAdapter.return_value = mock_adapter_instance
-
+            "tau2.agent.discrete_time_audio_native_agent.create_adapter",
+            return_value=(mock_adapter_instance, "gpt-realtime-2026-01-12"),
+        ):
             agent = DiscreteTimeAudioNativeAgent(
                 tools=mock_tools,
                 domain_policy=domain_policy,

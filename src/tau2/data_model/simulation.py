@@ -153,11 +153,11 @@ class AudioNativeConfig(BaseModel):
     # Agent behavior
     buffer_until_complete: bool = Field(
         default=DEFAULT_BUFFER_UNTIL_COMPLETE,
-        description="Buffer audio until complete utterance",
+        description="Buffer audio until complete utterance (OpenAI only)",
     )
     fast_forward_mode: bool = Field(
         default=DEFAULT_FAST_FORWARD_MODE,
-        description="Skip wall-clock waiting when enough audio is buffered",
+        description="Skip wall-clock waiting when enough audio is buffered (OpenAI only)",
     )
     use_xml_prompt: bool = Field(
         default=False,
