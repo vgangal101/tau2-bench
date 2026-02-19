@@ -3,7 +3,7 @@
   "description": {
     "purpose": "Task: task_056",
     "relevant_policies": null,
-    "notes": "TWO-PART BUSINESS ACCOUNT SELECTION + FUND TRANSFER: Small business owner needs help selecting BOTH a new business checking account AND a business savings account, then funding the savings account. User ALREADY HAS a Navy Blue business checking (opened 08/01/2025, $3,200 balance, 3+ months old) which satisfies the 30-day tenure and $2,500 balance requirements for opening business savings. PART 1 - BUSINESS CHECKING: User wants to UPGRADE to a better business checking. Criteria progressively narrow to Cobalt Blue: (1) Zero overdraft fees - eliminates True Blue, World Blue; (2) Monthly fee under $50 - eliminates Beige; (3) ATM rebate at least $15/month - eliminates Navy Blue (his current account); (4) Fee waiver under $5k - eliminates Lime Green, Sky Blue; (5) Debit card cashback on general purchases - eliminates Hunter Green. PART 2 - BUSINESS SAVINGS: After opening Cobalt Blue, user asks about business savings. Criteria narrow to Silver Plus Saver: (1) Same-day ACH required - eliminates Bronze, Silver, Emerald; (2) Min balance under $25k - eliminates Platinum, Diamond; (3) At least 15 withdrawals/month - eliminates Gold (sweep-focused); (4) Relationship bonus for multiple products - confirms Silver Plus (+0.75%). PART 3 - FUND TRANSFER: Agent offers to transfer opening deposit from business checking (per policy). User accepts transfer of $3,200 from Navy Blue business checking to fund the business savings. Agent uses transfer_funds_between_bank_accounts_7291."
+    "notes": "TWO-PART BUSINESS ACCOUNT SELECTION + FUND TRANSFER: Small business owner needs help selecting BOTH a new business checking account AND a business savings account, then funding the savings account. User ALREADY HAS a Navy Blue business checking (opened 08/01/2025, $3,200 balance, 3+ months old) which satisfies the 30-day tenure and $2,500 balance requirements for opening business savings. PART 1 - BUSINESS CHECKING: User wants to UPGRADE to a better business checking. Criteria progressively narrow to Cobalt Blue: (1) Zero overdraft fees - eliminates True Blue, World Blue; (2) Monthly fee under $50 - eliminates Beige; (3) ATM rebate at least $15/month - eliminates Navy Blue (his current account); (4) Fee waiver under $5k - eliminates Lime Green, Sky Blue; (5) Debit card cashback on general purchases - eliminates Hunter Green. PART 2 - BUSINESS SAVINGS: After opening Cobalt Blue, user asks about business savings. Criteria narrow to Silver Plus Saver: (1) Same-day ACH required - eliminates Bronze, Silver, Emerald; (2) Min balance under $25k - eliminates Platinum, Diamond; (3) At least 15 withdrawals/month - eliminates Gold (sweep-focused); (4) Relationship bonus for multiple products - confirms Silver Plus (+0.025%). PART 3 - FUND TRANSFER: Agent offers to transfer opening deposit from business checking (per policy). User accepts transfer of $3,200 from Navy Blue business checking to fund the business savings. Agent uses transfer_funds_between_bank_accounts_7291."
   },
   "user_scenario": {
     "persona": null,
@@ -106,6 +106,9 @@
     "doc_business_checking_accounts_cobalt_blue_002",
     "doc_business_checking_accounts_cobalt_blue_004",
     "doc_business_checking_accounts_cobalt_blue_006",
-    "doc_business_savings_accounts_silver_plus_saver_001"
+    "doc_business_savings_accounts_silver_plus_saver_001",
+    "doc_business_savings_accounts_silver_plus_saver_002",
+    "doc_business_savings_accounts_silver_plus_saver_003",
+    "doc_business_savings_accounts_silver_plus_saver_006"
   ]
 }
