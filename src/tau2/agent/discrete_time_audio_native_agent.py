@@ -239,7 +239,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             send_audio_instant: If True, send audio instantly (discrete-time mode).
             buffer_until_complete: If True, wait until an utterance is complete
                                    before including its audio/text in results.
-                                   Only applies to OpenAI provider.
+                                   Only supported by the OpenAI provider.
             audio_format: Audio format for external communication. Defaults to
                 telephony (8kHz μ-law). Note: Gemini uses different internal
                 formats (16kHz/24kHz PCM16) with automatic conversion.
@@ -267,6 +267,11 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         self.modality = modality
         self.send_audio_instant = send_audio_instant
         self.buffer_until_complete = buffer_until_complete
+        if self.buffer_until_complete and provider != "openai":
+            raise ValueError(
+                f"buffer_until_complete is only supported by the 'openai' provider, "
+                f"got provider='{provider}'."
+            )
         self.fast_forward_mode = fast_forward_mode
         if self.fast_forward_mode:
             if provider != "openai":

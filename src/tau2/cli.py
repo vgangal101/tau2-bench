@@ -6,7 +6,6 @@ from tau2.config import (
     DEFAULT_AGENT_IMPLEMENTATION,
     DEFAULT_AUDIO_NATIVE_MODELS,
     DEFAULT_AUDIO_NATIVE_PROVIDER,
-    DEFAULT_BUFFER_UNTIL_COMPLETE,
     DEFAULT_INTEGRATION_DURATION_SECONDS,
     DEFAULT_INTERRUPTION_CHECK_INTERVAL_SECONDS,
     DEFAULT_LLM_AGENT,
@@ -341,10 +340,10 @@ def add_run_args(parser):
 
     # Audio-native: Agent behavior flags
     parser.add_argument(
-        "--no-buffer-until-complete",
+        "--buffer-until-complete",
         action="store_true",
         default=False,
-        help=f"Don't buffer audio until complete utterance. Default is {DEFAULT_BUFFER_UNTIL_COMPLETE}.",
+        help="Buffer audio until complete utterance — OpenAI provider only. Default is disabled.",
     )
     parser.add_argument(
         "--fast-forward",
@@ -614,7 +613,7 @@ def main():
                 integration_duration_seconds=args.integration_duration,
                 silence_annotation_threshold_seconds=args.silence_annotation_threshold,
                 # Agent behavior
-                buffer_until_complete=not args.no_buffer_until_complete,
+                buffer_until_complete=args.buffer_until_complete,
                 fast_forward_mode=args.fast_forward,
                 send_audio_instant=args.send_audio_instant,
                 use_xml_prompt=use_xml_prompt,
