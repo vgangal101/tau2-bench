@@ -370,6 +370,7 @@
     "request_human_agent_transfer"
   ],
   "required_documents": [
+    "doc_bank_accounts_bank_accounts_(general)_028",
     "doc_bank_accounts_bank_accounts_(general)_031",
     "doc_bank_accounts_bank_accounts_(general)_032",
     "doc_bank_accounts_bank_accounts_(general)_033",
