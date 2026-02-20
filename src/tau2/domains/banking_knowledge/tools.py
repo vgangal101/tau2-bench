@@ -937,7 +937,7 @@ class KnowledgeTools(ToolKitBase):
             police_report_filed (boolean): Whether a police report has been filed (recommended for fraud over $500)
             written_statement_provided (boolean): Whether the customer has provided a written statement describing what happened (required for Reg E provisional credit)
             provisional_credit_eligible (boolean): Whether the user is eligible for provisional credit based on Debit Card Provisional Credit Guidelines
-            customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules. Use -1 for unlimited liability.
+            customer_max_liability_amount (number): The maximum dollar amount the customer could be liable for based on Regulation E reporting timing rules and the disputed amount. Use -1 for unlimited liability.
             card_action (string): Action to take on the card. Must be one of: 'keep_active', 'freeze_pending_investigation', 'close_and_reissue'
 
         Returns:
