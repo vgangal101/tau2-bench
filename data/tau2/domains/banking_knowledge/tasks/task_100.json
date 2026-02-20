@@ -105,6 +105,7 @@
     "submit_referral"
   ],
   "required_documents": [
+    "doc_bank_accounts_bank_accounts_(general)_009",
     "doc_bank_accounts_bank_accounts_(general)_047",
     "doc_bank_accounts_bank_accounts_(general)_048",
     "doc_business_checking_accounts_navy_blue_001",
