@@ -290,8 +290,12 @@
         "action_id": "102_2"
       }
     ],
+    "nl_assertions": [
+      "The agent should recommend TechFlow Labs (not Ember Analytics) for the Sky Blue Account referral, recognizing that Ember Analytics exceeds the 4-year company age limit for Sky Blue eligibility."
+    ],
     "reward_basis": [
-      "DB"
+      "DB",
+      "NL_ASSERTION"
     ]
   },
   "annotations": null,
