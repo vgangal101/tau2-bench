@@ -1,5 +1,6 @@
 *.tmp
 .DS_Store
+profile.json
 tmp.*
 tmp_*
 tmp-*

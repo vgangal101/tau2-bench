@@ -88,6 +88,7 @@
   ],
   "required_documents": [
     "doc_credit_cards_credit_card_account_logistics_003",
+    "doc_credit_cards_credit_card_account_logistics_009",
     "doc_credit_cards_credit_cards_(general)_016"
   ]
 }
