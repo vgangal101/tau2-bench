@@ -474,12 +474,15 @@ class TestToolHandling:
         self,
         agent_with_mock_adapter: DiscreteTimeAudioNativeAgent,
         mock_adapter,
+        user_audio_message: UserMessage,
     ):
         """Test that tool results are sent to the adapter."""
         state = agent_with_mock_adapter.get_init_state()
 
         tool_msg = ToolMessage(role="tool", id="call_123", content="Tool result")
-        agent_with_mock_adapter.get_next_chunk(state, tool_msg)
+        agent_with_mock_adapter.get_next_chunk(
+            state, participant_chunk=user_audio_message, tool_results=tool_msg
+        )
 
         # Verify send_tool_result was called
         mock_adapter.send_tool_result.assert_called_once()
@@ -488,6 +491,7 @@ class TestToolHandling:
         self,
         agent_with_mock_adapter: DiscreteTimeAudioNativeAgent,
         mock_adapter,
+        user_audio_message: UserMessage,
     ):
         """Test that MultiToolMessage sends all results."""
         state = agent_with_mock_adapter.get_init_state()
@@ -499,7 +503,9 @@ class TestToolHandling:
                 ToolMessage(role="tool", id="call_2", content="Result 2"),
             ],
         )
-        agent_with_mock_adapter.get_next_chunk(state, multi_tool)
+        agent_with_mock_adapter.get_next_chunk(
+            state, participant_chunk=user_audio_message, tool_results=multi_tool
+        )
 
         # Should have sent two tool results
         assert mock_adapter.send_tool_result.call_count == 2

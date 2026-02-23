@@ -108,6 +108,14 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         self.current_agent_chunk: Optional[AssistantMessage] = None
         self.tick_duration_seconds = tick_duration_seconds
 
+        # Pending tool results: executed this tick, delivered to participant next tick.
+        # This decouples tool execution from the audio/tick loop so that:
+        # - No silence is injected during tool result delivery
+        # - Agent audio from the tool-call tick is preserved
+        # - User audio continuity is maintained
+        self.pending_agent_tool_results: Optional[Message] = None
+        self.pending_user_tool_results: Optional[Message] = None
+
         # Tick-based trajectory structure
         self.ticks: list[Tick] = []
 
@@ -209,7 +217,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         # Get first user chunk
         self.user_state = self.user.get_init_state()
         self.current_user_chunk, self.user_state = self.user.get_next_chunk(
-            self.user_state, dummy_agent_message
+            self.user_state, participant_chunk=dummy_agent_message
         )
 
         # Initialize trajectory with first tick
@@ -262,7 +270,8 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         Perform one tick of full-duplex streaming communication.
 
         Both agent and user generate chunks simultaneously.
-        Tool calls are handled within the tick.
+        Tool calls are executed within the tick but results are delivered
+        on the next tick, keeping audio flow uninterrupted.
         All events are grouped into a single Tick object.
         """
         if self.done:
@@ -271,18 +280,20 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         tick_id = len(self.ticks)
         logger.debug(f"Tick {tick_id}. step_count={self.step_count}")
 
-        # Validate no pending tool calls at step start
+        # Sanity check: stored chunks should never carry tool_calls
+        # (tool_calls are stripped and tracked separately)
         if self.current_agent_chunk and self.current_agent_chunk.is_tool_call():
             raise ValueError(
-                f"Agent should not have a tool call at step start: {self.current_agent_chunk}"
+                f"Agent chunk should not have tool_calls at step start: "
+                f"{self.current_agent_chunk}"
             )
         if self.current_user_chunk and self.current_user_chunk.is_tool_call():
             raise ValueError(
-                f"User should not have a tool call at step start: {self.current_user_chunk}"
+                f"User chunk should not have tool_calls at step start: "
+                f"{self.current_user_chunk}"
             )
 
-        # Create new tick - use len(self.ticks) for sequential tick_id
-        # (step_count may jump due to tool call processing)
+        # Create new tick
         tick_start_time = time.perf_counter()
         tick = Tick(
             tick_id=tick_id,
@@ -304,30 +315,44 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         )
 
         # --- 1. Process user turn ---
-        user_chunk, self.user_state, user_tool_calls, user_tool_results = (
-            self._process_participant_turn(
-                participant=self.user,
-                state=self.user_state,
-                incoming_chunk=incoming_for_user,
-                is_agent=False,
-            )
+        (
+            user_chunk,
+            self.user_state,
+            user_tool_calls,
+            user_tool_results,
+        ) = self._process_participant_turn(
+            participant=self.user,
+            state=self.user_state,
+            incoming_chunk=incoming_for_user,
+            is_agent=False,
+            pending_tool_results=self.pending_user_tool_results,
         )
         tick.user_chunk = deepcopy(user_chunk)
         tick.user_tool_calls = [deepcopy(tc) for tc in user_tool_calls]
         tick.user_tool_results = [deepcopy(r) for r in user_tool_results]
+        self.pending_user_tool_results = (
+            self._wrap_tool_results(user_tool_results) if user_tool_results else None
+        )
 
         # --- 2. Process agent turn ---
-        agent_chunk, self.agent_state, agent_tool_calls, agent_tool_results = (
-            self._process_participant_turn(
-                participant=self.agent,
-                state=self.agent_state,
-                incoming_chunk=incoming_for_agent,
-                is_agent=True,
-            )
+        (
+            agent_chunk,
+            self.agent_state,
+            agent_tool_calls,
+            agent_tool_results,
+        ) = self._process_participant_turn(
+            participant=self.agent,
+            state=self.agent_state,
+            incoming_chunk=incoming_for_agent,
+            is_agent=True,
+            pending_tool_results=self.pending_agent_tool_results,
         )
         tick.agent_chunk = deepcopy(agent_chunk)
         tick.agent_tool_calls = [deepcopy(tc) for tc in agent_tool_calls]
         tick.agent_tool_results = [deepcopy(r) for r in agent_tool_results]
+        self.pending_agent_tool_results = (
+            self._wrap_tool_results(agent_tool_results) if agent_tool_results else None
+        )
 
         # --- 3. Update state and bookkeeping ---
         self.current_user_chunk = user_chunk
@@ -362,36 +387,54 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         state: Any,
         incoming_chunk: Optional[Message],
         is_agent: bool,
+        pending_tool_results: Optional[Message] = None,
     ) -> tuple[Message, Any, list[ToolCall], list[ToolMessage]]:
         """
-        Process a participant's turn: receive chunk, respond, handle tool calls.
+        Process a participant's turn with dual-channel input.
 
-        This unified method handles both agent and user turns, reducing code duplication.
+        The participant receives both channels in a single get_next_chunk call:
+        - participant_chunk: speech/audio from the other participant
+        - tool_results: results from previously executed tool calls (if any)
+
+        If the participant's response contains tool calls, they are executed
+        immediately. The caller is responsible for wrapping them via
+        _wrap_tool_results and storing as pending for the next tick.
 
         Args:
             participant: The agent or user instance.
             state: The current state of the participant.
-            incoming_chunk: The incoming message chunk to process.
+            incoming_chunk: The incoming message chunk from the other participant.
             is_agent: True if processing agent, False if processing user.
+            pending_tool_results: Tool results from previous tick to deliver.
 
         Returns:
-            Tuple of (final_chunk, new_state, tool_calls, tool_results).
+            Tuple of (chunk, new_state, tool_calls, tool_results).
         """
         participant_name = "AGENT" if is_agent else "USER"
 
-        # Determine stop checker and termination reason based on participant type
         is_stop = self.agent.is_stop if is_agent else UserSimulator.is_stop
         termination_reason = (
             TerminationReason.AGENT_STOP if is_agent else TerminationReason.USER_STOP
         )
 
-        # Get next chunk from participant
+        new_state = state
+
+        if pending_tool_results is not None:
+            logger.debug(
+                f"  [{participant_name}] Delivering tool results alongside "
+                f"participant chunk"
+            )
+
+        # Single get_next_chunk call with both channels
         logger.debug(f"  [{participant_name}] Calling get_next_chunk...")
         new_chunk, new_state = participant.get_next_chunk(
-            state=state, incoming_chunk=incoming_chunk
+            state=new_state,
+            participant_chunk=incoming_chunk,
+            tool_results=pending_tool_results,
         )
         logger.debug(
-            f"  [{participant_name}] Returned chunk: {self._format_chunk_summary(new_chunk, 'chunk')}"
+            f"  [{participant_name}] Returned chunk: "
+            f"{self._format_chunk_summary(new_chunk, 'chunk')}"
         )
 
         # Validate and check stop condition
@@ -402,25 +445,19 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             self.done = True
             self.termination_reason = termination_reason
 
-        # Handle tool calls - track all tool calls made
+        # Handle tool calls: execute now, deliver results next tick
         tool_calls: list[ToolCall] = []
         tool_results: list[ToolMessage] = []
-        tool_call_iteration = 0
-        while new_chunk and new_chunk.is_tool_call():
-            tool_call_iteration += 1
-            current_tool_names = [tc.name for tc in new_chunk.tool_calls]
-            logger.info(
-                f"  [{participant_name}] Tool call iteration {tool_call_iteration}: {current_tool_names}"
-            )
 
-            # Collect tool calls from this chunk
-            tool_calls.extend(new_chunk.tool_calls)
-            results = self._execute_tool_calls(new_chunk.tool_calls)
-            tool_results.extend(results)
-            self.step_count += 1
+        if new_chunk and new_chunk.is_tool_call():
+            tool_calls = list(new_chunk.tool_calls)
+            tool_names = [tc.name for tc in tool_calls]
+            logger.info(f"  [{participant_name}] Tool calls: {tool_names}")
 
-            # Log tool results summary
-            for tc, result in zip(new_chunk.tool_calls, results):
+            results = self._execute_tool_calls(tool_calls)
+            tool_results = list(results)
+
+            for tc, result in zip(tool_calls, results):
                 result_preview = (
                     result.content[:100] + "..."
                     if len(result.content) > 100
@@ -428,33 +465,13 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
                 )
                 logger.debug(f"  [{participant_name}]   {tc.name}() → {result_preview}")
 
-            tool_message = self._wrap_tool_results(results)
+            # Strip tool_calls from the chunk so it only carries speech/audio.
+            # Tool calls are tracked separately in tick.agent_tool_calls.
+            new_chunk.tool_calls = None
 
-            logger.debug(
-                f"  [{participant_name}] Getting next chunk after tool execution..."
-            )
-            new_chunk, new_state = participant.get_next_chunk(
-                state=new_state, incoming_chunk=tool_message
-            )
-            self.step_count += 1
-
-            logger.debug(
-                f"  [{participant_name}] Returned post-tool chunk: {self._format_chunk_summary(new_chunk, 'chunk')}"
-            )
-
-            if new_chunk.contains_speech:
-                new_chunk.validate()
-            if is_stop(new_chunk):
-                logger.info(
-                    f"  [{participant_name}] *** STOP signal detected (after tool call) ***"
-                )
-                self.done = True
-                self.termination_reason = termination_reason
-
-        if tool_call_iteration > 0:
             logger.info(
-                f"  [{participant_name}] Completed {tool_call_iteration} tool call iteration(s), "
-                f"total {len(tool_calls)} tool(s) executed"
+                f"  [{participant_name}] Executed {len(tool_calls)} tool(s), "
+                f"results pending for next tick"
             )
 
         return new_chunk, new_state, tool_calls, tool_results
@@ -522,9 +539,13 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         Returns:
             SimulationRun with all simulation data.
         """
-        # Send stop signals to agent and user
-        self.agent.stop(None, self.agent_state)
-        self.user.stop(None, self.user_state)
+        # Send stop signals to agent and user, forwarding any pending tool results
+        self.agent.stop(
+            None, self.agent_state, tool_results=self.pending_agent_tool_results
+        )
+        self.user.stop(
+            None, self.user_state, tool_results=self.pending_user_tool_results
+        )
 
         # Calculate duration
         duration = time.perf_counter() - self._run_start_perf

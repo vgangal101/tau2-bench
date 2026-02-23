@@ -16,6 +16,7 @@ from tau2.agent.base.participant import (
 )
 from tau2.data_model.message import (
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     MultiToolMessage,
     ToolMessage,
@@ -91,7 +92,7 @@ class HalfDuplexAgent(
 
 
 class FullDuplexAgent(
-    FullDuplexParticipant[ValidAgentInputMessage, AssistantMessage, AgentState],
+    FullDuplexParticipant[UserMessage, AssistantMessage, AgentState],
     ABC,
     Generic[AgentState],
 ):
@@ -113,14 +114,16 @@ class FullDuplexAgent(
 
     def stop(
         self,
-        message: Optional[ValidAgentInputMessage] = None,
+        participant_chunk: Optional[Message] = None,
         state: Optional[AgentState] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
         """
         Stops the agent.
         Args:
-            message: The last message to the agent.
+            participant_chunk: The last chunk from the user.
             state: The agent state.
+            tool_results: Any pending tool results not yet delivered.
         """
         pass
 
@@ -144,7 +147,7 @@ class HalfDuplexVoiceAgent(
 
 
 class FullDuplexVoiceAgent(
-    VoiceParticipantMixin[ValidAgentInputMessage, AssistantMessage],
+    VoiceParticipantMixin[UserMessage, AssistantMessage],
     FullDuplexAgent[AgentState],
     ABC,
     Generic[AgentState],

@@ -35,19 +35,23 @@ class ParticipantTick(BaseModel, Generic[InputMessageType, OutputMessageType]):
     Represents events from a single tick from a participant's perspective.
 
     In full-duplex mode, both parties can emit chunks simultaneously at each tick.
-    This captures "what I emitted" and "what I received" as concurrent events,
-    rather than implying a sequential request-response relationship.
+    This captures three concurrent channels per tick:
 
-    Tool calls and results flow naturally through this model:
-    - Tick N: I emit a tool call → self_chunk contains the tool call message
-    - Tick N+1: I receive tool results → other_chunk contains the ToolMessage
+    - self_chunk: what I emitted (speech, or a message containing tool_calls)
+    - other_chunk: speech/audio received from the other participant
+    - env_chunk: tool results received from the environment (ToolMessage or
+      MultiToolMessage), delivered in response to a tool call from a previous tick
+
+    Before linearization, ticks with env_chunk are expanded into old-format
+    ticks (env_chunk merged into other_chunk) by _expand_env_chunks, so that
+    linearization code sees the same structure as the base branch.
 
     Attributes:
         tick_id: The sequential identifier for this tick.
         timestamp: When this tick occurred.
         self_chunk: The chunk emitted by this participant (if any, may include tool calls).
-        other_chunk: The chunk received from the other participant or environment (if any).
-                    This includes speech from the other party OR tool results.
+        other_chunk: The chunk received from the other participant (speech/audio).
+        env_chunk: Tool results from the environment (ToolMessage or MultiToolMessage).
     """
 
     model_config = {"arbitrary_types_allowed": True}
@@ -56,6 +60,7 @@ class ParticipantTick(BaseModel, Generic[InputMessageType, OutputMessageType]):
     timestamp: str
     self_chunk: Optional[OutputMessageType] = None
     other_chunk: Optional[InputMessageType] = None
+    env_chunk: Optional[Message] = None
 
 
 class LinearizationStrategy(str, Enum):
@@ -219,6 +224,7 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
         timestamp: str,
         self_chunk: Optional[OutputMessageType],
         other_chunk: Optional[InputMessageType],
+        env_chunk: Optional[Message] = None,
     ) -> None:
         """
         Record a tick in the conversation history.
@@ -227,13 +233,15 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
             tick_id: The sequential tick identifier.
             timestamp: When this tick occurred.
             self_chunk: The chunk emitted by this participant (if any, may include tool calls).
-            other_chunk: The chunk received from the other participant or environment (if any).
+            other_chunk: The chunk received from the other participant (speech/audio).
+            env_chunk: Tool results from the environment (ToolMessage or MultiToolMessage).
         """
         tick = ParticipantTick(
             tick_id=tick_id,
             timestamp=timestamp,
             self_chunk=self_chunk,
             other_chunk=other_chunk,
+            env_chunk=env_chunk,
         )
         self.ticks.append(tick)
 
@@ -320,6 +328,10 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
                 )
                 ticks_to_process.append(temp_tick)
 
+        # Expand ticks with env_chunk into old-format ticks before linearization.
+        # This ensures linearization sees the same tick structure as the base branch.
+        ticks_to_process = _expand_env_chunks(ticks_to_process)
+
         messages = linearize_ticks(
             ticks_to_process,
             strategy,
@@ -365,6 +377,65 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
 # Silence period map: start_tick_idx -> silence annotation message
 # Maps the tick where silence starts to the pre-created annotation message
 _SilencePeriodMap = dict[int, Message]
+
+
+def _expand_env_chunks(
+    ticks: list[ParticipantTick],
+) -> list[ParticipantTick]:
+    """Expand ticks with env_chunk into old-format ticks for linearization.
+
+    In the dual-channel model, a tick can have both other_chunk (participant
+    speech) and env_chunk (tool results) simultaneously. The linearization
+    code expects tool results in other_chunk (as the base branch's while-loop
+    produced). This function expands such ticks into sequential old-format
+    ticks so linearization sees the same structure:
+
+    Input:  Tick {other_chunk=speech, self_chunk=response, env_chunk=tool_result}
+    Output: Tick {other_chunk=tool_result, self_chunk=response}   (tool result tick)
+            Tick {other_chunk=speech, self_chunk=None}             (speech tick, if present)
+
+    Ticks without env_chunk pass through unchanged. Tick IDs are reassigned
+    sequentially to remain unique.
+    """
+    expanded: list[ParticipantTick] = []
+    next_id = 0
+
+    for tick in ticks:
+        if tick.env_chunk is not None:
+            # Tool result tick: env_chunk becomes other_chunk, self_chunk stays
+            expanded.append(
+                ParticipantTick(
+                    tick_id=next_id,
+                    timestamp=tick.timestamp,
+                    self_chunk=tick.self_chunk,
+                    other_chunk=tick.env_chunk,
+                )
+            )
+            next_id += 1
+
+            # Speech tick: only if other_chunk has content
+            if tick.other_chunk is not None:
+                expanded.append(
+                    ParticipantTick(
+                        tick_id=next_id,
+                        timestamp=tick.timestamp,
+                        other_chunk=tick.other_chunk,
+                        self_chunk=None,
+                    )
+                )
+                next_id += 1
+        else:
+            expanded.append(
+                ParticipantTick(
+                    tick_id=next_id,
+                    timestamp=tick.timestamp,
+                    self_chunk=tick.self_chunk,
+                    other_chunk=tick.other_chunk,
+                )
+            )
+            next_id += 1
+
+    return expanded
 
 
 def linearize_ticks(
@@ -1271,6 +1342,9 @@ def _debug_save_linearization_call(
                 "other_chunk": (
                     _serialize_message(tick.other_chunk) if tick.other_chunk else None
                 ),
+                "env_chunk": (
+                    _serialize_message(tick.env_chunk) if tick.env_chunk else None
+                ),
             }
             ticks_data.append(tick_data)
         debug_data["ticks"] = ticks_data
@@ -1365,6 +1439,9 @@ def _debug_save_get_linearized_messages_call(
                 ),
                 "other_chunk": (
                     _serialize_message(tick.other_chunk) if tick.other_chunk else None
+                ),
+                "env_chunk": (
+                    _serialize_message(tick.env_chunk) if tick.env_chunk else None
                 ),
             }
             ticks_data.append(tick_data)
@@ -1862,7 +1939,8 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
     def get_next_chunk(
         self,
         state: StateType,
-        incoming_chunk: InputMessageType,
+        participant_chunk: InputMessageType,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> Tuple[OutputMessageType, StateType]:
         """
         Get the next chunk of the conversation.
@@ -1870,16 +1948,24 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         This implements BaseStreamingParticipant's abstract method.
         Records the tick (concurrent events) in the tick-based history.
 
+        Each tick, the participant receives two independent channels:
+        - participant_chunk: speech/audio from the other participant
+        - tool_results: results from previously executed tool calls (if any)
+
         Args:
             state: The current state of the conversation.
-            incoming_chunk: The incoming chunk from the other participant or environment.
+            participant_chunk: The incoming chunk from the other participant.
+            tool_results: Tool results from the environment (ToolMessage or
+                MultiToolMessage). None if no tool results are pending.
 
         Returns:
             A tuple of the next chunk and the updated state.
         """
         state.tick_count += 1
-        state.update_input_turn_taking_buffer(incoming_chunk)
-        is_speech_chunk = self.speech_detection(incoming_chunk)
+        if tool_results is not None:
+            state.update_input_turn_taking_buffer(tool_results)
+        state.update_input_turn_taking_buffer(participant_chunk)
+        is_speech_chunk = self.speech_detection(participant_chunk)
         logger.debug(f"Speech chunk detected: {is_speech_chunk}")
 
         agent_speech_just_started = (
@@ -1908,19 +1994,20 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         else:
             new_state.consecutive_self_speaking_ticks = 0
 
-        # Record this tick in the tick-based history
-        # For other_chunk, we record if:
-        # 1. It's a speech chunk (maintains backward compatibility), OR
-        # 2. It has meaningful content (_has_meaningful_content) - this ensures tool messages
-        #    (ToolMessage) are recorded even when they're not "speech", which is required
-        #    for proper tool call/response pairing in LLM context.
+        # Record this tick in the tick-based history.
+        # Both channels are recorded separately: other_chunk for participant speech,
+        # env_chunk for tool results. Before linearization, _expand_env_chunks
+        # transforms these into old-format ticks for backward compatibility.
         timestamp = get_now()
-        should_record_other = is_speech_chunk or _has_meaningful_content(incoming_chunk)
+        should_record_other = is_speech_chunk or _has_meaningful_content(
+            participant_chunk
+        )
         new_state.record_tick(
             tick_id=len(new_state.ticks),
             timestamp=timestamp,
             self_chunk=next_chunk if _has_meaningful_content(next_chunk) else None,
-            other_chunk=incoming_chunk if should_record_other else None,
+            other_chunk=participant_chunk if should_record_other else None,
+            env_chunk=tool_results,
         )
 
         return next_chunk, new_state

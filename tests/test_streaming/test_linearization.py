@@ -24,6 +24,7 @@ See: src/experiments/tau_voice/linearization/cases.md
 from tau2.agent.base.streaming import (
     LinearizationStrategy,
     ParticipantTick,
+    _expand_env_chunks,
     _has_meaningful_content,
     consolidate_messages,
     linearize_ticks,
@@ -750,3 +751,253 @@ class TestFixtures:
                         f"Fixture '{fixture.name}' message {i}: "
                         f"expected '{expected.content}', got '{msg.content}'"
                     )
+
+
+# =============================================================================
+# _expand_env_chunks Tests
+# =============================================================================
+
+
+class TestExpandEnvChunks:
+    """Tests for the _expand_env_chunks transformation."""
+
+    def test_no_env_chunks_passthrough(self):
+        """Ticks without env_chunk pass through unchanged."""
+        ticks = [
+            create_tick(0, self_chunk=assistant_msg("Hello")),
+            create_tick(1, other_chunk=user_msg("Hi")),
+            create_tick(
+                2, self_chunk=assistant_msg("How?"), other_chunk=user_msg("Good")
+            ),
+        ]
+        expanded = _expand_env_chunks(ticks)
+
+        assert len(expanded) == 3
+        assert expanded[0].self_chunk.content == "Hello"
+        assert expanded[1].other_chunk.content == "Hi"
+        assert expanded[2].self_chunk.content == "How?"
+        assert expanded[2].other_chunk.content == "Good"
+
+    def test_env_chunk_without_other_chunk(self):
+        """Tick with env_chunk but no other_chunk produces one expanded tick."""
+        tool_result = tool_result_msg("call_1", "shipped")
+        ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="t0",
+                self_chunk=assistant_msg("Your order shipped"),
+                other_chunk=None,
+                env_chunk=tool_result,
+            ),
+        ]
+        expanded = _expand_env_chunks(ticks)
+
+        assert len(expanded) == 1
+        assert expanded[0].other_chunk is tool_result
+        assert expanded[0].self_chunk.content == "Your order shipped"
+        assert expanded[0].env_chunk is None
+
+    def test_env_chunk_with_other_chunk(self):
+        """Tick with both env_chunk and other_chunk produces two expanded ticks."""
+        tool_result = tool_result_msg("call_1", "shipped")
+        speech = user_msg("Thanks")
+        response = assistant_msg("You're welcome")
+
+        ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="t0",
+                self_chunk=response,
+                other_chunk=speech,
+                env_chunk=tool_result,
+            ),
+        ]
+        expanded = _expand_env_chunks(ticks)
+
+        assert len(expanded) == 2
+        # First tick: tool result with response
+        assert expanded[0].other_chunk is tool_result
+        assert expanded[0].self_chunk is response
+        assert expanded[0].env_chunk is None
+        # Second tick: speech without response
+        assert expanded[1].other_chunk is speech
+        assert expanded[1].self_chunk is None
+        assert expanded[1].env_chunk is None
+
+    def test_tick_ids_are_sequential(self):
+        """Expanded ticks have sequential, unique tick IDs."""
+        ticks = [
+            create_tick(0, self_chunk=assistant_msg("A")),
+            ParticipantTick(
+                tick_id=1,
+                timestamp="t1",
+                self_chunk=assistant_msg("B"),
+                other_chunk=user_msg("C"),
+                env_chunk=tool_result_msg("call_1", "result"),
+            ),
+            create_tick(2, other_chunk=user_msg("D")),
+        ]
+        expanded = _expand_env_chunks(ticks)
+
+        assert len(expanded) == 4
+        assert [t.tick_id for t in expanded] == [0, 1, 2, 3]
+
+    def test_multi_tool_message_in_env_chunk(self):
+        """MultiToolMessage in env_chunk is handled correctly."""
+        multi_tool = MultiToolMessage(
+            role="tool",
+            tool_messages=[
+                ToolMessage(
+                    id="call_1", role="tool", content="R1", tool_call_id="call_1"
+                ),
+                ToolMessage(
+                    id="call_2", role="tool", content="R2", tool_call_id="call_2"
+                ),
+            ],
+        )
+        ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="t0",
+                self_chunk=assistant_msg("Here are results"),
+                other_chunk=None,
+                env_chunk=multi_tool,
+            ),
+        ]
+        expanded = _expand_env_chunks(ticks)
+
+        assert len(expanded) == 1
+        assert expanded[0].other_chunk is multi_tool
+
+
+# =============================================================================
+# End-to-end: linearization with env_chunk
+# =============================================================================
+
+
+class TestLinearizationWithEnvChunk:
+    """End-to-end tests verifying that linearization produces identical output
+    whether tool results are in other_chunk (old format) or env_chunk (new format)."""
+
+    def test_basic_tool_call_env_chunk_matches_old_format(self):
+        """Linearization with env_chunk matches linearization with other_chunk."""
+        # Old format (tool result in other_chunk, as existing tests use)
+        old_ticks = [
+            create_tick(0, self_chunk=assistant_msg("Let me check")),
+            create_tick(1, self_chunk=tool_call_msg("call_1", "get_order")),
+            create_tick(
+                2, other_chunk=tool_result_msg("call_1", '{"status": "shipped"}')
+            ),
+            create_tick(3, self_chunk=assistant_msg("Your order shipped")),
+        ]
+
+        # New format (tool result in env_chunk)
+        new_ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="2024-01-01T00:00:00",
+                self_chunk=assistant_msg("Let me check"),
+            ),
+            ParticipantTick(
+                tick_id=1,
+                timestamp="2024-01-01T00:00:01",
+                self_chunk=tool_call_msg("call_1", "get_order"),
+            ),
+            ParticipantTick(
+                tick_id=2,
+                timestamp="2024-01-01T00:00:02",
+                self_chunk=assistant_msg("Your order shipped"),
+                env_chunk=tool_result_msg("call_1", '{"status": "shipped"}'),
+            ),
+        ]
+
+        # Expand new format, then linearize both
+        expanded_ticks = _expand_env_chunks(new_ticks)
+        old_messages = linearize_ticks(
+            old_ticks, LinearizationStrategy.CONTAINMENT_AWARE
+        )
+        new_messages = linearize_ticks(
+            expanded_ticks, LinearizationStrategy.CONTAINMENT_AWARE
+        )
+
+        assert len(old_messages) == len(new_messages)
+        for old_msg, new_msg in zip(old_messages, new_messages):
+            assert type(old_msg) is type(new_msg)
+            assert old_msg.content == new_msg.content
+
+    def test_tool_call_with_simultaneous_speech(self):
+        """When tool results and speech arrive simultaneously, both are preserved."""
+        ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="2024-01-01T00:00:00",
+                self_chunk=tool_call_msg("call_1", "get_order"),
+            ),
+            ParticipantTick(
+                tick_id=1,
+                timestamp="2024-01-01T00:00:01",
+                self_chunk=assistant_msg("Your order shipped"),
+                other_chunk=user_msg("Any update?"),
+                env_chunk=tool_result_msg("call_1", '{"status": "shipped"}'),
+            ),
+        ]
+
+        expanded = _expand_env_chunks(ticks)
+        messages = linearize_ticks(expanded, LinearizationStrategy.CONTAINMENT_AWARE)
+
+        # Verify all content is present
+        contents = [m.content for m in messages]
+        tool_results = [m for m in messages if isinstance(m, ToolMessage)]
+        assert len(tool_results) == 1
+        assert '{"status": "shipped"}' in contents
+        assert "Your order shipped" in contents
+        assert "Any update?" in contents
+
+        # Verify tool call comes before tool result
+        tool_call_idx = next(
+            i
+            for i, m in enumerate(messages)
+            if hasattr(m, "tool_calls") and m.tool_calls
+        )
+        tool_result_idx = next(
+            i for i, m in enumerate(messages) if isinstance(m, ToolMessage)
+        )
+        assert tool_result_idx > tool_call_idx
+
+    def test_other_first_strategy_with_env_chunk(self):
+        """OTHER_FIRST_PER_TICK strategy with env_chunk matches old format."""
+        old_ticks = [
+            create_tick(0, self_chunk=tool_call_msg("call_1", "lookup")),
+            create_tick(
+                1,
+                other_chunk=tool_result_msg("call_1", "found"),
+                self_chunk=assistant_msg("Got it"),
+            ),
+        ]
+
+        new_ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="2024-01-01T00:00:00",
+                self_chunk=tool_call_msg("call_1", "lookup"),
+            ),
+            ParticipantTick(
+                tick_id=1,
+                timestamp="2024-01-01T00:00:01",
+                self_chunk=assistant_msg("Got it"),
+                env_chunk=tool_result_msg("call_1", "found"),
+            ),
+        ]
+
+        expanded = _expand_env_chunks(new_ticks)
+        old_messages = linearize_ticks(
+            old_ticks, LinearizationStrategy.OTHER_FIRST_PER_TICK
+        )
+        new_messages = linearize_ticks(
+            expanded, LinearizationStrategy.OTHER_FIRST_PER_TICK
+        )
+
+        assert len(old_messages) == len(new_messages)
+        for old_msg, new_msg in zip(old_messages, new_messages):
+            assert type(old_msg) is type(new_msg)
+            assert old_msg.content == new_msg.content

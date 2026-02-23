@@ -26,6 +26,7 @@ from tau2.data_model.audio import (
 from tau2.data_model.audio_effects import ChannelEffectsResult
 from tau2.data_model.message import (
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     SystemMessage,
     ToolCall,
@@ -526,6 +527,12 @@ class VoiceStreamingUserSimulator(
             from tau2.data_model.audio import TELEPHONY_SAMPLE_RATE
 
             self._audio_taps = {
+                "agent_input": AudioTap(
+                    "agent_input",
+                    audio_taps_dir,
+                    TELEPHONY_SAMPLE_RATE,
+                    AudioEncoding.ULAW,
+                ),
                 "pre_effects": AudioTap(
                     "pre_effects",
                     audio_taps_dir,
@@ -623,10 +630,22 @@ class VoiceStreamingUserSimulator(
             or OUT_OF_SCOPE in message.content
         )
 
+    def get_next_chunk(
+        self,
+        state: "UserAudioStreamingState",
+        participant_chunk: AssistantMessage,
+        tool_results: Optional[EnvironmentMessage] = None,
+    ) -> Tuple[UserMessage, "UserAudioStreamingState"]:
+        """Process one tick, recording incoming agent audio if taps are enabled."""
+        if self._audio_taps:
+            self._audio_taps["agent_input"].record_message(participant_chunk)
+        return super().get_next_chunk(state, participant_chunk, tool_results)
+
     def stop(
         self,
-        message: Optional[ValidUserInputMessage] = None,
+        participant_chunk: Optional[Message] = None,
         state: Optional["UserAudioStreamingState"] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
         """Stop the user simulator and save any audio taps."""
         if self._audio_taps:
@@ -636,7 +655,7 @@ class VoiceStreamingUserSimulator(
                 f"Saved {len(self._audio_taps)} audio taps: "
                 f"{list(self._audio_taps.keys())}"
             )
-        super().stop(message, state)
+        super().stop(participant_chunk, state, tool_results)
 
     def get_init_state(
         self, message_history: Optional[list[Message]] = None

@@ -13,7 +13,7 @@ from typing import Generic, Optional, Tuple, TypeVar
 
 from loguru import logger
 
-from tau2.data_model.message import Message
+from tau2.data_model.message import EnvironmentMessage, Message
 
 # Generic type variables for conversation participants
 InputMessageType = TypeVar("InputMessageType", bound=Message)
@@ -110,7 +110,8 @@ class HalfDuplexParticipant(
             seed: The random seed to set.
         """
         logger.warning(
-            f"Setting seed for participant is not implemented for class {self.__class__.__name__}"
+            f"Setting seed for participant is not implemented for class "
+            f"{self.__class__.__name__}"
         )
 
 
@@ -141,25 +142,28 @@ class FullDuplexParticipant(
     def get_next_chunk(
         self,
         state: StateType,
-        incoming_chunk: Optional[InputMessageType] = None,
+        participant_chunk: Optional[InputMessageType] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> Tuple[Optional[OutputMessageType], StateType]:
         """
         Get the next chunk of the conversation in streaming mode.
 
-        This method enables full-duplex communication where the participant can:
-        - Process incoming chunks incrementally
-        - Generate response chunks before the full input is received
-        - Handle interruptions and turn-taking
+        Each participant has two communication channels per tick:
+        - Participant channel: speech/audio from the other participant
+        - Environment channel: tool results from previously executed tool calls
 
         Args:
-            state: The current state of the conversation
-            incoming_chunk: The incoming chunk from the other participant or environment.
-                          None if this is a continuation call with no new input.
+            state: The current state of the conversation.
+            participant_chunk: The incoming chunk from the other participant.
+                None if this is a continuation call with no new input.
+            tool_results: Tool results from the environment (ToolMessage or
+                MultiToolMessage). None if no tool results are pending.
 
         Returns:
             A tuple of (next_chunk, updated_state) where:
-            - next_chunk: The next chunk to send (None if waiting/silent)
-            - updated_state: The updated conversation state
+            - next_chunk: The next chunk to send (None if waiting/silent).
+                May contain tool_calls if the participant wants to invoke tools.
+            - updated_state: The updated conversation state.
         """
         raise NotImplementedError
 
@@ -181,15 +185,18 @@ class FullDuplexParticipant(
 
     def stop(
         self,
-        message: Optional[InputMessageType] = None,
+        participant_chunk: Optional[InputMessageType] = None,
         state: Optional[StateType] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
         """
         Stop the participant.
 
         Args:
-            message: The last message to the participant.
+            participant_chunk: The last chunk from the other participant.
             state: The last state of the participant.
+            tool_results: Any pending tool results from the environment
+                that were not yet delivered.
         """
         pass
 

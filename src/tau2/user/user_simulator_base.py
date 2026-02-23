@@ -19,6 +19,7 @@ from tau2.agent.base.participant import (
 from tau2.data_model.message import (
     APICompatibleMessage,
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     MultiToolMessage,
     SystemMessage,
@@ -156,7 +157,7 @@ class HalfDuplexUser(
 
 
 class FullDuplexUser(
-    FullDuplexParticipant[ValidUserInputMessage, UserMessage, UserStateType],
+    FullDuplexParticipant[AssistantMessage, UserMessage, UserStateType],
     ABC,
     Generic[UserStateType],
 ):
@@ -181,11 +182,17 @@ class FullDuplexUser(
 
     def stop(
         self,
-        message: Optional[ValidUserInputMessage] = None,
+        participant_chunk: Optional[Message] = None,
         state: Optional[UserStateType] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
         """
         Stops the user simulator.
+
+        Args:
+            participant_chunk: The last chunk from the agent.
+            state: The user state.
+            tool_results: Any pending tool results not yet delivered.
         """
         pass
 
@@ -209,7 +216,7 @@ class HalfDuplexVoiceUser(
 
 
 class FullDuplexVoiceUser(
-    VoiceParticipantMixin[ValidUserInputMessage, UserMessage],
+    VoiceParticipantMixin[AssistantMessage, UserMessage],
     FullDuplexUser[UserStateType],
     ABC,
     Generic[UserStateType],

@@ -63,6 +63,7 @@ from tau2.config import (
 from tau2.data_model.audio import TELEPHONY_AUDIO_FORMAT, AudioEncoding, AudioFormat
 from tau2.data_model.message import (
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     MultiToolMessage,
     SystemMessage,
@@ -189,10 +190,11 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
     Integrates with FullDuplexOrchestrator for tool handling and coordination.
 
     Each call to get_next_chunk() represents one tick of the simulation:
-    1. User audio is extracted from incoming_chunk
-    2. Audio is sent to API via adapter.run_tick()
-    3. Agent audio (capped) and text are returned in AssistantMessage
-    4. Tool calls are detected and returned for orchestrator handling
+    1. Tool results (if any) are queued on the adapter
+    2. User audio is extracted from participant_chunk
+    3. Audio is sent to API via adapter.run_tick()
+    4. Agent audio (capped) and text are returned in AssistantMessage
+    5. Tool calls are detected and returned for orchestrator handling
     """
 
     STOP_TOKEN = "###STOP###"
@@ -309,8 +311,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
 
         self.done = False
 
-        # Audio tap for recording the exact bytes sent to the provider
+        # Audio taps for recording audio at pipeline stages
         self._agent_input_tap: Optional["AudioTap"] = None
+        self._agent_output_tap: Optional["AudioTap"] = None
         if audio_taps_dir is not None:
             from tau2.voice.utils.audio_tap import AudioTap
 
@@ -321,7 +324,13 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
                 sample_rate=self.audio_format.sample_rate,
                 encoding=self.audio_format.encoding,
             )
-            logger.info(f"Agent audio tap enabled, output dir: {audio_taps_dir}")
+            self._agent_output_tap = AudioTap(
+                name="agent_output",
+                output_dir=audio_taps_dir,
+                sample_rate=self.audio_format.sample_rate,
+                encoding=self.audio_format.encoding,
+            )
+            logger.info(f"Agent audio taps enabled, output dir: {audio_taps_dir}")
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt from domain policy with voice instructions.
@@ -397,31 +406,43 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
     def get_next_chunk(
         self,
         state: DiscreteTimeAgentState,
-        incoming_chunk: ValidAgentInputMessage,
+        participant_chunk: Optional[UserMessage] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> Tuple[AssistantMessage, DiscreteTimeAgentState]:
         """Process one tick of the simulation.
 
+        Each tick, the agent receives two independent channels:
+        - participant_chunk: user audio/speech from the user simulator
+        - tool_results: results from previously executed tool calls (if any)
+
+        Tool results are queued on the adapter before running the tick, so
+        the provider sees them alongside the new user audio in a single pass.
+
         Args:
             state: Current agent state.
-            incoming_chunk: User message or tool result from orchestrator.
+            participant_chunk: User message with audio from the user simulator.
+            tool_results: Tool results from the environment (ToolMessage or
+                MultiToolMessage). None if no tool results are pending.
 
         Returns:
             Tuple of (AssistantMessage, updated state).
             The AssistantMessage may contain tool_calls if the agent
             requested tool execution.
         """
+        # Queue tool results on the adapter so the provider sees them
+        # at the start of run_tick, alongside the new user audio.
+        if tool_results is not None:
+            if isinstance(tool_results, ToolMessage):
+                self._handle_tool_result(tool_results)
+            elif isinstance(tool_results, MultiToolMessage):
+                for i, tool_msg in enumerate(tool_results.tool_messages):
+                    is_last = i == len(tool_results.tool_messages) - 1
+                    self._handle_tool_result(tool_msg, request_response=is_last)
+
         state.tick_count += 1
 
-        # Handle tool results first
-        if isinstance(incoming_chunk, ToolMessage):
-            self._handle_tool_result(incoming_chunk)
-        elif isinstance(incoming_chunk, MultiToolMessage):
-            for i, tool_msg in enumerate(incoming_chunk.tool_messages):
-                is_last = i == len(incoming_chunk.tool_messages) - 1
-                self._handle_tool_result(tool_msg, request_response=is_last)
-
-        # Extract user audio from incoming chunk
-        user_audio = self._extract_user_audio(incoming_chunk)
+        # Extract user audio from participant chunk
+        user_audio = self._extract_user_audio(participant_chunk)
         state.total_user_audio_bytes += len(user_audio)
 
         if self._agent_input_tap:
@@ -471,6 +492,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         agent_audio = tick_result.get_played_agent_audio()
         state.total_agent_audio_bytes += len(agent_audio)
 
+        if self._agent_output_tap:
+            self._agent_output_tap.record(agent_audio)
+
         # Extract tool calls from events
         tool_calls = self._extract_tool_calls(tick_result)
 
@@ -484,19 +508,21 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
             state.time_since_last_talk += 1
 
         # Update input speech tracking
-        if self.speech_detection(incoming_chunk):
+        if self.speech_detection(participant_chunk):
             state.time_since_last_other_talk = 0
         else:
             state.time_since_last_other_talk += 1
 
-        # Record tick in history
+        # Record tick in history. Both channels recorded separately:
+        # other_chunk for participant speech, env_chunk for tool results.
         state.record_tick(
             tick_id=state.tick_count,
             timestamp=get_now(),
             self_chunk=response if _has_meaningful_content(response) else None,
             other_chunk=(
-                incoming_chunk if self.speech_detection(incoming_chunk) else None
+                participant_chunk if self.speech_detection(participant_chunk) else None
             ),
+            env_chunk=tool_results,
         )
 
         # Append to message history
@@ -707,8 +733,9 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
 
     def stop(
         self,
-        message: Optional[ValidAgentInputMessage] = None,
+        participant_chunk: Optional[Message] = None,
         state: Optional[DiscreteTimeAgentState] = None,
+        tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
         """Stop the agent and clean up resources.
 
@@ -716,11 +743,14 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
         Disconnects from the audio native API (OpenAI Realtime or Gemini Live).
 
         Args:
-            message: The last message to the agent (unused).
+            participant_chunk: The last chunk from the user (unused).
             state: The final agent state (unused).
+            tool_results: Any pending tool results not yet delivered (unused).
         """
         if self._agent_input_tap:
             self._agent_input_tap.save()
+        if self._agent_output_tap:
+            self._agent_output_tap.save()
             logger.info("Saved agent_input audio tap")
         self.cleanup()
 

@@ -11,7 +11,7 @@ from typing import Optional
 from loguru import logger
 
 from tau2.data_model.audio import AudioData, AudioEncoding, AudioFormat
-from tau2.data_model.message import UserMessage
+from tau2.data_model.message import ParticipantMessageBase
 from tau2.voice.utils.audio_io import save_wav_file
 
 
@@ -43,8 +43,12 @@ class AudioTap:
             self._chunks.append(audio_bytes)
             self._total_bytes += len(audio_bytes)
 
-    def record_message(self, msg: Optional[UserMessage]) -> None:
-        """Record audio from a UserMessage (extracts bytes automatically)."""
+    def record_message(self, msg: Optional[ParticipantMessageBase]) -> None:
+        """Record audio from a message (extracts bytes automatically).
+
+        Works with any ParticipantMessageBase subclass (UserMessage,
+        AssistantMessage) that carries audio_content.
+        """
         if msg is None or not msg.audio_content:
             return
         audio_bytes = msg.get_audio_bytes()
