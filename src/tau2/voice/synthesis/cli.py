@@ -34,12 +34,14 @@ from rich.table import Table
 from typer import Option, Typer
 
 from tau2.data_model.audio_effects import SourceEffectsConfig
-from tau2.data_model.voice import ElevenLabsTTSConfig, SynthesisConfig
+from tau2.data_model.voice import ElevenLabsTTSConfig
+from tau2.data_model.voice_personas import ALL_PERSONAS
 from tau2.voice.synthesis.audio_effects.noise_generator import (
+    apply_background_noise,
     create_background_noise_generator,
 )
-from tau2.voice.synthesis.synthesize import synthesize_from_text
-from tau2.voice.utils.audio_io import play_audio
+from tau2.voice.synthesis.synthesize import synthesize_voice
+from tau2.voice.utils.audio_io import play_audio, save_wav_file
 from tau2.voice_config import BACKGROUND_NOISE_CONTINUOUS_DIR
 
 load_dotenv()
@@ -61,7 +63,7 @@ def list_config() -> None:
 
     config_info = [
         ("Provider", "elevenlabs", "Supported"),
-        ("Voice IDs", "Random selection", "6 voices available"),
+        ("Voice IDs", "Random selection", f"{len(ALL_PERSONAS)} voices available"),
         ("Default Model", "eleven_v3", "Available"),
         ("Output Format", "PCM 16kHz → μ-law 8kHz", "Telephony format"),
         ("Background Noise", "SNR 15dB ± 3dB drift", "Continuous ambient sounds"),
@@ -174,6 +176,14 @@ def synthesize(
         console.print("Either set the environment variable or use --api-key option")
         raise SystemExit(1)
 
+    # Select a random voice if none was provided
+    if voice_id is None:
+        persona = random.choice(list(ALL_PERSONAS.values()))
+        voice_id = persona.elevenlabs_voice_id
+        console.print(
+            f"[cyan]Selected persona:[/cyan] {persona.display_name} ({persona.short_description})"
+        )
+
     # Create voice settings
     voice_settings = VoiceSettings(
         stability=stability,
@@ -202,23 +212,17 @@ def synthesize(
         * 60,  # Convert probability to events/min
     )
 
-    # Create synthesis configuration
-    config = SynthesisConfig(
-        provider="elevenlabs",
-        provider_config=provider_config,
-        source_effects_config=source_effects_config,
-    )
-
     # Determine output path
     output_path = None
     if not play:
         output_path = Path(output if output else "output.wav")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Display what we're doing
     console.print(
         f"[cyan]Synthesizing text:[/cyan] {text[:50]}{'...' if len(text) > 50 else ''}"
     )
-    console.print(f"[cyan]Voice ID:[/cyan] {voice_id or 'Random selection'}")
+    console.print(f"[cyan]Voice ID:[/cyan] {voice_id}")
     console.print(f"[cyan]Model:[/cyan] {model_id}")
     console.print(
         f"[cyan]Background Noise:[/cyan] {'Enabled' if not no_background_noise else 'Disabled'} (SNR={snr_db:.1f}dB)"
@@ -234,45 +238,45 @@ def synthesize(
     # Create background noise generator with actual noise file
     background_noise_generator = None
     if not no_background_noise:
-        # Pick a random background noise file
         noise_files = list(BACKGROUND_NOISE_CONTINUOUS_DIR.glob("*.wav"))
         if noise_files:
             noise_file = random.choice(noise_files)
             console.print(f"[cyan]Noise file:[/cyan] {noise_file.name}")
             background_noise_generator = create_background_noise_generator(
                 config=source_effects_config,
-                sample_rate=16000,  # ElevenLabs outputs 16kHz
+                sample_rate=16000,
                 background_noise_file=noise_file,
             )
 
-    # Synthesize with status indicator
-    with console.status("Synthesizing audio..."):
-        result = synthesize_from_text(
-            text=text,
-            config=config,
-            output_path=output_path,
-            background_noise_generator=background_noise_generator,
-        )
+    # Synthesize
+    try:
+        with console.status("Synthesizing audio..."):
+            audio_data = synthesize_voice(
+                text=text,
+                provider="elevenlabs",
+                provider_config=provider_config,
+            )
 
-    # Handle results
-    if result.error:
-        console.print(f"[red]✗ Synthesis failed:[/red] {result.error}")
+            if background_noise_generator is not None:
+                audio_data = apply_background_noise(
+                    audio=audio_data,
+                    noise_generator=background_noise_generator,
+                )
+
+            if output_path:
+                audio_data.audio_path = output_path
+                save_wav_file(audio_data, str(output_path))
+    except Exception as e:
+        console.print(f"[red]✗ Synthesis failed:[/red] {e}")
         raise SystemExit(1)
 
-    if result.audio_data:
-        console.print(
-            f"[cyan]Duration:[/cyan] {result.audio_data.duration:.2f} seconds"
-        )
-        console.print(f"[cyan]Format:[/cyan] {result.audio_data.format}")
+    console.print(f"[cyan]Duration:[/cyan] {audio_data.duration:.2f} seconds")
+    console.print(f"[cyan]Format:[/cyan] {audio_data.format}")
 
     if play:
-        # Play the audio
-        play_audio(result.audio_data)
+        play_audio(audio_data)
     else:
-        # Audio was saved
-        console.print(
-            f"[green]✓ Audio saved to:[/green] {result.audio_data.audio_path}"
-        )
+        console.print(f"[green]✓ Audio saved to:[/green] {audio_data.audio_path}")
 
 
 if __name__ == "__main__":
