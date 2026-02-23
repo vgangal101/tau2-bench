@@ -1017,7 +1017,16 @@ class ConsoleDisplay:
 
         # Overview section
         table.add_row("[cyan]═══ Overview ═══[/]", "")
-        table.add_row("Total Simulations", str(metrics.total_simulations))
+        if metrics.infra_error_count > 0:
+            total_with_infra = metrics.total_simulations + metrics.infra_error_count
+            table.add_row("Total Simulations", str(total_with_infra))
+            table.add_row(
+                "⚠️  Infra Errors",
+                f"[red]{metrics.infra_error_count}[/] (excluded from metrics below)",
+            )
+            table.add_row("Evaluated", str(metrics.total_simulations))
+        else:
+            table.add_row("Total Simulations", str(metrics.total_simulations))
         table.add_row("Total Tasks", str(metrics.total_tasks))
         table.add_row("", "")
 
@@ -1031,18 +1040,7 @@ class ConsoleDisplay:
         table.add_row(
             "🏆 Average Reward", f"[{reward_color}]{metrics.avg_reward:.4f}[/]"
         )
-        reward_color = (
-            "green"
-            if metrics.avg_reward > 0.8
-            else ("yellow" if metrics.avg_reward > 0.5 else "red")
-        )
-        table.add_row(
-            "🏆 Average Reward", f"[{reward_color}]{metrics.avg_reward:.4f}[/]"
-        )
         for k, pass_k in sorted(metrics.pass_hat_ks.items()):
-            pk_color = (
-                "green" if pass_k > 0.8 else ("yellow" if pass_k > 0.5 else "red")
-            )
             pk_color = (
                 "green" if pass_k > 0.8 else ("yellow" if pass_k > 0.5 else "red")
             )
@@ -1057,9 +1055,6 @@ class ConsoleDisplay:
             read_color = (
                 "green" if read_pct == 100 else ("yellow" if read_pct >= 80 else "red")
             )
-            read_color = (
-                "green" if read_pct == 100 else ("yellow" if read_pct >= 80 else "red")
-            )
             table.add_row(
                 "📖 Read Actions",
                 f"[{read_color}]{metrics.correct_read_actions}/{metrics.total_read_actions}[/] ({read_pct:.1f}%)",
@@ -1068,14 +1063,6 @@ class ConsoleDisplay:
             table.add_row("📖 Read Actions", "[dim]-[/]")
 
         if metrics.total_write_actions > 0:
-            write_pct = (
-                metrics.correct_write_actions / metrics.total_write_actions * 100
-            )
-            write_color = (
-                "green"
-                if write_pct == 100
-                else ("yellow" if write_pct >= 80 else "red")
-            )
             write_pct = (
                 metrics.correct_write_actions / metrics.total_write_actions * 100
             )
@@ -1100,17 +1087,11 @@ class ConsoleDisplay:
             db_color = (
                 "green" if db_pct == 100 else ("yellow" if db_pct >= 80 else "red")
             )
-            db_color = (
-                "green" if db_pct == 100 else ("yellow" if db_pct >= 80 else "red")
-            )
             table.add_row(
                 "🗄️  DB Match",
                 f"[green]✓ {metrics.db_match_count}[/] / [red]✗ {metrics.db_mismatch_count}[/] ([{db_color}]{db_pct:.1f}%[/])",
             )
         else:
-            table.add_row(
-                "🗄️  DB Match", f"[dim]Not checked: {metrics.db_not_checked}[/]"
-            )
             table.add_row(
                 "🗄️  DB Match", f"[dim]Not checked: {metrics.db_not_checked}[/]"
             )
@@ -1121,9 +1102,6 @@ class ConsoleDisplay:
         auth_total = metrics.auth_succeeded + metrics.auth_failed
         if auth_total > 0:
             auth_pct = metrics.auth_succeeded / auth_total * 100
-            auth_color = (
-                "green" if auth_pct == 100 else ("yellow" if auth_pct >= 80 else "red")
-            )
             auth_color = (
                 "green" if auth_pct == 100 else ("yellow" if auth_pct >= 80 else "red")
             )
@@ -1148,6 +1126,11 @@ class ConsoleDisplay:
             table.add_row("⏱️  Max Steps", f"[yellow]{metrics.termination_max_steps}[/]")
         if metrics.termination_error > 0:
             table.add_row("💥 Error", f"[red]{metrics.termination_error}[/]")
+        if metrics.termination_infrastructure_error > 0:
+            table.add_row(
+                "🔌 Infra Error",
+                f"[red]{metrics.termination_infrastructure_error}[/]",
+            )
         table.add_row("", "")
 
         # Responsiveness (only show if we have streaming/full-duplex data)

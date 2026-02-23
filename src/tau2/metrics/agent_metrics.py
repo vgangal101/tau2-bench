@@ -25,6 +25,7 @@ class AgentMetrics(BaseModel):
     # Simulation counts
     total_simulations: int = 0
     total_tasks: int = 0
+    infra_error_count: int = 0
 
     # Action metrics
     total_read_actions: int = 0
@@ -48,6 +49,7 @@ class AgentMetrics(BaseModel):
     termination_agent_stop: int = 0
     termination_max_steps: int = 0
     termination_error: int = 0
+    termination_infrastructure_error: int = 0
 
     # Responsiveness metrics (from full-duplex/streaming mode)
     sims_with_unresponsive_period: int = 0
@@ -101,6 +103,7 @@ class AgentMetrics(BaseModel):
             "avg_agent_cost": self.avg_agent_cost,
             "total_simulations": self.total_simulations,
             "total_tasks": self.total_tasks,
+            "infra_error_count": self.infra_error_count,
         }
         for k, v in self.pass_hat_ks.items():
             data[f"pass_hat_{k}"] = v
@@ -126,10 +129,25 @@ def pass_hat_k(num_trials: int, success_count: int, k: int) -> float:
 def get_metrics_df(results: Results) -> tuple[pd.DataFrame, int]:
     """
     Convert the results to a dataframe and add a column for success.
+    Filters out infrastructure errors (simulations that never ran).
     Checks that all simulations have the same number of trials.
     Returns the maximum number of trials that can be used for pass^k metrics.
     """
     df = results.to_df()
+
+    infra_count = (
+        df.termination_reason == TerminationReason.INFRASTRUCTURE_ERROR
+    ).sum()
+    if infra_count > 0:
+        logger.warning(
+            f"Excluding {infra_count} infrastructure error simulation(s) from metrics."
+        )
+        df = df[df.termination_reason != TerminationReason.INFRASTRUCTURE_ERROR]
+
+    if df.empty:
+        df["success"] = pd.Series(dtype=bool)
+        return df, 0
+
     df["success"] = df.reward.apply(is_successful)
     if len(df.info_num_trials.unique()) > 1:
         logger.warning(
@@ -153,6 +171,8 @@ def get_tasks_pass_hat_k(results: Results) -> pd.DataFrame:
     Compute the pass^k for each k from 1 to the maximum number of trials.
     """
     df, max_k = get_metrics_df(results)
+    if df.empty or max_k == 0:
+        return pd.DataFrame()
     dfs = []
     for k in range(1, max_k + 1):
         res = df.groupby("task_id")["success"].apply(
@@ -193,6 +213,28 @@ def compute_metrics(results: Results) -> AgentMetrics:
             pass_hat_ks={},
             avg_agent_cost=0.0,
         )
+
+    infra_error_count = sum(
+        1
+        for sim in results.simulations
+        if sim.termination_reason == TerminationReason.INFRASTRUCTURE_ERROR
+    )
+    evaluated_sims = [
+        sim
+        for sim in results.simulations
+        if sim.termination_reason != TerminationReason.INFRASTRUCTURE_ERROR
+    ]
+
+    if not evaluated_sims:
+        return AgentMetrics(
+            avg_reward=0.0,
+            pass_hat_ks={},
+            avg_agent_cost=0.0,
+            total_simulations=0,
+            total_tasks=0,
+            infra_error_count=infra_error_count,
+        )
+
     df, df_pass_hat_k = prepare_dfs(results)
     avg_reward = df.reward.mean()
     pass_hat_ks = {}
@@ -202,9 +244,9 @@ def compute_metrics(results: Results) -> AgentMetrics:
             pass_hat_ks[k] = df_pass_hat_k[column].mean()
     avg_agent_cost = df.agent_cost.mean()
 
-    # Initialize counters
-    total_simulations = len(results.simulations)
-    total_tasks = len(set(sim.task_id for sim in results.simulations))
+    # Counts exclude infrastructure errors
+    total_simulations = len(evaluated_sims)
+    total_tasks = len(set(sim.task_id for sim in evaluated_sims))
 
     # Action metrics
     total_read_actions = 0
@@ -246,7 +288,7 @@ def compute_metrics(results: Results) -> AgentMetrics:
         lambda: defaultdict(int)
     )
 
-    for sim in results.simulations:
+    for sim in evaluated_sims:
         # Action metrics
         if sim.reward_info and sim.reward_info.action_checks:
             partial = sim.reward_info.partial_action_reward
@@ -407,6 +449,7 @@ def compute_metrics(results: Results) -> AgentMetrics:
         avg_agent_cost=avg_agent_cost,
         total_simulations=total_simulations,
         total_tasks=total_tasks,
+        infra_error_count=infra_error_count,
         total_read_actions=total_read_actions,
         correct_read_actions=correct_read_actions,
         total_write_actions=total_write_actions,
@@ -422,6 +465,7 @@ def compute_metrics(results: Results) -> AgentMetrics:
         termination_agent_stop=termination_agent_stop,
         termination_max_steps=termination_max_steps,
         termination_error=termination_error,
+        termination_infrastructure_error=infra_error_count,
         sims_with_unresponsive_period=sims_with_unresponsive_period,
         sims_with_responsiveness_info=sims_with_responsiveness_info,
         agent_errors_by_severity=dict(agent_errors_by_severity),
