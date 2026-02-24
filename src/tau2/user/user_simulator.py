@@ -29,7 +29,7 @@ from tau2.user.user_simulator_base import (
 )
 from tau2.utils import DATA_DIR
 from tau2.utils.llm_utils import generate
-from tau2.voice.synthesis.synthesize import create_background_noise_generator
+from tau2.voice.synthesis.audio_effects import create_background_noise_generator
 from tau2.voice_config import resolve_background_noise_path
 
 GLOBAL_USER_SIM_GUIDELINES_DIR = DATA_DIR / "tau2" / "user_simulator"
