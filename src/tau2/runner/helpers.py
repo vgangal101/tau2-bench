@@ -125,7 +125,7 @@ def get_info(config: RunConfig, **overrides) -> Info:
     Args:
         config: The run configuration (TextRunConfig or VoiceRunConfig).
         **overrides: Override specific fields (e.g., user_persona_config,
-            user_voice_settings, speech_complexity).
+            user_voice_settings, speech_complexity, policy_override).
 
     Returns:
         Info object with run metadata.
@@ -134,6 +134,7 @@ def get_info(config: RunConfig, **overrides) -> Info:
 
     user_persona_config = overrides.get("user_persona_config")
     user_voice_settings = overrides.get("user_voice_settings")
+    policy_override = overrides.get("policy_override")
     speech_complexity = overrides.get(
         "speech_complexity",
         config.speech_complexity if is_voice else None,
@@ -180,6 +181,8 @@ def get_info(config: RunConfig, **overrides) -> Info:
     environment_info = get_environment_info(
         config.domain, include_tool_info=False, env_kwargs=info_env_kwargs
     )
+    if policy_override is not None:
+        environment_info.policy = policy_override
 
     return Info(
         git_commit=get_commit_hash(),
@@ -191,7 +194,7 @@ def get_info(config: RunConfig, **overrides) -> Info:
         environment_info=environment_info,
         seed=config.seed,
         speech_complexity=speech_complexity,
-        audio_native_config=config.audio_native_config,
+        audio_native_config=getattr(config, "audio_native_config", None),
         retrieval_config=getattr(config, "retrieval_config", None),
         retrieval_config_kwargs=getattr(config, "retrieval_config_kwargs", None),
     )

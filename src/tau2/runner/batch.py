@@ -8,6 +8,8 @@ Uses Layer 2 (build) to construct instances and Layer 1 (simulation) to
 execute them.
 """
 
+import asyncio
+import asyncio.base_events
 import json
 import multiprocessing
 import random
@@ -35,8 +37,12 @@ from tau2.evaluator.evaluator import EvaluationType
 from tau2.evaluator.reviewer import check_hallucination, format_hallucination_feedback
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.registry import registry
-from tau2.runner.build import build_orchestrator
-from tau2.runner.checkpoint import create_checkpoint_saver, try_resume
+from tau2.runner.build import _build_env_kwargs, build_orchestrator
+from tau2.runner.checkpoint import (
+    create_checkpoint_replacer,
+    create_checkpoint_saver,
+    try_resume,
+)
 from tau2.runner.helpers import get_info, get_tasks, make_run_name
 from tau2.runner.progress import StatusMonitor, run_with_retry
 from tau2.runner.simulation import run_simulation
@@ -56,6 +62,52 @@ from tau2.voice.utils.audio_debug import generate_audio_debug_info
 _current_simulation_id: ContextVar[Optional[str]] = ContextVar(
     "_current_simulation_id", default=None
 )
+
+
+# =============================================================================
+# Asyncio event loop management for worker threads
+# =============================================================================
+
+_original_del = asyncio.base_events.BaseEventLoop.__del__
+
+
+def _patched_del(self):
+    try:
+        _original_del(self)
+    except AttributeError:
+        pass
+
+
+asyncio.base_events.BaseEventLoop.__del__ = _patched_del
+
+
+def _close_event_loop_safely(loop):
+    if loop is None or loop.is_closed():
+        return
+    try:
+        if hasattr(loop, "_ssock") and loop._ssock is not None:
+            loop.close()
+        elif hasattr(loop, "_closed") and not loop._closed:
+            loop._closed = True
+            if hasattr(loop, "_selector") and loop._selector is not None:
+                loop._selector.close()
+                loop._selector = None
+    except (AttributeError, OSError):
+        pass
+
+
+def _init_thread_event_loop():
+    try:
+        old_loop = asyncio.get_event_loop_policy().get_event_loop()
+        _close_event_loop_safely(old_loop)
+    except RuntimeError:
+        pass
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    except Exception:
+        pass
 
 
 # =============================================================================
@@ -327,7 +379,10 @@ def run_single_task(
         )
 
         # Layer 1: Run the simulation
-        simulation = run_simulation(orchestrator, evaluation_type=evaluation_type)
+        env_kwargs = _build_env_kwargs(config, task) or None
+        simulation = run_simulation(
+            orchestrator, evaluation_type=evaluation_type, env_kwargs=env_kwargs
+        )
 
         # Side effects
         if auto_review:
@@ -450,11 +505,38 @@ def run_tasks(
             ),
         )
 
+    # Warm knowledge base cache for banking_knowledge domain
+    policy_override = None
+    if config.domain == "banking_knowledge":
+        from tau2.domains.banking_knowledge.environment import get_knowledge_base
+        from tau2.domains.banking_knowledge.retrieval import (
+            get_info_policy_override,
+        )
+        from tau2.knowledge.embeddings_cache import (
+            get_unique_embedder_configs_for_retrieval_configs,
+            warm_kb_cache,
+        )
+
+        retrieval_config = getattr(config, "retrieval_config", None)
+        retrieval_config_kwargs = getattr(config, "retrieval_config_kwargs", None)
+        kwargs = retrieval_config_kwargs or {}
+        embedder_configs = None
+        if retrieval_config:
+            embedder_configs = get_unique_embedder_configs_for_retrieval_configs(
+                [retrieval_config]
+            )
+        warm_kb_cache(embedder_configs)
+        knowledge_base = get_knowledge_base()
+        policy_override = get_info_policy_override(
+            retrieval_config, knowledge_base, **kwargs
+        )
+
     # Build Info and initial Results
     info = get_info(
         config,
         user_persona_config=user_persona_config,
         user_voice_settings=user_voice_settings,
+        policy_override=policy_override,
     )
     simulation_results = Results(
         info=info,
@@ -473,8 +555,9 @@ def run_tasks(
             auto_resume=config.auto_resume,
         )
 
-    # Create checkpoint saver
+    # Create checkpoint saver and replacer
     save_fn = create_checkpoint_saver(save_path, lock)
+    replace_fn = create_checkpoint_replacer(save_path, lock)
 
     # Build argument list (skip already-completed runs)
     args = []
@@ -482,7 +565,7 @@ def run_tasks(
         for i, task in enumerate(tasks):
             if (trial, task.id, seeds[trial]) in done_runs:
                 console_text = Text(
-                    text=f"Skipping task {task.id}, trial {trial} because it has already been run.",
+                    text=f"Skipping task {task.id}, trial {trial + 1} because it has already been run.",
                     style="bold yellow",
                 )
                 ConsoleDisplay.console.print(console_text)
@@ -512,6 +595,7 @@ def run_tasks(
         task: Task, trial: int, seed: int, progress_str: str
     ) -> SimulationRun:
         """Run a single task with tracking, retry, and hallucination retry."""
+        _init_thread_event_loop()
         task_key = f"{task.id}.{trial}"
         monitor.task_started(task_key, trial)
 
@@ -623,6 +707,13 @@ def run_tasks(
                     result.trial = trial
 
                 result.hallucination_retries_used = hallucination_retry_count
+
+                if hallucination_retry_count > 0:
+                    # Replace the eagerly-saved hallucinated result in the
+                    # checkpoint with the clean retry.  Use the original seed
+                    # so resume matching stays consistent.
+                    result.seed = seed
+                    replace_fn((trial, task.id, seed), result)
 
             return result
         finally:

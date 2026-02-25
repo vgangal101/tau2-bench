@@ -39,7 +39,12 @@ from tau2.user_simulation_voice_presets import (
 # =============================================================================
 
 
-def build_environment(domain: str, *, solo_mode: bool = False) -> Environment:
+def build_environment(
+    domain: str,
+    *,
+    solo_mode: bool = False,
+    env_kwargs: Optional[dict] = None,
+) -> Environment:
     """Build an environment from a domain name.
 
     Uses the registry to resolve the domain name to an environment constructor.
@@ -48,12 +53,17 @@ def build_environment(domain: str, *, solo_mode: bool = False) -> Environment:
         domain: Domain name (e.g., "airline", "retail", "mock").
         solo_mode: If True, environment is built in solo mode (agent gets
             access to both agent and user tools).
+        env_kwargs: Additional keyword arguments passed to the environment
+            constructor (e.g., retrieval_variant, task for banking_knowledge).
 
     Returns:
         A fully constructed Environment instance.
     """
     env_constructor = registry.get_env_constructor(domain)
-    return env_constructor(solo_mode=solo_mode)
+    kwargs = dict(env_kwargs or {})
+    if solo_mode:
+        kwargs["solo_mode"] = True
+    return env_constructor(**kwargs)
 
 
 def build_agent(
@@ -148,7 +158,7 @@ def build_user(
     UserConstructor = registry.get_user_constructor(user_name)
 
     try:
-        user_tools = environment.get_user_tools()
+        user_tools = environment.get_user_tools(include=task.user_tools) or None
     except Exception:
         user_tools = None
 
@@ -214,7 +224,7 @@ def build_voice_user(
         domain = environment.get_domain_name()
 
     try:
-        user_tools = environment.get_user_tools()
+        user_tools = environment.get_user_tools(include=task.user_tools) or None
     except Exception:
         user_tools = None
 
@@ -296,6 +306,23 @@ def build_voice_user(
 # =============================================================================
 
 
+def _build_env_kwargs(config: RunConfig, task: Task) -> dict:
+    """Build env_kwargs from a RunConfig for the environment constructor.
+
+    Extracts retrieval-related config (banking_knowledge domain) and includes
+    the task reference needed for golden_retrieval policy.
+    """
+    env_kwargs: dict = {}
+    retrieval_config = getattr(config, "retrieval_config", None)
+    if retrieval_config is not None:
+        env_kwargs["retrieval_variant"] = retrieval_config
+        env_kwargs["task"] = task
+        retrieval_config_kwargs = getattr(config, "retrieval_config_kwargs", None)
+        if retrieval_config_kwargs:
+            env_kwargs["retrieval_kwargs"] = retrieval_config_kwargs
+    return env_kwargs
+
+
 def build_text_orchestrator(
     config: TextRunConfig,
     task: Task,
@@ -331,8 +358,9 @@ def build_text_orchestrator(
         config.effective_agent, "solo_mode", default=False
     )
     domain = config.domain
+    env_kwargs = _build_env_kwargs(config, task)
 
-    environment = build_environment(domain, solo_mode=solo_mode)
+    environment = build_environment(domain, solo_mode=solo_mode, env_kwargs=env_kwargs)
 
     agent = build_agent(
         config.effective_agent,
@@ -430,8 +458,9 @@ def build_voice_orchestrator(
         )
 
     domain = config.domain
+    env_kwargs = _build_env_kwargs(config, task)
 
-    environment = build_environment(domain)
+    environment = build_environment(domain, env_kwargs=env_kwargs)
 
     agent = build_agent(
         config.effective_agent,

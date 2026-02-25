@@ -75,13 +75,14 @@ def try_resume(
     with open(save_path, "r") as fp:
         prev_simulation_results = Results.model_validate_json(fp.read())
 
-    # Check if the run config has changed
-    if get_pydantic_hash(prev_simulation_results.info) != get_pydantic_hash(
-        simulation_results.info
-    ):
+    # Check if the run config has changed (exclude policy which may change between runs)
+    exclude_fields = {"environment_info": {"policy"}}
+    if get_pydantic_hash(
+        prev_simulation_results.info, exclude=exclude_fields
+    ) != get_pydantic_hash(simulation_results.info, exclude=exclude_fields):
         diff = show_dict_diff(
-            prev_simulation_results.info.model_dump(),
-            simulation_results.info.model_dump(),
+            prev_simulation_results.info.model_dump(exclude=exclude_fields),
+            simulation_results.info.model_dump(exclude=exclude_fields),
         )
         if auto_resume:
             logger.warning(
@@ -224,3 +225,56 @@ def create_checkpoint_saver(
                 raise
 
     return save
+
+
+def create_checkpoint_replacer(
+    save_path: Optional[Path],
+    lock: multiprocessing.Lock,
+):
+    """Create a thread-safe checkpoint replace function.
+
+    Replaces an existing simulation entry in the checkpoint file, identified
+    by (trial, task_id, seed). Used to swap a hallucinated result with a
+    clean retry result.
+
+    Args:
+        save_path: Path to the results JSON file. If None, returns a no-op.
+        lock: Multiprocessing lock for thread safety.
+
+    Returns:
+        A callable that replaces a SimulationRun in the checkpoint file atomically.
+    """
+
+    def replace(
+        key: tuple[int, str, int],
+        simulation: SimulationRun,
+    ):
+        if save_path is None:
+            return
+        trial, task_id, seed = key
+        with lock:
+            with open(save_path, "r") as fp:
+                ckpt = json.load(fp)
+            ckpt["simulations"] = [
+                sim
+                for sim in ckpt["simulations"]
+                if not (
+                    sim.get("trial") == trial
+                    and sim.get("task_id") == task_id
+                    and sim.get("seed") == seed
+                )
+            ]
+            ckpt["simulations"].append(simulation.model_dump())
+            fd, tmp_path = tempfile.mkstemp(
+                suffix=".json", prefix=".results_", dir=save_path.parent
+            )
+            try:
+                with os.fdopen(fd, "w") as fp:
+                    json.dump(ckpt, fp, indent=2)
+                os.replace(tmp_path, save_path)
+            except Exception:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                raise
+
+    return replace
