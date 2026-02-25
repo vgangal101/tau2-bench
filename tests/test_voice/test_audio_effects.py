@@ -423,14 +423,21 @@ class TestNoiseGenerator:
         # Get burst chunks until consumed
         burst_info = generator.get_burst_chunk(num_samples=500)
         assert burst_info is not None
-        burst_samples, burst_snr, actual_length = burst_info
+        burst_samples, burst_snr, whole_burst_rms = burst_info
         assert len(burst_samples) == 500
         assert -5.0 <= burst_snr <= 10.0  # Within BURST_SNR_RANGE_DB
-        assert actual_length <= 500  # Actual length should not exceed requested
+        assert whole_burst_rms > 0  # Pre-computed RMS over entire burst
 
-        # Keep getting chunks until burst is consumed
+        # All chunks should report the same whole-burst RMS
+        rms_values = [whole_burst_rms]
         while generator.has_active_burst():
-            generator.get_burst_chunk(num_samples=500)
+            info = generator.get_burst_chunk(num_samples=500)
+            if info is not None:
+                _, _, chunk_rms = info
+                rms_values.append(chunk_rms)
+        assert len(set(rms_values)) == 1, (
+            f"All chunks must use the same whole-burst RMS, got {rms_values}"
+        )
 
         assert not generator.has_active_burst()
 
@@ -882,7 +889,7 @@ class TestProcessor:
             audio_path=None,
         )
 
-        result_audio, source_effects, pending = mixin.process_streaming_chunk(
+        result = mixin.process_streaming_chunk(
             speech_audio=speech_audio,
             noise_generator=noise_generator,
             num_samples=num_samples,
@@ -891,9 +898,11 @@ class TestProcessor:
             pending_effect=None,
         )
 
+        result_audio = result.to_mixed_audio_data()
         assert result_audio.num_samples == num_samples
-        assert source_effects is None
-        assert pending is None
+        assert result.source_effects is None
+        assert result.pending_effect is None
+        assert result.tracks.num_samples == num_samples
 
     def test_process_streaming_chunk_silence_only(self):
         """Test process_streaming_chunk with no speech (silence)."""
@@ -908,7 +917,7 @@ class TestProcessor:
             silent_mode=True,
         )
 
-        result_audio, source_effects, pending = mixin.process_streaming_chunk(
+        result = mixin.process_streaming_chunk(
             speech_audio=None,
             noise_generator=noise_generator,
             num_samples=500,
@@ -917,9 +926,10 @@ class TestProcessor:
             pending_effect=None,
         )
 
+        result_audio = result.to_mixed_audio_data()
         assert result_audio.num_samples == 500
-        assert source_effects is None
-        assert pending is None
+        assert result.source_effects is None
+        assert result.pending_effect is None
 
 
 # ============================================================================
@@ -1109,3 +1119,222 @@ class TestGilbertElliottModel:
         # Should have both states represented
         assert GEState.GOOD in states
         assert GEState.BAD in states
+
+
+# ============================================================================
+# AudioTracks Tests
+# ============================================================================
+
+
+class TestAudioTracks:
+    """Tests for AudioTracks multitrack data structure."""
+
+    def test_tracks_sum_equals_single_pass_mix(self):
+        """AudioTracks.to_audio_data() must be bit-exact with the original single-pass mix.
+
+        Reimplements the old mix_audio_dynamic logic (sum in float64, clip once)
+        to verify that the multitrack path produces identical output.
+        """
+        from tau2.voice.utils.audio_preprocessing import (
+            _compute_rms,
+            _snr_to_scale,
+            audio_data_to_numpy,
+            mix_audio_to_tracks,
+        )
+
+        sample_rate = 16000
+        num_samples = 800
+        speech_samples = (np.sin(np.linspace(0, 20, num_samples)) * 8000).astype(
+            np.int16
+        )
+        noise_samples = (np.random.RandomState(42).randn(num_samples) * 500).astype(
+            np.int16
+        )
+        speech = AudioData(
+            data=speech_samples.tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        noise = AudioData(
+            data=noise_samples.tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        snr_envelope = np.full(num_samples, 20.0)
+
+        # Original single-pass logic (sum float64, clip once)
+        s = audio_data_to_numpy(speech, dtype=np.int16).astype(np.float64)
+        n = audio_data_to_numpy(noise, dtype=np.int16).astype(np.float64)
+        noise_rms = _compute_rms(n)
+        noise_scale = _snr_to_scale(float(np.mean(snr_envelope)), noise_rms)
+        expected = np.clip(s + n * noise_scale, -32768, 32767).astype(np.int16)
+
+        # New multitrack path
+        tracks = mix_audio_to_tracks(speech, noise, snr_envelope)
+        actual = np.frombuffer(tracks.to_audio_data().data, dtype=np.int16)
+
+        assert np.array_equal(expected, actual)
+
+    def test_tracks_shapes(self):
+        """All tracks should have the same num_samples."""
+        from tau2.voice.utils.audio_preprocessing import mix_audio_to_tracks
+
+        sample_rate = 16000
+        num_samples = 500
+        speech = AudioData(
+            data=np.zeros(num_samples, dtype=np.int16).tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        noise = AudioData(
+            data=np.zeros(num_samples, dtype=np.int16).tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        snr = np.full(num_samples, 15.0)
+
+        tracks = mix_audio_to_tracks(speech, noise, snr)
+        assert tracks.num_samples == num_samples
+        assert len(tracks.speech) == num_samples
+        assert len(tracks.background_noise) == num_samples
+        assert len(tracks.burst_noise) == num_samples
+
+    def test_tracks_with_burst(self):
+        """Burst noise should appear in the burst_noise track."""
+        from tau2.voice.utils.audio_preprocessing import mix_audio_to_tracks
+
+        sample_rate = 16000
+        num_samples = 500
+        speech = AudioData(
+            data=np.zeros(num_samples, dtype=np.int16).tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        noise = AudioData(
+            data=np.zeros(num_samples, dtype=np.int16).tobytes(),
+            format=AudioFormat(
+                encoding=AudioEncoding.PCM_S16LE, sample_rate=sample_rate
+            ),
+        )
+        snr = np.full(num_samples, 15.0)
+
+        burst_samples = (np.ones(num_samples, dtype=np.int16) * 1000).astype(np.int16)
+        whole_burst_rms = float(np.sqrt(np.mean(burst_samples.astype(np.float64) ** 2)))
+        burst_info = (burst_samples, 10.0, whole_burst_rms)
+
+        tracks = mix_audio_to_tracks(speech, noise, snr, burst_info=burst_info)
+        assert np.any(tracks.burst_noise != 0)
+
+    def test_streaming_chunk_result_multitrack(self):
+        """StreamingChunkResult should produce per-effect tracks."""
+        mixin = type("M", (StreamingAudioEffectsMixin,), {})()
+        noise_gen = BackgroundNoiseGenerator(sample_rate=16000, silent_mode=True)
+
+        num_samples = 800
+        samples = (np.sin(np.linspace(0, 10, num_samples)) * 8000).astype(np.int16)
+        speech = AudioData(
+            data=samples.tobytes(),
+            format=AudioFormat(encoding=AudioEncoding.PCM_S16LE, sample_rate=16000),
+        )
+
+        result = mixin.process_streaming_chunk(
+            speech_audio=speech,
+            noise_generator=noise_gen,
+            num_samples=num_samples,
+        )
+
+        assert result.tracks.num_samples == num_samples
+        assert len(result.out_of_turn_speech) == num_samples
+        mixed = result.to_mixed_audio_data()
+        assert mixed.num_samples == num_samples
+
+
+# ============================================================================
+# EffectTimeline Tests
+# ============================================================================
+
+
+class TestEffectTimeline:
+    """Tests for EffectTimeline metadata tracking."""
+
+    def test_open_and_close_event(self):
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        tl.open_event("burst_noise", start_ms=1000, participant="user")
+        assert len(tl.events) == 1
+        assert tl.events[0].end_ms is None
+        assert tl.events[0].duration_ms is None
+        assert tl.has_open_event("burst_noise", "user")
+
+        tl.close_event("burst_noise", end_ms=1500, participant="user")
+        assert tl.events[0].end_ms == 1500
+        assert tl.events[0].duration_ms == 500
+        assert not tl.has_open_event("burst_noise", "user")
+
+    def test_close_all_open(self):
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        tl.open_event("burst_noise", start_ms=100, participant="user")
+        tl.open_event("out_of_turn_speech", start_ms=200, participant="user")
+        tl.close_all_open(end_ms=5000)
+
+        assert all(e.end_ms == 5000 for e in tl.events)
+
+    def test_get_events_by_type(self):
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        tl.open_event("burst_noise", start_ms=100, participant="user")
+        tl.open_event("frame_drop", start_ms=200, participant="user")
+        tl.open_event("burst_noise", start_ms=300, participant="user")
+
+        bursts = tl.get_events_by_type("burst_noise")
+        assert len(bursts) == 2
+        assert all(e.effect_type == "burst_noise" for e in bursts)
+
+    def test_event_params(self):
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        tl.open_event(
+            "burst_noise",
+            start_ms=1000,
+            participant="user",
+            params={"file": "car_horn.wav", "snr_db": 5.0},
+        )
+        assert tl.events[0].params == {"file": "car_horn.wav", "snr_db": 5.0}
+
+    def test_close_returns_none_for_no_match(self):
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        result = tl.close_event("burst_noise", end_ms=100, participant="user")
+        assert result is None
+
+    def test_serialization_roundtrip(self):
+        """EffectTimeline should survive JSON serialization."""
+        from tau2.data_model.audio_effects import EffectTimeline
+
+        tl = EffectTimeline()
+        tl.open_event(
+            "burst_noise",
+            start_ms=1000,
+            participant="user",
+            params={"file": "horn.wav"},
+        )
+        tl.close_event("burst_noise", end_ms=1500, participant="user")
+
+        json_str = tl.model_dump_json()
+        restored = EffectTimeline.model_validate_json(json_str)
+        assert len(restored.events) == 1
+        assert restored.events[0].start_ms == 1000
+        assert restored.events[0].end_ms == 1500
+        assert restored.events[0].duration_ms == 500
+        assert restored.events[0].params == {"file": "horn.wav"}

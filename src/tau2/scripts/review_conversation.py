@@ -159,7 +159,10 @@ def is_full_duplex(simulation: SimulationRun) -> bool:
 def get_full_trajectory_string(simulation: SimulationRun) -> str:
     """Get the full conversation trajectory as a formatted string."""
     if is_full_duplex(simulation):
-        return MarkdownDisplay.display_ticks_consolidated(simulation.ticks)
+        return MarkdownDisplay.display_ticks_consolidated(
+            simulation.ticks,
+            effect_timeline=simulation.effect_timeline,
+        )
     else:
         return MarkdownDisplay.display_messages(simulation.messages)
 
@@ -168,7 +171,9 @@ def get_user_visible_trajectory_string(simulation: SimulationRun) -> str:
     """Get the user-visible trajectory as a formatted string."""
     if is_full_duplex(simulation):
         return MarkdownDisplay.display_ticks_consolidated(
-            simulation.ticks, user_visible_only=True
+            simulation.ticks,
+            user_visible_only=True,
+            effect_timeline=simulation.effect_timeline,
         )
     else:
         messages = UserOnlyReviewer.make_user_visible_trajectory(simulation.messages)

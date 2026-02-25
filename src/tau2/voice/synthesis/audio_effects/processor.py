@@ -1,6 +1,7 @@
 # Copyright Sierra
 """Audio effect processor mixins for batch and streaming modes."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -15,6 +16,7 @@ from tau2.data_model.audio_effects import (
     SourceEffectsResult,
     SpeechEffectsConfig,
     SpeechEffectsResult,
+    UserSpeechInsert,
 )
 from tau2.voice.synthesis.audio_effects.effects import (
     apply_burst_noise,
@@ -29,11 +31,10 @@ from tau2.voice.synthesis.audio_effects.noise_generator import (
 from tau2.voice.synthesis.audio_effects.scheduler import ScheduledEffect
 from tau2.voice.synthesis.audio_effects.speech_generator import OutOfTurnSpeechGenerator
 from tau2.voice.utils.audio_preprocessing import (
+    AudioTracks,
     apply_fade_out,
-    audio_data_to_numpy,
-    mix_audio_dynamic,
+    mix_audio_to_tracks,
     numpy_to_audio_data,
-    overlay_audio_samples,
 )
 
 
@@ -112,6 +113,40 @@ class BatchAudioEffectsMixin:
         return result
 
 
+@dataclass
+class StreamingChunkResult:
+    """Result of processing one streaming audio chunk.
+
+    Contains individual audio tracks (for multitrack recording) plus
+    metadata about effects that were triggered or completed.
+    """
+
+    tracks: AudioTracks
+    out_of_turn_speech: np.ndarray
+    pending_effect: Optional[PendingEffectState]
+    source_effects: Optional[SourceEffectsResult]
+    triggered_speech_insert: Optional[UserSpeechInsert]
+    burst_noise_file: Optional[str]
+    pending_effect_completed: bool
+
+    def to_mixed_audio_data(self) -> AudioData:
+        """Sum all tracks (including out-of-turn speech) into one AudioData."""
+        mixed = (
+            self.tracks.speech
+            + self.tracks.background_noise
+            + self.tracks.burst_noise
+            + self.out_of_turn_speech
+        )
+        mixed = np.clip(mixed, -32768, 32767).astype(np.int16)
+        return numpy_to_audio_data(
+            mixed,
+            encoding=AudioEncoding.PCM_S16LE,
+            sample_rate=self.tracks.sample_rate,
+            channels=1,
+            dtype=np.int16,
+        )
+
+
 class StreamingAudioEffectsMixin:
     """Mixin for streaming audio effect processing (VoiceStreamingUserSimulator)."""
 
@@ -123,8 +158,15 @@ class StreamingAudioEffectsMixin:
         scheduled_effects: Optional[list[ScheduledEffect]] = None,
         out_of_turn_generator: Optional[OutOfTurnSpeechGenerator] = None,
         pending_effect: Optional[PendingEffectState] = None,
-    ) -> tuple[AudioData, Optional[SourceEffectsResult], Optional[PendingEffectState]]:
-        """Process a single audio chunk with streaming effects."""
+    ) -> StreamingChunkResult:
+        """Process a single audio chunk, returning individual tracks.
+
+        Returns a StreamingChunkResult containing:
+        - Individual audio tracks (speech, background noise, burst noise,
+          out-of-turn speech) for multitrack recording
+        - Effect metadata (what was triggered/completed)
+        - Updated pending effect state
+        """
         is_speech = speech_audio is not None
 
         # If speech starts, discard any pending silence-only effect
@@ -137,22 +179,18 @@ class StreamingAudioEffectsMixin:
         noise_data, snr_envelope = noise_generator.get_next_chunk(num_samples)
         burst_info = noise_generator.get_burst_chunk(num_samples)
 
-        # Mix speech with background noise using SNR-based mixing
-        mixed_audio = mix_audio_dynamic(
+        tracks = mix_audio_to_tracks(
             speech=speech_audio,
             noise=noise_data,
             snr_envelope_db=snr_envelope,
             burst_info=burst_info,
         )
 
-        # Track effects for logging
         burst_noise_file = None
         triggered_speech_insert = None
 
-        # Process scheduled effects
         if scheduled_effects:
             for effect in scheduled_effects:
-                # Cross-turn effects: Apply regardless of speech state
                 if effect.timing == "cross_turn":
                     if (
                         effect.effect_type == "burst_noise_file"
@@ -162,7 +200,6 @@ class StreamingAudioEffectsMixin:
                         noise_generator.add_burst(effect.burst_noise_file)
                         logger.debug(f"Added burst noise: {burst_noise_file}")
 
-                # Out-of-turn effects: Only apply during silence
                 elif effect.timing == "out_of_turn" and not is_speech:
                     if (
                         effect.effect_type == "out_of_turn_speech"
@@ -184,13 +221,17 @@ class StreamingAudioEffectsMixin:
                                     f"Started out-of-turn {item.type}: {item.text}"
                                 )
 
+        # Build out-of-turn speech track (separate from the other tracks)
+        oot_track = np.zeros(num_samples, dtype=np.float64)
+        pending_effect_completed = False
+
         if (
             pending_effect is not None
             and not pending_effect.is_complete
             and not is_speech
         ):
-            mixed_audio, pending_effect = self._apply_pending_effect_chunk(
-                mixed_audio, pending_effect, num_samples
+            oot_track, pending_effect, pending_effect_completed = (
+                self._get_pending_effect_track(pending_effect, num_samples)
             )
 
         source_effects = None
@@ -200,57 +241,62 @@ class StreamingAudioEffectsMixin:
                 speech_insert=triggered_speech_insert,
             )
 
-        return mixed_audio, source_effects, pending_effect
+        return StreamingChunkResult(
+            tracks=tracks,
+            out_of_turn_speech=oot_track,
+            pending_effect=pending_effect,
+            source_effects=source_effects,
+            triggered_speech_insert=triggered_speech_insert,
+            burst_noise_file=burst_noise_file,
+            pending_effect_completed=pending_effect_completed,
+        )
 
-    def _apply_pending_effect_chunk(
+    def _get_pending_effect_track(
         self,
-        base_audio: AudioData,
         pending_effect: PendingEffectState,
         num_samples: int,
-    ) -> tuple[AudioData, Optional[PendingEffectState]]:
-        """Apply a portion of a pending effect to the current chunk."""
-        bytes_per_sample = 2  # 16-bit audio
+    ) -> tuple[np.ndarray, Optional[PendingEffectState], bool]:
+        """Extract the current chunk of a pending out-of-turn effect as a track.
+
+        Returns:
+            Tuple of (float64 track_samples, updated_pending_effect, completed).
+        """
+        bytes_per_sample = 2
         chunk_bytes = num_samples * bytes_per_sample
 
         remaining = pending_effect.remaining_bytes
         if remaining <= 0:
-            return base_audio, None
+            return np.zeros(num_samples, dtype=np.float64), None, True
 
         portion_length = min(chunk_bytes, remaining)
         portion_bytes = pending_effect.audio_bytes[
             pending_effect.offset : pending_effect.offset + portion_length
         ]
 
-        base_np = audio_data_to_numpy(base_audio, dtype=np.int16)
+        portion_np = (
+            np.frombuffer(portion_bytes, dtype=np.int16).copy().astype(np.float64)
+        )
+        completed = False
 
-        portion_np = np.frombuffer(portion_bytes, dtype=np.int16).copy()
         if len(portion_np) < num_samples:
             portion_np = apply_fade_out(portion_np)
             portion_np = np.pad(portion_np, (0, num_samples - len(portion_np)))
-        mixed_np = overlay_audio_samples(base_np, portion_np, volume=1.0)
 
-        result = numpy_to_audio_data(
-            mixed_np,
-            encoding=AudioEncoding.PCM_S16LE,
-            sample_rate=base_audio.format.sample_rate,
-            channels=base_audio.format.channels,
-            dtype=np.int16,
-        )
-
-        # Update offset
         new_offset = pending_effect.offset + portion_length
-        logger.debug(
-            f"Applied pending effect portion: {portion_length} bytes, offset now {new_offset}"
-        )
 
         if new_offset >= len(pending_effect.audio_bytes):
             logger.debug(f"Pending effect complete: {pending_effect.info}")
-            return result, None
+            completed = True
+            return portion_np, None, completed
         else:
-            return result, PendingEffectState(
-                audio_bytes=pending_effect.audio_bytes,
-                offset=new_offset,
-                info=pending_effect.info,
+            return (
+                portion_np,
+                PendingEffectState(
+                    audio_bytes=pending_effect.audio_bytes,
+                    offset=new_offset,
+                    info=pending_effect.info,
+                ),
+                completed,
             )
 
     def apply_streaming_frame_drop(

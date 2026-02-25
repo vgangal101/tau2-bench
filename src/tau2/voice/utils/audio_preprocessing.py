@@ -3,6 +3,7 @@
 
 import audioop
 from copy import deepcopy
+from dataclasses import dataclass
 from math import gcd
 from typing import Literal, Optional
 
@@ -11,22 +12,21 @@ from loguru import logger
 from scipy.signal import resample_poly
 
 from tau2.data_model.audio import (
+    PCM_SAMPLE_RATE,
     AudioData,
     AudioEncoding,
     AudioFormat,
 )
+from tau2.voice_config import (
+    DEFAULT_FADE_OUT_SAMPLES,
+    MIN_BURST_RMS,
+    MIN_RMS_THRESHOLD,
+    NORMALIZE_RATIO,
+    SNR_SPEECH_REFERENCE_RMS,
+)
 
-# Minimum RMS threshold to avoid division by zero / extreme scaling
-MIN_RMS_THRESHOLD = 1e-6
-# Reference speech RMS for SNR calculation (typical moderate speech level in 16-bit audio)
-# This ensures consistent noise levels regardless of whether speech is present
-REFERENCE_SPEECH_RMS = 3000.0
-
-# Constants
-MULAW_MU = 255  # μ-law parameter
-
-# Default fade-out duration in samples (~6ms at 16kHz) to prevent clicking
-DEFAULT_FADE_OUT_SAMPLES = 100
+# μ-law companding parameter (G.711 standard, not tunable)
+MULAW_MU = 255
 
 
 def apply_fade_out(
@@ -45,11 +45,10 @@ def apply_fade_out(
     # Make a copy to avoid modifying the original
     samples = samples.copy()
 
-    # Apply linear fade-out
+    # Apply linear fade-out, preserving original dtype
     fade_window = np.linspace(1.0, 0.0, fade_samples)
-    samples[-fade_samples:] = (
-        samples[-fade_samples:].astype(np.float32) * fade_window
-    ).astype(np.int16)
+    faded = samples[-fade_samples:].astype(np.float64) * fade_window
+    samples[-fade_samples:] = faded.astype(samples.dtype)
 
     return samples
 
@@ -211,7 +210,7 @@ def convert_to_alaw(audio: AudioData) -> AudioData:
 def generate_silence_audio(duration_ms: int) -> AudioData:
     """Generate silence audio of a given duration (16kHz PCM_S16LE mono)."""
     duration_seconds = duration_ms / 1000  # seconds
-    sample_rate = 16000  # Hz
+    sample_rate = PCM_SAMPLE_RATE
     encoding = AudioEncoding.PCM_S16LE
     num_bytes = int(duration_seconds * sample_rate * encoding.sample_width)
 
@@ -439,24 +438,69 @@ def _snr_to_scale(snr_db: float, noise_rms: float) -> float:
     if noise_rms < MIN_RMS_THRESHOLD:
         return 0.0  # No noise to scale
 
-    return (REFERENCE_SPEECH_RMS / noise_rms) * (10 ** (-snr_db / 20))
+    return (SNR_SPEECH_REFERENCE_RMS / noise_rms) * (10 ** (-snr_db / 20))
 
 
-def mix_audio_dynamic(
+@dataclass
+class AudioTracks:
+    """Individual audio tracks before mixing, stored as float64 for precision.
+
+    Each track is independently scaled and can be summed to reproduce the
+    mixed output. Zero regions mean the effect is inactive for that portion.
+    Tracks are always time-aligned and the same length.
+
+    Tracks are kept in float64 so that summing them produces the same result
+    as the original single-pass mix (no intermediate int16 quantization).
+    Conversion to int16 happens only at output boundaries (WAV taps, final mix).
+    """
+
+    speech: np.ndarray
+    background_noise: np.ndarray
+    burst_noise: np.ndarray
+    sample_rate: int
+    num_samples: int
+    metadata: dict
+
+    def sum(self) -> np.ndarray:
+        """Sum all tracks and clip to int16 range."""
+        mixed = self.speech + self.background_noise + self.burst_noise
+        return np.clip(mixed, -32768, 32767).astype(np.int16)
+
+    def to_audio_data(self) -> AudioData:
+        """Sum tracks and return as AudioData."""
+        return numpy_to_audio_data(
+            self.sum(),
+            encoding=AudioEncoding.PCM_S16LE,
+            sample_rate=self.sample_rate,
+            channels=1,
+            dtype=np.int16,
+        )
+
+    def track_to_int16(self, track_name: str) -> np.ndarray:
+        """Get a track as int16 (for WAV tap recording)."""
+        arr = getattr(self, track_name)
+        return np.clip(arr, -32768, 32767).astype(np.int16)
+
+
+def mix_audio_to_tracks(
     speech: Optional[AudioData],
     noise: Optional[AudioData],
     snr_envelope_db: Optional[np.ndarray],
     allow_resample_snr: bool = True,
-    burst_info: Optional[tuple[np.ndarray, float, int]] = None,
-) -> AudioData:
-    """Mix speech with background noise using SNR-based scaling.
+    burst_info: Optional[tuple[np.ndarray, float, float]] = None,
+) -> AudioTracks:
+    """Compute individually scaled audio tracks without mixing them.
+
+    Returns an AudioTracks with speech, background_noise, and burst_noise
+    as separate float64 arrays. Call .sum() or .to_audio_data() to get the
+    mixed result.
 
     Args:
         speech: Speech audio data (PCM_S16LE)
         noise: Background noise audio data (PCM_S16LE)
         snr_envelope_db: SNR envelope in dB for noise mixing
         allow_resample_snr: Whether to allow resampling the SNR envelope
-        burst_info: Tuple of (samples, snr_db, actual_audio_length) for burst mixing
+        burst_info: Tuple of (samples, snr_db, whole_burst_rms) for burst mixing
     """
     if speech is None and noise is None:
         raise ValueError("Either speech or noise must be provided")
@@ -473,87 +517,106 @@ def mix_audio_dynamic(
             )
 
     format_source = speech if speech is not None else noise
+    sample_rate = format_source.format.sample_rate
 
-    # Convert to numpy arrays (float64 for mixing precision)
+    # Convert to numpy arrays (float64 for scaling precision)
     if speech is not None:
-        speech_samples = audio_data_to_numpy(speech, dtype=np.int16).astype(np.float64)
+        speech_f64 = audio_data_to_numpy(speech, dtype=np.int16).astype(np.float64)
     else:
-        speech_samples = None
+        speech_f64 = None
 
     if noise is not None:
-        noise_samples = audio_data_to_numpy(noise, dtype=np.int16).astype(np.float64)
+        noise_f64 = audio_data_to_numpy(noise, dtype=np.int16).astype(np.float64)
     else:
-        noise_samples = None
+        noise_f64 = None
 
-    # Create zeros for missing audio
-    if speech_samples is None:
-        speech_samples = np.zeros_like(noise_samples)
-    if noise_samples is None:
-        noise_samples = np.zeros_like(speech_samples)
+    if speech_f64 is None:
+        speech_f64 = np.zeros_like(noise_f64)
+    if noise_f64 is None:
+        noise_f64 = np.zeros_like(speech_f64)
 
-    # Compute RMS of noise for scaling (uses fixed reference speech level)
-    noise_rms = _compute_rms(noise_samples)
+    num_samples = len(speech_f64)
+    metadata: dict = {}
 
-    # Start with speech
-    mixed = speech_samples.copy()
+    # Scale background noise by SNR
+    scaled_noise = np.zeros(num_samples, dtype=np.float64)
+    noise_rms = _compute_rms(noise_f64)
 
-    # Mix background noise with SNR-based scaling
-    # Uses REFERENCE_SPEECH_RMS for consistent noise level regardless of actual speech
     if snr_envelope_db is not None and noise_rms >= MIN_RMS_THRESHOLD:
-        # Resample SNR envelope if needed
-        if len(snr_envelope_db) != len(speech_samples):
+        if len(snr_envelope_db) != num_samples:
             if not allow_resample_snr:
                 raise ValueError(
                     f"SNR envelope must have the same length as the audio, "
-                    f"got {len(snr_envelope_db)} and {len(speech_samples)}"
+                    f"got {len(snr_envelope_db)} and {num_samples}"
                 )
             snr_envelope_db = np.interp(
-                np.linspace(0, len(snr_envelope_db) - 1, len(speech_samples)),
+                np.linspace(0, len(snr_envelope_db) - 1, num_samples),
                 np.arange(len(snr_envelope_db)),
                 snr_envelope_db,
             )
 
-        # Use average SNR for the chunk to compute scale
         avg_snr_db = float(np.mean(snr_envelope_db))
         noise_scale = _snr_to_scale(avg_snr_db, noise_rms)
+        scaled_noise = noise_f64 * noise_scale
+        metadata["bg_noise_avg_snr_db"] = avg_snr_db
+        metadata["bg_noise_scale"] = noise_scale
 
-        mixed = mixed + noise_samples * noise_scale
-
-    # Mix burst if present
+    # Scale burst noise by its SNR using the whole-burst RMS
+    scaled_burst = np.zeros(num_samples, dtype=np.float64)
     if burst_info is not None:
-        burst_samples, burst_snr_db, actual_audio_length = burst_info
-        burst_samples = burst_samples.astype(np.float64)
+        burst_samples, burst_snr_db, whole_burst_rms = burst_info
+        burst_f64 = burst_samples.astype(np.float64)
 
-        # Compute RMS only on actual audio portion (excluding zero-padding)
-        # This prevents artificially low RMS when burst ends mid-chunk
-        burst_rms = _compute_rms(burst_samples[:actual_audio_length])
+        if whole_burst_rms >= MIN_BURST_RMS:
+            burst_scale = _snr_to_scale(burst_snr_db, whole_burst_rms)
+            if len(burst_f64) < num_samples:
+                padded = np.zeros(num_samples, dtype=np.float64)
+                padded[: len(burst_f64)] = burst_f64
+                burst_f64 = padded
+            elif len(burst_f64) > num_samples:
+                burst_f64 = burst_f64[:num_samples]
 
-        # Use higher threshold for burst (100) to avoid extreme amplification of
-        # silence/low-level chunks (e.g., trailing silence in burst files)
-        # With RMS=100 and REFERENCE_SPEECH_RMS=3000, max scale is ~30x
-        min_burst_rms = 100.0
-        if burst_rms >= min_burst_rms:
-            burst_scale = _snr_to_scale(burst_snr_db, burst_rms)
-            # Ensure burst_samples matches mixed length
-            if len(burst_samples) < len(mixed):
-                padded = np.zeros_like(mixed)
-                padded[: len(burst_samples)] = burst_samples
-                burst_samples = padded
-            elif len(burst_samples) > len(mixed):
-                burst_samples = burst_samples[: len(mixed)]
+            scaled_burst = burst_f64 * burst_scale
+            metadata["burst_snr_db"] = burst_snr_db
+            metadata["burst_scale"] = burst_scale
 
-            mixed = mixed + burst_samples * burst_scale
-
-    # Clip to prevent overflow and convert back to int16
-    mixed = np.clip(mixed, -32768, 32767).astype(np.int16)
-
-    return numpy_to_audio_data(
-        mixed,
-        encoding=AudioEncoding.PCM_S16LE,
-        sample_rate=format_source.format.sample_rate,
-        channels=format_source.format.channels,
-        dtype=np.int16,
+    return AudioTracks(
+        speech=speech_f64,
+        background_noise=scaled_noise,
+        burst_noise=scaled_burst,
+        sample_rate=sample_rate,
+        num_samples=num_samples,
+        metadata=metadata,
     )
+
+
+def mix_audio_dynamic(
+    speech: Optional[AudioData],
+    noise: Optional[AudioData],
+    snr_envelope_db: Optional[np.ndarray],
+    allow_resample_snr: bool = True,
+    burst_info: Optional[tuple[np.ndarray, float, float]] = None,
+) -> AudioData:
+    """Mix speech with background noise using SNR-based scaling.
+
+    Convenience wrapper around mix_audio_to_tracks() that sums the tracks
+    and returns a single AudioData.
+
+    Args:
+        speech: Speech audio data (PCM_S16LE)
+        noise: Background noise audio data (PCM_S16LE)
+        snr_envelope_db: SNR envelope in dB for noise mixing
+        allow_resample_snr: Whether to allow resampling the SNR envelope
+        burst_info: Tuple of (samples, snr_db, whole_burst_rms) for burst mixing
+    """
+    tracks = mix_audio_to_tracks(
+        speech=speech,
+        noise=noise,
+        snr_envelope_db=snr_envelope_db,
+        allow_resample_snr=allow_resample_snr,
+        burst_info=burst_info,
+    )
+    return tracks.to_audio_data()
 
 
 # Default volume for overlay audio
@@ -577,7 +640,7 @@ def overlay_audio_on_chunk(
 
         overlay_pcm = convert_to_pcm16(overlay_audio)
         overlay_pcm = normalize_audio(
-            overlay_pcm, max_value=32767, normalize_ratio=0.75
+            overlay_pcm, max_value=32767, normalize_ratio=NORMALIZE_RATIO
         )
 
         base_np = audio_data_to_numpy(base_audio, dtype=np.int16)

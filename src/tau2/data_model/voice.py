@@ -24,6 +24,7 @@ from tau2.voice_config import (
     ELEVENLABS_ENABLE_AUDIO_TAGS,
     ENABLE_BACKGROUND_NOISE,
     ENABLE_BURST_NOISE,
+    SNR_SPEECH_REFERENCE_RMS,
 )
 
 # ============================================================================
@@ -149,7 +150,11 @@ SpeechComplexity = Literal[
 
 
 class SpeechEnvironment(BaseModel):
-    """Simulation-level voice environment for reproducibility."""
+    """A sampled voice environment instance for a given complexity level.
+
+    All fields are determined by sampling from the complexity preset.
+    Stored on SimulationRun for reproducibility and analysis.
+    """
 
     voice_seed: int = Field(default=DEFAULT_SEED)
     persona_name: str = Field(default=DEFAULT_PERSONA_NAME)
@@ -176,6 +181,25 @@ class SpeechEnvironment(BaseModel):
     )
     telephony_enabled: bool = Field(default=True)
     complexity: SpeechComplexity = Field(default="regular")
+    snr_speech_reference_rms: float = Field(
+        default=SNR_SPEECH_REFERENCE_RMS,
+        description="Speech RMS level used as the reference for SNR-based noise scaling. "
+        "Noise is scaled so that noise_level / this_value = 10^(-SNR/20). "
+        "Currently a fixed estimate of typical TTS speech level in 16-bit PCM.",
+    )
+
+    source_effects_config: Optional[SourceEffectsConfig] = Field(
+        default=None,
+        description="Sampled source/acoustic effects config (noise, bursts) with complexity overrides applied.",
+    )
+    speech_effects_config: Optional[SpeechEffectsConfig] = Field(
+        default=None,
+        description="Sampled speech effects config (muffling, vocal tics) with complexity overrides applied.",
+    )
+    channel_effects_config: Optional[ChannelEffectsConfig] = Field(
+        default=None,
+        description="Sampled channel effects config (frame drops) with complexity overrides applied.",
+    )
 
 
 class SampledVoiceConfig(BaseModel):
@@ -246,6 +270,9 @@ class SampledVoiceConfig(BaseModel):
             enable_interruptions=self.enable_interruptions,
             telephony_enabled=self.telephony_enabled,
             complexity=self.complexity,
+            source_effects_config=self.source_effects_config,
+            speech_effects_config=self.speech_effects_config,
+            channel_effects_config=self.channel_effects_config,
         )
 
 

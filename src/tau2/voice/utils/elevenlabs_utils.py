@@ -9,8 +9,6 @@ from loguru import logger
 from tau2.data_model.audio import AudioData
 from tau2.data_model.voice import ElevenLabsTTSConfig
 
-DEFAULT_ELEVENLABS_AUDIO_TAGS_PROBABILITY = 0.1
-
 
 def make_elevenlabs_output_format(codec: str, sample_rate: int, bitrate: int) -> str:
     """

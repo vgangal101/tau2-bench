@@ -9,11 +9,14 @@ import numpy as np
 from loguru import logger
 from scipy import signal
 
-from tau2.data_model.audio import AudioData, AudioEncoding, AudioFormat
+from tau2.data_model.audio import (
+    TELEPHONY_SAMPLE_RATE,
+    AudioData,
+    AudioEncoding,
+    AudioFormat,
+)
 from tau2.voice.utils.audio_io import load_wav_file
 from tau2.voice.utils.audio_preprocessing import (
-    MIN_RMS_THRESHOLD,
-    REFERENCE_SPEECH_RMS,
     audio_data_to_numpy,
     convert_to_pcm16,
     convert_to_ulaw,
@@ -22,13 +25,18 @@ from tau2.voice.utils.audio_preprocessing import (
     overlay_audio_samples,
     resample_audio,
 )
-from tau2.voice_config import BURST_SNR_RANGE_DB
+from tau2.voice_config import (
+    BURST_SNR_RANGE_DB,
+    CONSTANT_MUFFLE_CUTOFF_FREQ,
+    MIN_RMS_THRESHOLD,
+    MUFFLE_TRANSITION_MS,
+    NORMALIZE_RATIO,
+    SNR_SPEECH_REFERENCE_RMS,
+    TELEPHONY_HEADROOM,
+    TELEPHONY_HIGH_FREQ,
+    TELEPHONY_LOW_FREQ,
+)
 
-CONSTANT_MUFFLE_CUTOFF_HZ = 1000
-TELEPHONY_SAMPLE_RATE = 8000
-TELEPHONY_LOW_FREQ = 300
-TELEPHONY_HIGH_FREQ = 3400
-TELEPHONY_HEADROOM = 0.9
 TELEPHONY_FORMAT = AudioFormat(
     encoding=AudioEncoding.ULAW,
     sample_rate=TELEPHONY_SAMPLE_RATE,
@@ -121,7 +129,9 @@ def apply_burst_noise(
             burst_audio = resample_audio(burst_audio, audio.format.sample_rate)
 
         burst_pcm = convert_to_pcm16(burst_audio)
-        burst_pcm = normalize_audio(burst_pcm, max_value=32767, normalize_ratio=0.75)
+        burst_pcm = normalize_audio(
+            burst_pcm, max_value=32767, normalize_ratio=NORMALIZE_RATIO
+        )
 
         main_np = audio_data_to_numpy(audio, dtype=np.int16).astype(np.float64)
         burst_np = audio_data_to_numpy(burst_pcm, dtype=np.int16).astype(np.float64)
@@ -151,7 +161,7 @@ def apply_burst_noise(
         if burst_rms < MIN_RMS_THRESHOLD:
             burst_scale = 0.0
         else:
-            burst_scale = (REFERENCE_SPEECH_RMS / burst_rms) * (
+            burst_scale = (SNR_SPEECH_REFERENCE_RMS / burst_rms) * (
                 10 ** (-burst_snr_db / 20)
             )
 
@@ -232,7 +242,7 @@ def apply_dynamic_muffling(
     segment_count: int,
     segment_duration_ms: int,
     cutoff_freq: float,
-    transition_ms: int = 100,
+    transition_ms: int = MUFFLE_TRANSITION_MS,
 ) -> AudioData:
     """Apply segment-based muffling to simulate occasional speaker movement."""
     if not audio.format.is_pcm16:
@@ -312,7 +322,7 @@ def apply_dynamic_muffling(
 
 def apply_constant_muffling(
     audio: AudioData,
-    cutoff_freq: float = CONSTANT_MUFFLE_CUTOFF_HZ,
+    cutoff_freq: float = CONSTANT_MUFFLE_CUTOFF_FREQ,
 ) -> AudioData:
     """Apply constant muffling to entire audio (speaker facing away from mic)."""
     if not audio.format.is_pcm16:

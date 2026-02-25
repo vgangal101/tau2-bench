@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.text import Text
 
 from tau2.config import TERM_DARK_MODE
+from tau2.data_model.audio_effects import EffectEvent, EffectTimeline
 from tau2.data_model.message import (
     AssistantMessage,
     Message,
@@ -687,7 +688,12 @@ class ConsoleDisplay:
                     ticks,
                     consolidated=consolidated_ticks,
                     tick_duration_in_ms=tick_duration_ms,
+                    effect_timeline=simulation.effect_timeline,
                 )
+
+                if simulation.effect_timeline:
+                    cls.display_effect_configs(simulation)
+                    cls.display_effect_timeline(simulation.effect_timeline)
             elif simulation.messages:
                 # Half-duplex: use traditional messages table
                 table = Table(
@@ -1495,12 +1501,185 @@ class ConsoleDisplay:
         milliseconds = remaining_ms % 1000
         return f"{minutes}:{seconds:02d}:{milliseconds:03d}"
 
+    @staticmethod
+    def _format_seconds(ms: int) -> str:
+        """Format milliseconds as a human-readable string.
+
+        Sub-second values are shown in ms for precision (e.g. '150ms'),
+        larger values in seconds with two decimals (e.g. '3.20s').
+        """
+        if abs(ms) < 1000:
+            return f"{ms}ms"
+        return f"{ms / 1000:.2f}s"
+
+    @staticmethod
+    def _format_effect_params(params: Optional[dict]) -> str:
+        """Format an EffectEvent.params dict as a compact string."""
+        if not params:
+            return ""
+        parts = []
+        for k, v in params.items():
+            if isinstance(v, float):
+                parts.append(f"{k}={v:.1f}")
+            else:
+                parts.append(f"{k}={escape(str(v))}")
+        return ", ".join(parts)
+
+    @staticmethod
+    def _get_overlapping_effects(
+        timeline: EffectTimeline,
+        start_ms: int,
+        end_ms: int,
+    ) -> list[EffectEvent]:
+        """Return events that overlap the given time range."""
+        return [
+            e
+            for e in timeline.events
+            if e.start_ms < end_ms and (e.end_ms or float("inf")) > start_ms
+        ]
+
+    @classmethod
+    def _format_effect_cell(
+        cls,
+        overlapping: list[EffectEvent],
+    ) -> str:
+        """Render overlapping effects as a compact multi-line cell string."""
+        if not overlapping:
+            return ""
+        lines = []
+        for e in overlapping:
+            start = cls._format_seconds(e.start_ms)
+            end = cls._format_seconds(e.end_ms) if e.end_ms is not None else "..."
+            params_str = cls._format_effect_params(e.params)
+            label = e.effect_type
+            entry = f"{label} ({start}-{end})"
+            if params_str:
+                entry += f" {params_str}"
+            lines.append(entry)
+        return "\n".join(lines)
+
+    @classmethod
+    def display_effect_timeline(
+        cls,
+        timeline: Optional[EffectTimeline],
+    ) -> None:
+        """Print a standalone Rich table summarising the effect timeline."""
+        if not timeline or not timeline.events:
+            return
+
+        c = cls.colors
+        sorted_events = sorted(timeline.events, key=lambda e: e.start_ms)
+
+        table = Table(
+            title=f"Effect Timeline ({len(sorted_events)} events)",
+            show_header=True,
+            header_style=c.table_header,
+            show_lines=True,
+        )
+        table.add_column("Start", style=c.table_details_column, no_wrap=True, width=8)
+        table.add_column("End", style=c.table_details_column, no_wrap=True, width=8)
+        table.add_column("Effect", style=c.user_tool, width=20)
+        table.add_column("Participant", style=c.table_details_column, width=12)
+        table.add_column("Duration", style=c.table_details_column, width=10)
+        table.add_column("Details", style=c.table_details_column, overflow="fold")
+
+        for event in sorted_events:
+            start = cls._format_seconds(event.start_ms)
+            end = (
+                cls._format_seconds(event.end_ms) if event.end_ms is not None else "..."
+            )
+            duration = (
+                cls._format_seconds(event.duration_ms)
+                if event.duration_ms is not None
+                else "-"
+            )
+            details = cls._format_effect_params(event.params)
+            table.add_row(
+                start,
+                end,
+                event.effect_type,
+                event.participant,
+                duration,
+                details or "-",
+            )
+
+        cls.console.print(table)
+
+    @classmethod
+    def display_effect_configs(
+        cls,
+        simulation: SimulationRun,
+    ) -> None:
+        """Print a summary panel of the effect configuration used for this simulation."""
+        env = simulation.speech_environment
+        if env is None:
+            return
+
+        has_configs = (
+            env.source_effects_config is not None
+            or env.speech_effects_config is not None
+            or env.channel_effects_config is not None
+        )
+        if not has_configs:
+            return
+
+        c = cls.colors
+        table = Table(
+            title=f"Effect Configuration (complexity={env.complexity})",
+            show_header=True,
+            header_style=c.table_header,
+            show_lines=False,
+            padding=(0, 1),
+        )
+        table.add_column("Parameter", style=c.user_tool, no_wrap=True)
+        table.add_column("Value", style=c.table_details_column)
+
+        if env.source_effects_config is not None:
+            src = env.source_effects_config
+            table.add_row("background_noise", str(src.enable_background_noise))
+            table.add_row("noise_snr_db", f"{src.noise_snr_db}")
+            table.add_row("noise_snr_drift_db", f"{src.noise_snr_drift_db}")
+            table.add_row("noise_variation_speed", f"{src.noise_variation_speed}")
+            table.add_row("burst_noise", str(src.enable_burst_noise))
+            table.add_row(
+                "burst_noise_events_per_min", f"{src.burst_noise_events_per_minute}"
+            )
+            table.add_row("burst_snr_range_db", str(src.burst_snr_range_db))
+
+        if env.speech_effects_config is not None:
+            spc = env.speech_effects_config
+            table.add_row("dynamic_muffling", str(spc.enable_dynamic_muffling))
+            table.add_row("muffle_probability", f"{spc.muffle_probability}")
+            table.add_row("muffle_cutoff_freq", f"{spc.muffle_cutoff_freq}")
+            table.add_row(
+                "out_of_turn_speech",
+                str(spc.enable_non_directed_phrases),
+            )
+            table.add_row(
+                "speech_insert_events_per_min",
+                f"{spc.speech_insert_events_per_minute}",
+            )
+
+        if env.channel_effects_config is not None:
+            ch = env.channel_effects_config
+            table.add_row("frame_drops", str(ch.enable_frame_drops))
+            table.add_row("frame_drop_rate", f"{ch.frame_drop_rate}")
+            table.add_row(
+                "frame_drop_burst_duration_ms", f"{ch.frame_drop_burst_duration_ms}"
+            )
+
+        table.add_row("snr_speech_reference_rms", f"{env.snr_speech_reference_rms}")
+        table.add_row("telephony", str(env.telephony_enabled))
+
+        cls.console.print(table)
+
     @classmethod
     def display_ticks(
         cls,
         ticks: list["Tick"],
         consolidated: bool = False,
         tick_duration_in_ms: int | None = None,
+        effect_timeline: Optional[EffectTimeline] = None,
     ):
         """
         Display tick-based trajectory from FullDuplexOrchestrator.
@@ -1511,18 +1690,33 @@ class ConsoleDisplay:
                          This makes very short ticks (e.g., 200ms) easier to read.
             tick_duration_in_ms: If provided, adds a column showing simulation time
                                 in milliseconds (tick_id * tick_duration_in_ms).
+            effect_timeline: If provided, adds an "Effects" column showing which
+                            audio effects overlap each row's time range.
         """
         if consolidated:
-            cls._display_ticks_consolidated(ticks, tick_duration_in_ms)
+            cls._display_ticks_consolidated(
+                ticks, tick_duration_in_ms, effect_timeline=effect_timeline
+            )
         else:
-            cls._display_ticks_expanded(ticks, tick_duration_in_ms)
+            cls._display_ticks_expanded(
+                ticks, tick_duration_in_ms, effect_timeline=effect_timeline
+            )
 
     @classmethod
     def _display_ticks_expanded(
-        cls, ticks: list["Tick"], tick_duration_in_ms: int | None = None
+        cls,
+        ticks: list["Tick"],
+        tick_duration_in_ms: int | None = None,
+        effect_timeline: Optional[EffectTimeline] = None,
     ):
         """Display each tick as a separate row (original behavior)."""
         c = cls.colors
+        show_effects = (
+            effect_timeline is not None
+            and tick_duration_in_ms is not None
+            and len(effect_timeline.events) > 0
+        )
+
         table = Table(
             title="Full-Duplex Tick Trajectory",
             show_header=True,
@@ -1543,14 +1737,14 @@ class ConsoleDisplay:
         table.add_column("User Calls", style=c.user_tool, overflow="fold")
         table.add_column("User Results", style=c.user_tool, overflow="fold")
         table.add_column("User Turn Action", style=c.user_tool, overflow="fold")
+        if show_effects:
+            table.add_column("Effects", style=c.user_tool, overflow="fold")
 
         for tick in ticks:
-            # Agent speech content
             agent_content = ""
             if tick.agent_chunk and tick.agent_chunk.content:
                 agent_content = cls.escape_markup(tick.agent_chunk.content)
 
-            # Agent tool calls (sent by agent)
             agent_calls = ""
             if tick.agent_tool_calls:
                 agent_calls = "\n".join(
@@ -1558,12 +1752,10 @@ class ConsoleDisplay:
                     for tc in tick.agent_tool_calls
                 )
 
-            # Agent tool results (received by agent)
             agent_results = ""
             if tick.agent_tool_results:
                 agent_results = "\n".join(r.content for r in tick.agent_tool_results)
 
-            # Agent turn-taking action
             agent_turn_action = ""
             if (
                 tick.agent_chunk
@@ -1574,12 +1766,10 @@ class ConsoleDisplay:
                 info = tick.agent_chunk.turn_taking_action.info
                 agent_turn_action = f"{action}: {info}" if info else action
 
-            # User speech content
             user_content = ""
             if tick.user_chunk and tick.user_chunk.content:
                 user_content = cls.escape_markup(tick.user_chunk.content)
 
-            # User tool calls (sent by user)
             user_calls = ""
             if tick.user_tool_calls:
                 user_calls = "\n".join(
@@ -1587,12 +1777,10 @@ class ConsoleDisplay:
                     for tc in tick.user_tool_calls
                 )
 
-            # User tool results (received by user)
             user_results = ""
             if tick.user_tool_results:
                 user_results = "\n".join(r.content for r in tick.user_tool_results)
 
-            # User turn-taking action
             user_turn_action = ""
             if (
                 tick.user_chunk
@@ -1625,6 +1813,15 @@ class ConsoleDisplay:
                     user_turn_action or "-",
                 ]
             )
+
+            if show_effects:
+                tick_start_ms = tick.tick_id * tick_duration_in_ms
+                tick_end_ms = tick_start_ms + tick_duration_in_ms
+                overlapping = cls._get_overlapping_effects(
+                    effect_timeline, tick_start_ms, tick_end_ms
+                )
+                row_data.append(cls._format_effect_cell(overlapping) or "-")
+
             table.add_row(*row_data)
 
         cls.console.print(table)
@@ -1635,6 +1832,7 @@ class ConsoleDisplay:
         ticks: list["Tick"],
         tick_duration_in_ms: int | None = None,
         show_turn_actions: bool = True,
+        effect_timeline: Optional[EffectTimeline] = None,
     ):
         """Display ticks with consecutive text chunks grouped together.
 
@@ -1692,7 +1890,18 @@ class ConsoleDisplay:
                 "style": c.user_tool,
                 "overflow": "fold",
             },
+            "effects": {
+                "name": "Effects",
+                "style": c.user_tool,
+                "overflow": "fold",
+            },
         }
+
+        show_effects = (
+            effect_timeline is not None
+            and tick_duration_in_ms is not None
+            and len(effect_timeline.events) > 0
+        )
 
         # Helper to extract info from a tick
         def extract_tick_info(tick: "Tick") -> dict:
@@ -1852,6 +2061,16 @@ class ConsoleDisplay:
             ]
             user_turn_action = consolidate_actions(user_turn_actions)
 
+            # Effects column
+            effects_cell = ""
+            if show_effects:
+                row_start_ms = start_tick * tick_duration_in_ms
+                row_end_ms = (end_tick + 1) * tick_duration_in_ms
+                overlapping = cls._get_overlapping_effects(
+                    effect_timeline, row_start_ms, row_end_ms
+                )
+                effects_cell = cls._format_effect_cell(overlapping)
+
             # Build row data dict
             row = {
                 "ticks": tick_label,
@@ -1867,6 +2086,7 @@ class ConsoleDisplay:
                 "user_calls": user_calls,
                 "user_results": user_results,
                 "user_turn_action": user_turn_action,
+                "effects": effects_cell,
             }
 
             # Track which columns have data
@@ -1891,6 +2111,8 @@ class ConsoleDisplay:
         )
         if show_turn_actions:
             column_order.append("user_turn_action")
+        if show_effects:
+            column_order.append("effects")
 
         # Filter to only columns with data
         active_columns = [col for col in column_order if col in columns_with_data]
@@ -2246,7 +2468,83 @@ class MarkdownDisplay:
             output.append("\n**Messages**:")
             output.extend(cls.display_message(msg) for msg in sim.messages)
 
+        if sim.effect_timeline and sim.effect_timeline.events:
+            effect_config_md = cls.display_effect_configs(sim)
+            if effect_config_md:
+                output.append(effect_config_md)
+            output.append(cls.display_effect_timeline(sim.effect_timeline))
+
         return "\n\n".join(output)
+
+    @classmethod
+    def display_effect_configs(cls, sim: SimulationRun) -> Optional[str]:
+        """Return a markdown table of the effect configuration for this simulation."""
+        env = sim.speech_environment
+        if env is None:
+            return None
+
+        has_configs = (
+            env.source_effects_config is not None
+            or env.speech_effects_config is not None
+            or env.channel_effects_config is not None
+        )
+        if not has_configs:
+            return None
+
+        rows: list[tuple[str, str]] = []
+
+        if env.source_effects_config is not None:
+            src = env.source_effects_config
+            rows.append(("background_noise", str(src.enable_background_noise)))
+            rows.append(("noise_snr_db", f"{src.noise_snr_db}"))
+            rows.append(("noise_snr_drift_db", f"{src.noise_snr_drift_db}"))
+            rows.append(("noise_variation_speed", f"{src.noise_variation_speed}"))
+            rows.append(("burst_noise", str(src.enable_burst_noise)))
+            rows.append(
+                (
+                    "burst_noise_events_per_min",
+                    f"{src.burst_noise_events_per_minute}",
+                )
+            )
+            rows.append(("burst_snr_range_db", str(src.burst_snr_range_db)))
+
+        if env.speech_effects_config is not None:
+            spc = env.speech_effects_config
+            rows.append(("dynamic_muffling", str(spc.enable_dynamic_muffling)))
+            rows.append(("muffle_probability", f"{spc.muffle_probability}"))
+            rows.append(("muffle_cutoff_freq", f"{spc.muffle_cutoff_freq}"))
+            rows.append(("out_of_turn_speech", str(spc.enable_non_directed_phrases)))
+            rows.append(
+                (
+                    "speech_insert_events_per_min",
+                    f"{spc.speech_insert_events_per_minute}",
+                )
+            )
+
+        if env.channel_effects_config is not None:
+            ch = env.channel_effects_config
+            rows.append(("frame_drops", str(ch.enable_frame_drops)))
+            rows.append(("frame_drop_rate", f"{ch.frame_drop_rate}"))
+            rows.append(
+                (
+                    "frame_drop_burst_duration_ms",
+                    f"{ch.frame_drop_burst_duration_ms}",
+                )
+            )
+
+        rows.append(("snr_speech_reference_rms", f"{env.snr_speech_reference_rms}"))
+        rows.append(("telephony", str(env.telephony_enabled)))
+
+        lines = [
+            f"### Effect Configuration (complexity={env.complexity})",
+            "",
+            "| Parameter | Value |",
+            "| --- | --- |",
+        ]
+        for param, value in rows:
+            lines.append(f"| {param} | {value} |")
+
+        return "\n".join(lines)
 
     @classmethod
     def display_result(
@@ -2317,8 +2615,56 @@ class MarkdownDisplay:
         return "\n".join(parts)
 
     @classmethod
+    def display_effect_timeline(
+        cls,
+        timeline: Optional[EffectTimeline],
+    ) -> str:
+        """Return a markdown table summarising the effect timeline."""
+        if not timeline or not timeline.events:
+            return ""
+
+        sorted_events = sorted(timeline.events, key=lambda e: e.start_ms)
+
+        def _fmt_s(ms: int) -> str:
+            return f"{ms / 1000:.1f}s"
+
+        def _fmt_params(params: Optional[dict]) -> str:
+            if not params:
+                return "-"
+            parts = []
+            for k, v in params.items():
+                if isinstance(v, float):
+                    parts.append(f"{k}={v:.1f}")
+                else:
+                    parts.append(f"{k}={v}")
+            return ", ".join(parts)
+
+        lines = [
+            f"### Effect Timeline ({len(sorted_events)} events)",
+            "",
+            "| Start | End | Effect | Participant | Duration | Details |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+        for event in sorted_events:
+            start = _fmt_s(event.start_ms)
+            end = _fmt_s(event.end_ms) if event.end_ms is not None else "..."
+            duration = (
+                _fmt_s(event.duration_ms) if event.duration_ms is not None else "-"
+            )
+            details = _fmt_params(event.params)
+            lines.append(
+                f"| {start} | {end} | {event.effect_type} | {event.participant} | {duration} | {details} |"
+            )
+
+        return "\n".join(lines)
+
+    @classmethod
     def display_ticks_consolidated(
-        cls, ticks: list["Tick"], user_visible_only: bool = False
+        cls,
+        ticks: list["Tick"],
+        user_visible_only: bool = False,
+        effect_timeline: Optional[EffectTimeline] = None,
+        tick_duration_in_ms: int | None = None,
     ) -> str:
         """
         Display ticks in a consolidated markdown table format.
@@ -2416,6 +2762,12 @@ class MarkdownDisplay:
             ticks, extract_tick_info, has_tool_activity
         )
 
+        show_effects = (
+            effect_timeline is not None
+            and tick_duration_in_ms is not None
+            and len(effect_timeline.events) > 0
+        )
+
         # Determine which columns we need
         has_agent_calls = any(
             any(inf["agent_calls"] for inf in grp[2]) for grp in groups
@@ -2439,6 +2791,8 @@ class MarkdownDisplay:
             headers.append("User Calls")
         if has_user_results:
             headers.append("User Results")
+        if show_effects:
+            headers.append("Effects")
 
         # Build table rows
         rows = []
@@ -2509,6 +2863,20 @@ class MarkdownDisplay:
                 row.append(user_calls_str)
             if has_user_results:
                 row.append(user_results_str)
+            if show_effects:
+                row_start_ms = start_tick * tick_duration_in_ms
+                row_end_ms = (end_tick + 1) * tick_duration_in_ms
+                overlapping = ConsoleDisplay._get_overlapping_effects(
+                    effect_timeline, row_start_ms, row_end_ms
+                )
+                effects_parts = []
+                for e in overlapping:
+                    s = f"{e.start_ms / 1000:.1f}s"
+                    en = f"{e.end_ms / 1000:.1f}s" if e.end_ms is not None else "..."
+                    effects_parts.append(f"{e.effect_type} ({s}-{en})")
+                row.append(
+                    escape_table("; ".join(effects_parts)) if effects_parts else ""
+                )
 
             rows.append(row)
 

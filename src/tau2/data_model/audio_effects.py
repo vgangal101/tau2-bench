@@ -3,7 +3,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from tau2.voice_config import (
     BURST_NOISE_EVENTS_PER_MINUTE,
@@ -152,3 +152,119 @@ class SpeechEffectsResult(BaseModel):
 
     dynamic_muffling_enabled: bool = Field(default=False)
     speech_insert: Optional[UserSpeechInsert] = Field(default=None)
+
+
+# ---------------------------------------------------------------------------
+# Effect timeline models (for structured effect tracking in trajectories)
+# ---------------------------------------------------------------------------
+
+EffectType = Literal[
+    "background_noise",
+    "burst_noise",
+    "out_of_turn_speech",
+    "telephony",
+    "frame_drop",
+]
+
+
+class EffectEvent(BaseModel):
+    """A single audio effect occurrence with precise timing.
+
+    Params dict holds effect-specific metadata, e.g.:
+      burst_noise:        {"file": "car_horn.wav", "snr_db": 5.0}
+      out_of_turn_speech: {"type": "vocal_tic", "text": "[cough]"}
+      frame_drop:         {"duration_ms": 60}
+      background_noise:   {"noise_file": "busy_street.wav", "avg_snr_db": 15.0}
+      telephony:          {"input_rate": 16000, "output_rate": 8000, "encoding": "ulaw"}
+    """
+
+    effect_type: EffectType = Field(description="Type of audio effect")
+    start_ms: int = Field(description="Start time relative to audio stream origin (ms)")
+    end_ms: Optional[int] = Field(
+        default=None,
+        description="End time (ms). None while still active.",
+    )
+    participant: Literal["user", "agent"] = Field(
+        description="Which participant this effect applies to"
+    )
+    params: Optional[dict] = Field(
+        default=None,
+        description="Effect-specific metadata",
+    )
+
+    @computed_field
+    @property
+    def duration_ms(self) -> Optional[int]:
+        """Duration in ms, computed from start/end."""
+        if self.end_ms is not None:
+            return self.end_ms - self.start_ms
+        return None
+
+
+class EffectTimeline(BaseModel):
+    """Ordered list of effect events for a simulation.
+
+    Provides helpers to open/close events and query by type.
+    """
+
+    events: list[EffectEvent] = Field(default_factory=list)
+
+    def open_event(
+        self,
+        effect_type: EffectType,
+        start_ms: int,
+        participant: Literal["user", "agent"],
+        params: Optional[dict] = None,
+    ) -> EffectEvent:
+        """Record the start of a new effect. Call close_event() when it ends."""
+        event = EffectEvent(
+            effect_type=effect_type,
+            start_ms=start_ms,
+            participant=participant,
+            params=params,
+        )
+        self.events.append(event)
+        return event
+
+    def close_event(
+        self,
+        effect_type: EffectType,
+        end_ms: int,
+        participant: Literal["user", "agent"] = "user",
+    ) -> Optional[EffectEvent]:
+        """Close the most recent open event of the given type.
+
+        Returns the closed event, or None if no open event was found.
+        """
+        for event in reversed(self.events):
+            if (
+                event.effect_type == effect_type
+                and event.end_ms is None
+                and event.participant == participant
+            ):
+                event.end_ms = end_ms
+                return event
+        return None
+
+    def close_all_open(self, end_ms: int) -> None:
+        """Close all open events (e.g., at end of simulation)."""
+        for event in self.events:
+            if event.end_ms is None:
+                event.end_ms = end_ms
+
+    def get_events_by_type(self, effect_type: EffectType) -> list[EffectEvent]:
+        """Return all events of a given type."""
+        return [e for e in self.events if e.effect_type == effect_type]
+
+    def has_open_event(
+        self,
+        effect_type: EffectType,
+        participant: Literal["user", "agent"] = "user",
+    ) -> bool:
+        """Check if there's an open (unclosed) event of the given type."""
+        return any(
+            e.effect_type == effect_type
+            and e.end_ms is None
+            and e.participant == participant
+            for e in self.events
+        )

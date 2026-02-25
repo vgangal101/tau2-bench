@@ -576,6 +576,15 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             provider = self.agent.adapter.provider
             provider_session_id = getattr(provider, "session_id", None)
 
+        # Collect effect timeline from user simulator if available
+        effect_timeline = None
+        if hasattr(self.user, "get_effect_timeline"):
+            effect_timeline = self.user.get_effect_timeline()
+            if effect_timeline and effect_timeline.events:
+                logger.info(
+                    f"Effect timeline: {len(effect_timeline.events)} events recorded"
+                )
+
         simulation_run = SimulationRun(
             id=self.simulation_id,
             task_id=self.task.id,
@@ -593,6 +602,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             speech_environment=speech_environment,
             info=info,
             provider_session_id=provider_session_id,
+            effect_timeline=effect_timeline,
         )
         return simulation_run
 

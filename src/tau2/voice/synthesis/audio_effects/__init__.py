@@ -16,6 +16,7 @@ from .processor import (
     BatchAudioEffectsMixin,
     PendingEffectState,
     StreamingAudioEffectsMixin,
+    StreamingChunkResult,
 )
 from .scheduler import (
     EffectScheduler,
@@ -44,6 +45,7 @@ __all__ = [
     "BatchAudioEffectsMixin",
     "PendingEffectState",
     "StreamingAudioEffectsMixin",
+    "StreamingChunkResult",
     # Scheduler
     "EffectScheduler",
     "EffectSchedulerState",

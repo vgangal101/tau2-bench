@@ -15,10 +15,12 @@ from loguru import logger
 
 from tau2.data_model.audio import AudioData
 from tau2.voice.utils.elevenlabs_utils import (
-    DEFAULT_ELEVENLABS_AUDIO_TAGS_PROBABILITY,
     ElevenLabsTTSConfig,
     VoiceSettings,
     tts_elevenlabs,
+)
+from tau2.voice_config import (
+    ELEVENLABS_AUDIO_TAGS_PROBABILITY as DEFAULT_ELEVENLABS_AUDIO_TAGS_PROBABILITY,
 )
 
 

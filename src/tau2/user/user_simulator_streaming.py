@@ -23,7 +23,7 @@ from tau2.data_model.audio import (
     AudioEncoding,
     audio_bytes_to_string,
 )
-from tau2.data_model.audio_effects import ChannelEffectsResult
+from tau2.data_model.audio_effects import ChannelEffectsResult, EffectTimeline
 from tau2.data_model.message import (
     AssistantMessage,
     EnvironmentMessage,
@@ -521,20 +521,24 @@ class VoiceStreamingUserSimulator(
             self.enable_user_initiated_interruption = False
         self.validate_turn_taking_settings()
 
+        # Effect timeline (always active, lightweight metadata)
+        self._effect_timeline = EffectTimeline()
+
         # Audio taps for pipeline diagnostics (None = disabled, zero cost)
         self._audio_taps: Optional[dict[str, AudioTap]] = None
         if audio_taps_dir is not None:
             from tau2.data_model.audio import TELEPHONY_SAMPLE_RATE
 
             self._audio_taps = {
+                # Pipeline-stage taps (existing)
                 "agent_input": AudioTap(
                     "agent_input",
                     audio_taps_dir,
                     TELEPHONY_SAMPLE_RATE,
                     AudioEncoding.ULAW,
                 ),
-                "pre_effects": AudioTap(
-                    "pre_effects",
+                "tts_output": AudioTap(
+                    "tts_output",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
@@ -556,6 +560,31 @@ class VoiceStreamingUserSimulator(
                     audio_taps_dir,
                     TELEPHONY_SAMPLE_RATE,
                     AudioEncoding.ULAW,
+                ),
+                # Per-effect multitrack taps (time-aligned, same length)
+                "speech_only": AudioTap(
+                    "speech_only",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
+                ),
+                "background_noise_only": AudioTap(
+                    "background_noise_only",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
+                ),
+                "burst_noise_only": AudioTap(
+                    "burst_noise_only",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
+                ),
+                "out_of_turn_speech_only": AudioTap(
+                    "out_of_turn_speech_only",
+                    audio_taps_dir,
+                    PCM_SAMPLE_RATE,
+                    AudioEncoding.PCM_S16LE,
                 ),
             }
             logger.info(f"Audio taps enabled, output dir: {audio_taps_dir}")
@@ -647,7 +676,12 @@ class VoiceStreamingUserSimulator(
         state: Optional["UserAudioStreamingState"] = None,
         tool_results: Optional[EnvironmentMessage] = None,
     ) -> None:
-        """Stop the user simulator and save any audio taps."""
+        """Stop the user simulator, close timeline events, and save audio taps."""
+        # Close any open timeline events at the final time
+        if state is not None:
+            end_ms = int(state.elapsed_samples * 1000 / PCM_SAMPLE_RATE)
+            self._effect_timeline.close_all_open(end_ms)
+
         if self._audio_taps:
             for tap in self._audio_taps.values():
                 tap.save()
@@ -656,6 +690,10 @@ class VoiceStreamingUserSimulator(
                 f"{list(self._audio_taps.keys())}"
             )
         super().stop(participant_chunk, state, tool_results)
+
+    def get_effect_timeline(self) -> EffectTimeline:
+        """Return the effect timeline recorded during the simulation."""
+        return self._effect_timeline
 
     def get_init_state(
         self, message_history: Optional[list[Message]] = None
@@ -796,72 +834,6 @@ class VoiceStreamingUserSimulator(
             backchannel_check_usage=timing.get("backchannel_check_usage"),
         )
 
-    def _add_background_noise(
-        self,
-        user_message: Optional[UserMessage],
-        state: UserAudioStreamingState,
-        scheduled_effects: Optional[list] = None,
-    ) -> UserMessage:
-        """
-        Add background noise (or silence) to user message, plus any scheduled effects.
-
-        Delegates to StreamingAudioEffectsMixin.process_streaming_chunk() for audio processing.
-
-        Args:
-            user_message: User message with speech audio, or None for silence/noise-only
-            state: User audio streaming state containing the noise generator
-            scheduled_effects: Optional list of ScheduledEffect objects to apply
-
-        Returns:
-            UserMessage with mixed audio (speech + noise/silence + effects)
-        """
-        num_samples = self.chunk_size
-
-        pending_effect = state.pending_effect
-
-        # Extract speech audio from message
-        speech_audio = None
-        if user_message is not None:
-            speech_audio = AudioData(
-                data=user_message.get_audio_bytes(),
-                format=deepcopy(user_message.audio_format),
-                audio_path=user_message.audio_path,
-            )
-
-        # Delegate to StreamingAudioEffectsMixin
-        mixed_audio, source_effects, new_pending_effect = self.process_streaming_chunk(
-            speech_audio=speech_audio,
-            noise_generator=state.noise_generator,
-            num_samples=num_samples,
-            scheduled_effects=scheduled_effects,
-            out_of_turn_generator=state.out_of_turn_speech_generator,
-            pending_effect=pending_effect,
-        )
-
-        state.pending_effect = new_pending_effect
-
-        # Return result message
-        if not user_message:
-            return UserMessage(
-                role="user",
-                content="",
-                cost=0.0,
-                usage=None,
-                is_audio=True,
-                audio_content=audio_bytes_to_string(mixed_audio.data),
-                audio_format=mixed_audio.format,
-                audio_script_gold="",
-                chunk_id=0,
-                is_final_chunk=True,
-                contains_speech=False,
-                source_effects=source_effects,
-            )
-        else:
-            user_message.audio_content = audio_bytes_to_string(mixed_audio.data)
-            user_message.audio_format = mixed_audio.format
-            user_message.source_effects = source_effects
-            return user_message
-
     def _apply_frame_drop(
         self, user_message: UserMessage, drop_duration_ms: int
     ) -> UserMessage:
@@ -875,7 +847,6 @@ class VoiceStreamingUserSimulator(
         )
         user_message.audio_content = audio_bytes_to_string(zeroed)
 
-        # Track channel effects
         existing = user_message.channel_effects
         total_drop_ms = drop_duration_ms + (existing.frame_drop_ms if existing else 0)
         user_message.channel_effects = ChannelEffectsResult(
@@ -906,12 +877,19 @@ class VoiceStreamingUserSimulator(
         state: UserAudioStreamingState,
         is_speech: bool,
     ) -> UserMessage:
-        """Apply scheduled effects, noise, telephony, and frame drops to chunk."""
-        # Get scheduled effects
+        """Apply scheduled effects, noise, telephony, and frame drops to chunk.
+
+        Uses the multitrack pipeline: each effect is computed as an
+        independent track, then summed before telephony and frame drops.
+        When audio taps are enabled, individual tracks are recorded.
+        Effect events are always recorded in the timeline.
+        """
+        current_time_ms = int(state.elapsed_samples * 1000 / PCM_SAMPLE_RATE)
+
+        # 1. Get scheduled effects from the scheduler
         scheduled_effects = []
         if state.effect_scheduler is not None:
             chunk_duration_ms = int(self.chunk_size * 1000 / PCM_SAMPLE_RATE)
-            current_time_ms = int(state.elapsed_samples * 1000 / PCM_SAMPLE_RATE)
             scheduled_effects = state.effect_scheduler.check_for_effects(
                 chunk_duration_ms=chunk_duration_ms,
                 is_silence=not is_speech,
@@ -920,24 +898,128 @@ class VoiceStreamingUserSimulator(
             )
 
         if self._audio_taps:
-            self._audio_taps["pre_effects"].record_message(chunk)
+            self._audio_taps["tts_output"].record_message(chunk)
 
-        # Apply background noise + out-of-turn effects
-        chunk = self._add_background_noise(chunk, state, scheduled_effects)
+        # 2. Extract speech audio from the message
+        speech_audio = None
+        if chunk is not None:
+            speech_audio = AudioData(
+                data=chunk.get_audio_bytes(),
+                format=deepcopy(chunk.audio_format),
+                audio_path=chunk.audio_path,
+            )
+
+        # 3. Process chunk through multitrack pipeline
+        result = self.process_streaming_chunk(
+            speech_audio=speech_audio,
+            noise_generator=state.noise_generator,
+            num_samples=self.chunk_size,
+            scheduled_effects=scheduled_effects,
+            out_of_turn_generator=state.out_of_turn_speech_generator,
+            pending_effect=state.pending_effect,
+        )
+        state.pending_effect = result.pending_effect
+
+        # 4. Record timeline events
+        if result.burst_noise_file:
+            burst_file_name = Path(result.burst_noise_file).name
+            burst_params: dict = {"file": burst_file_name}
+            if "burst_snr_db" in result.tracks.metadata:
+                burst_params["snr_db"] = result.tracks.metadata["burst_snr_db"]
+            if "burst_scale" in result.tracks.metadata:
+                burst_params["scale"] = result.tracks.metadata["burst_scale"]
+            self._effect_timeline.open_event(
+                effect_type="burst_noise",
+                start_ms=current_time_ms,
+                participant="user",
+                params=burst_params,
+            )
+        if result.triggered_speech_insert:
+            self._effect_timeline.open_event(
+                effect_type="out_of_turn_speech",
+                start_ms=current_time_ms,
+                participant="user",
+                params={
+                    "type": result.triggered_speech_insert.type,
+                    "text": result.triggered_speech_insert.text,
+                },
+            )
+        if result.pending_effect_completed:
+            self._effect_timeline.close_event(
+                effect_type="out_of_turn_speech",
+                end_ms=current_time_ms,
+                participant="user",
+            )
+        # Close burst event when the noise generator's burst finishes
+        if (
+            not state.noise_generator.has_active_burst()
+            and self._effect_timeline.has_open_event("burst_noise", "user")
+        ):
+            self._effect_timeline.close_event(
+                effect_type="burst_noise",
+                end_ms=current_time_ms,
+                participant="user",
+            )
+
+        # 5. Record per-track taps (only when enabled)
+        if self._audio_taps:
+            self._audio_taps["speech_only"].record_numpy(result.tracks.speech)
+            self._audio_taps["background_noise_only"].record_numpy(
+                result.tracks.background_noise
+            )
+            self._audio_taps["burst_noise_only"].record_numpy(result.tracks.burst_noise)
+            self._audio_taps["out_of_turn_speech_only"].record_numpy(
+                result.out_of_turn_speech
+            )
+
+        # 6. Sum tracks -> mixed PCM 16kHz
+        mixed_audio = result.to_mixed_audio_data()
+
+        # Build the output message
+        if not chunk:
+            chunk = UserMessage(
+                role="user",
+                content="",
+                cost=0.0,
+                usage=None,
+                is_audio=True,
+                audio_content=audio_bytes_to_string(mixed_audio.data),
+                audio_format=mixed_audio.format,
+                audio_script_gold="",
+                chunk_id=0,
+                is_final_chunk=True,
+                contains_speech=False,
+                source_effects=result.source_effects,
+            )
+        else:
+            chunk.audio_content = audio_bytes_to_string(mixed_audio.data)
+            chunk.audio_format = mixed_audio.format
+            chunk.source_effects = result.source_effects
 
         if self._audio_taps:
             self._audio_taps["post_noise"].record_message(chunk)
 
-        # Apply telephony compression
+        # 7. Apply telephony compression
         if self.voice_settings.speech_environment.telephony_enabled:
             chunk = self._add_telephony_compression(chunk, state.telephony_converter)
 
         if self._audio_taps:
             self._audio_taps["post_telephony"].record_message(chunk)
 
-        # Apply frame drops after telephony
+        # 8. Apply frame drops after telephony
         for effect in scheduled_effects:
             if effect.effect_type == "frame_drop" and effect.frame_drop_duration_ms:
+                self._effect_timeline.open_event(
+                    effect_type="frame_drop",
+                    start_ms=current_time_ms,
+                    participant="user",
+                    params={"duration_ms": effect.frame_drop_duration_ms},
+                )
+                self._effect_timeline.close_event(
+                    effect_type="frame_drop",
+                    end_ms=current_time_ms + effect.frame_drop_duration_ms,
+                    participant="user",
+                )
                 chunk = self._apply_frame_drop(chunk, effect.frame_drop_duration_ms)
                 logger.debug(f"Applied frame drop: {effect.frame_drop_duration_ms}ms")
 

@@ -20,7 +20,13 @@ from tau2.voice.utils.audio_preprocessing import (
 )
 from tau2.voice.utils.probability import poisson_should_trigger
 from tau2.voice.utils.utils import BURST_NOISE_FILES
-from tau2.voice_config import BURST_SNR_RANGE_DB, NOISE_SNR_DB, NOISE_SNR_DRIFT_DB
+from tau2.voice_config import (
+    BURST_SNR_RANGE_DB,
+    NOISE_SNR_DB,
+    NOISE_SNR_DRIFT_DB,
+    NOISE_VARIATION_SPEED,
+    NORMALIZE_RATIO,
+)
 
 CHANNELS = 1
 MAX_VOLUME_FACTOR = 0.6
@@ -38,7 +44,7 @@ class BackgroundNoiseGenerator:
         # SNR-based parameters
         snr_db: float = NOISE_SNR_DB,
         snr_drift_db: float = NOISE_SNR_DRIFT_DB,
-        variation_speed: float = 0.05,
+        variation_speed: float = NOISE_VARIATION_SPEED,
         primary_variation: tuple[float, float] = (1.0, 1.0),
         harmonic_variation: tuple[float, float] = (0.3, 2.7),
         slow_drift: tuple[float, float] = (0.2, 0.4),
@@ -68,6 +74,7 @@ class BackgroundNoiseGenerator:
         self.burst_audio: Optional[bytes] = None
         self.burst_offset: int = 0
         self.burst_snr_db: Optional[float] = None  # SNR for current burst
+        self.burst_rms: Optional[float] = None  # RMS computed over entire burst
         self.burst_snr_range_db = burst_snr_range_db
 
         # Scheduling state
@@ -114,7 +121,7 @@ class BackgroundNoiseGenerator:
         )
 
     def _prepare_audio(
-        self, file_path: Path, normalize_ratio: float = 0.75
+        self, file_path: Path, normalize_ratio: float = NORMALIZE_RATIO
     ) -> AudioData:
         """Load, resample, convert to PCM16, and normalize audio from a WAV file."""
         audio = load_wav_file(file_path)
@@ -139,10 +146,14 @@ class BackgroundNoiseGenerator:
         self.position = 0
 
     def _load_burst_from_wav(self, file_path: Path) -> None:
-        """Load a burst sound from a WAV file."""
-        audio = self._prepare_audio(file_path, normalize_ratio=0.75)
+        """Load a burst sound from a WAV file and pre-compute its RMS."""
+        audio = self._prepare_audio(file_path, normalize_ratio=NORMALIZE_RATIO)
         self.burst_audio = audio.data
         self.burst_offset = 0
+        # Pre-compute RMS over the entire burst so that all chunks use the
+        # same scale factor, preserving the burst's natural dynamics.
+        all_samples = np.frombuffer(audio.data, dtype=np.int16).astype(np.float64)
+        self.burst_rms = float(np.sqrt(np.mean(all_samples**2)))
 
     def generate_snr_envelope(
         self,
@@ -261,11 +272,13 @@ class BackgroundNoiseGenerator:
 
     def get_burst_chunk(
         self, num_samples: int
-    ) -> Optional[tuple[np.ndarray, float, int]]:
+    ) -> Optional[tuple[np.ndarray, float, float]]:
         """Get the next chunk of burst audio if active, or None.
 
         Returns:
-            Tuple of (samples, snr_db, actual_audio_length) or None if no active burst
+            Tuple of (samples, snr_db, whole_burst_rms) or None if no active burst.
+            whole_burst_rms is pre-computed over the entire burst at load time so
+            that every chunk uses the same scale factor.
         """
         if self.burst_audio is None or self.burst_snr_db is None:
             return None
@@ -275,9 +288,7 @@ class BackgroundNoiseGenerator:
 
         remaining = len(self.burst_audio) - self.burst_offset
         if remaining <= 0:
-            self.burst_audio = None
-            self.burst_offset = 0
-            self.burst_snr_db = None
+            self._clear_burst()
             return None
 
         portion_length = min(chunk_bytes, remaining)
@@ -286,29 +297,30 @@ class BackgroundNoiseGenerator:
         ]
 
         burst_np = np.frombuffer(burst_portion, dtype=np.int16).copy()
-        actual_audio_length = len(burst_np)
 
         # Pad with zeros if burst is shorter than requested
         if len(burst_np) < num_samples:
-            # Apply fade-out to prevent clicking at burst end
             burst_np = apply_fade_out(burst_np)
-
-            # Zero-pad to requested length
             padded = np.zeros(num_samples, dtype=np.int16)
             padded[: len(burst_np)] = burst_np
             burst_np = padded
 
         self.burst_offset += portion_length
 
-        # Check if burst is complete
-        if self.burst_offset >= len(self.burst_audio):
-            self.burst_audio = None
-            self.burst_offset = 0
-            snr = self.burst_snr_db
-            self.burst_snr_db = None
-            return burst_np, snr, actual_audio_length
+        snr = self.burst_snr_db
+        rms = self.burst_rms
 
-        return burst_np, self.burst_snr_db, actual_audio_length
+        if self.burst_offset >= len(self.burst_audio):
+            self._clear_burst()
+
+        return burst_np, snr, rms
+
+    def _clear_burst(self) -> None:
+        """Reset all burst state."""
+        self.burst_audio = None
+        self.burst_offset = 0
+        self.burst_snr_db = None
+        self.burst_rms = None
 
 
 def create_background_noise_generator(

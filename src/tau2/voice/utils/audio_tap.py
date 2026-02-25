@@ -8,6 +8,7 @@ different pipeline paths (e.g., human user vs. user simulator).
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 from loguru import logger
 
 from tau2.data_model.audio import AudioData, AudioEncoding, AudioFormat
@@ -21,6 +22,9 @@ class AudioTap:
     Accumulates raw audio bytes from each chunk, then writes a single
     WAV file when save() is called. Companded formats (ulaw/alaw) are
     automatically decoded to PCM16 for the WAV output.
+
+    Supports recording from raw bytes, messages, or numpy arrays
+    (for multitrack pipeline stages).
     """
 
     def __init__(
@@ -39,6 +43,17 @@ class AudioTap:
 
     def record(self, audio_bytes: bytes) -> None:
         """Record raw audio bytes from one chunk."""
+        if audio_bytes:
+            self._chunks.append(audio_bytes)
+            self._total_bytes += len(audio_bytes)
+
+    def record_numpy(self, samples: np.ndarray) -> None:
+        """Record a numpy array as one chunk, converting to int16 for WAV storage.
+
+        Accepts any numeric dtype (float64 tracks are clipped and quantized here).
+        """
+        i16 = np.clip(samples, -32768, 32767).astype(np.int16)
+        audio_bytes = i16.tobytes()
         if audio_bytes:
             self._chunks.append(audio_bytes)
             self._total_bytes += len(audio_bytes)

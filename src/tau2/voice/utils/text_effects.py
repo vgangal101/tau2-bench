@@ -9,13 +9,14 @@ import random
 from loguru import logger
 
 from tau2.data_model.audio_effects import UserSpeechInsert
+from tau2.voice_config import MIN_WORDS_FOR_VOCAL_TICS
 
 
 def insert_speech_text(
     text: str,
     speech_insert: UserSpeechInsert,
     rng: random.Random,
-    min_words: int = 3,
+    min_words: int = MIN_WORDS_FOR_VOCAL_TICS,
     in_turn: bool = True,
 ) -> str:
     """Insert speech text at a random position.

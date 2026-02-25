@@ -60,6 +60,27 @@ FRAME_DROP_BURST_DURATION_MS = 100  # Average burst duration in ms
 FRAME_DROP_COUNT = 1
 FRAME_DROP_DURATION_MS = 150  # Duration of each individual frame drop
 
+# SNR Scaling
+# Speech RMS level used as the reference for SNR-based noise/burst scaling.
+# Noise is scaled so that noise_level / this_value = 10^(-SNR/20).
+SNR_SPEECH_REFERENCE_RMS = 3000.0
+MIN_RMS_THRESHOLD = 1e-6  # RMS floor to avoid division by zero / extreme scaling
+MIN_BURST_RMS = 100.0  # Minimum burst RMS for SNR scaling to apply
+
+# Audio Preprocessing
+DEFAULT_FADE_OUT_SAMPLES = 100  # ~6ms at 16kHz, prevents clicking at chunk boundaries
+NORMALIZE_RATIO = 0.75  # Normalization target for burst/overlay audio
+
+# Telephony Conversion
+TELEPHONY_LOW_FREQ = 300  # Hz, lower edge of telephony bandpass
+TELEPHONY_HIGH_FREQ = 3400  # Hz, upper edge of telephony bandpass
+TELEPHONY_HEADROOM = 0.9  # Scale factor to prevent clipping after filtering
+
+# Muffling
+CONSTANT_MUFFLE_CUTOFF_FREQ = (
+    1000.0  # Cutoff for permanent muffling (speaker facing away)
+)
+
 # Source Effects
 ENABLE_BACKGROUND_NOISE = True
 NOISE_SNR_DB = 15.0

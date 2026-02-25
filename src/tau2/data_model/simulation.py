@@ -48,6 +48,7 @@ from tau2.config import (
     DEFAULT_YIELD_THRESHOLD_WHEN_INTERRUPTED_SECONDS,
     DEFAULT_YIELD_THRESHOLD_WHEN_INTERRUPTING_SECONDS,
 )
+from tau2.data_model.audio_effects import EffectTimeline
 from tau2.data_model.message import Message, Tick
 from tau2.data_model.persona import PersonaConfig
 from tau2.data_model.tasks import Action, EnvAssertion, RewardType, Task
@@ -1302,6 +1303,10 @@ class SimulationRun(BaseModel):
     )
     policy: Optional[str] = Field(
         description="The policy/system prompt used for this simulation (knowledge domain only).",
+        default=None,
+    )
+    effect_timeline: Optional[EffectTimeline] = Field(
+        description="Timeline of audio effect events during the simulation (full-duplex voice only).",
         default=None,
     )
 
