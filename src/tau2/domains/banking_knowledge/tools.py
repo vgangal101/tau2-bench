@@ -1993,6 +1993,14 @@ For deposits without available images, the dispute will proceed based on custome
         if requested_increase_amount <= 0:
             return "Error: Requested increase amount must be positive."
 
+        # Verify the credit card account exists
+        if credit_card_account_id not in self.db.credit_card_accounts.data:
+            return f"Error: Credit card account '{credit_card_account_id}' not found."
+
+        cc_account = self.db.credit_card_accounts.data[credit_card_account_id]
+        if cc_account.get("user_id") != user_id:
+            return f"Error: Credit card account '{credit_card_account_id}' does not belong to user '{user_id}'."
+
         request_id = generate_credit_limit_increase_request_id(
             credit_card_account_id, user_id, requested_increase_amount
         )
@@ -2934,6 +2942,10 @@ For deposits without available images, the dispute will proceed based on custome
         """
         if not account_id:
             return "Error: Missing required parameter: account_id"
+
+        # Verify the account exists
+        if account_id not in self.db.accounts.data:
+            return f"Error: Account '{account_id}' not found."
 
         txn_result = query_database_tool(
             "bank_account_transaction_history",
