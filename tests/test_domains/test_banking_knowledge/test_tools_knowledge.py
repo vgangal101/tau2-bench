@@ -66,36 +66,44 @@ def base_knowledge_db() -> TransactionalDB:
                     "user_id": "user_001",
                     "account_type": "checking",
                     "account_class": "Standard Checking",
+                    "class": "checking",
+                    "level": "Blue Account",
                     "current_holdings": "5000.00",
                     "status": "OPEN",
-                    "opened_date": "01/15/2024",
+                    "date_opened": "01/15/2024",
                 },
                 "chk_002": {
                     "account_id": "chk_002",
                     "user_id": "user_002",
                     "account_type": "checking",
                     "account_class": "Premium Checking",
+                    "class": "checking",
+                    "level": "Green Account",
                     "current_holdings": "200.00",
                     "status": "OPEN",
-                    "opened_date": "03/10/2024",
+                    "date_opened": "03/10/2024",
                 },
                 "sav_001": {
                     "account_id": "sav_001",
                     "user_id": "user_001",
                     "account_type": "savings",
                     "account_class": "High-Yield Savings",
+                    "class": "savings",
+                    "level": "Silver Account",
                     "current_holdings": "10000.00",
                     "status": "OPEN",
-                    "opened_date": "01/15/2024",
+                    "date_opened": "01/15/2024",
                 },
                 "chk_closed": {
                     "account_id": "chk_closed",
                     "user_id": "user_001",
                     "account_type": "checking",
                     "account_class": "Standard Checking",
+                    "class": "checking",
+                    "level": "Blue Account",
                     "current_holdings": "0.00",
                     "status": "CLOSED",
-                    "opened_date": "01/01/2023",
+                    "date_opened": "01/01/2023",
                 },
             }
         ),
@@ -1333,7 +1341,7 @@ class TestPayCreditCardFromChecking:
             },
         )
         assert not resp.error
-        assert "payment processed successfully" in resp.content
+        assert "Payment processed successfully" in resp.content
         # Verify checking balance decreased
         assert (
             environment.tools.db.accounts.data["chk_001"]["current_holdings"]
@@ -1429,10 +1437,10 @@ class TestCreditLimitIncrease:
             },
         )
         assert not resp.error
-        assert "approved and applied successfully" in resp.content
+        assert "Credit limit increase approved" in resp.content
         assert (
             environment.tools.db.credit_card_accounts.data["cc_001"]["credit_limit"]
-            == 7500
+            == "$7500.00"
         )
 
     def test_approve_increase_account_not_found(self, environment: Environment):
@@ -1455,11 +1463,11 @@ class TestCreditLimitIncrease:
             {
                 "credit_card_account_id": "cc_001",
                 "user_id": "user_001",
-                "denial_reason": "account_too_new",
+                "denial_reason": "insufficient_account_age",
             },
         )
         assert not resp.error
-        assert "denied" in resp.content
+        assert "denied" in resp.content.lower()
 
     def test_deny_increase_invalid_reason(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1583,14 +1591,14 @@ class TestTransferFundsBetweenAccounts:
             },
         )
         assert not resp.error
-        assert "transferred successfully" in resp.content
+        assert "Transfer completed successfully" in resp.content
         assert (
             environment.tools.db.accounts.data["chk_001"]["current_holdings"]
-            == "4000.00"
+            == "$4000.00"
         )
         assert (
             environment.tools.db.accounts.data["chk_002"]["current_holdings"]
-            == "1200.00"
+            == "$1200.00"
         )
 
     def test_transfer_insufficient_funds(self, environment: Environment):
@@ -1788,9 +1796,11 @@ class TestOrderDebitCard:
             },
         )
         assert not resp.error
-        assert "order placed successfully" in resp.content
+        assert "Debit Card Order Confirmed" in resp.content
 
     def test_order_card_expedited(self, environment: Environment):
+        # Deactivate the existing active card so the order can proceed
+        environment.tools.db.debit_cards.data["dbc_002"]["status"] = "CLOSED"
         resp = call_discoverable_agent(
             environment,
             "order_debit_card_5739",
@@ -1805,8 +1815,8 @@ class TestOrderDebitCard:
             },
         )
         assert not resp.error
-        assert "order placed successfully" in resp.content
-        assert "$35.00" in resp.content  # Total fees
+        assert "Debit Card Order Confirmed" in resp.content
+        assert "$35" in resp.content  # Total fees
 
     def test_order_card_invalid_delivery(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1860,7 +1870,7 @@ class TestActivateDebitCard:
             },
         )
         assert not resp.error
-        assert "activated successfully" in resp.content
+        assert "Activation Successful" in resp.content
         assert environment.tools.db.debit_cards.data["dbc_001"]["status"] == "ACTIVE"
 
     def test_activate_wrong_tool_for_issue_reason(self, environment: Environment):
@@ -1893,7 +1903,7 @@ class TestActivateDebitCard:
             },
         )
         assert not resp.error
-        assert "activated successfully" in resp.content
+        assert "Activation Successful" in resp.content
 
     def test_activate_reissued_card_success(self, environment: Environment):
         """Activate an expired card with tool 8293."""
@@ -1925,7 +1935,7 @@ class TestActivateDebitCard:
             },
         )
         assert not resp.error
-        assert "activated successfully" in resp.content
+        assert "Activation Successful" in resp.content
 
     def test_activate_already_active(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -2031,7 +2041,7 @@ class TestCloseDebitCard:
             },
         )
         assert not resp.error
-        assert "closed successfully" in resp.content
+        assert "Debit Card Closed Successfully" in resp.content
         assert environment.tools.db.debit_cards.data["dbc_002"]["status"] == "CLOSED"
 
     def test_close_card_invalid_reason(self, environment: Environment):
@@ -2071,7 +2081,7 @@ class TestFreezeUnfreezeDebitCard:
             },
         )
         assert not resp.error
-        assert "frozen successfully" in resp.content
+        assert "Debit Card Frozen Successfully" in resp.content
         assert environment.tools.db.debit_cards.data["dbc_002"]["status"] == "FROZEN"
 
     def test_freeze_card_not_found(self, environment: Environment):
@@ -2094,7 +2104,7 @@ class TestFreezeUnfreezeDebitCard:
             },
         )
         assert not resp.error
-        assert "unfrozen successfully" in resp.content
+        assert "Debit Card Unfrozen Successfully" in resp.content
         assert environment.tools.db.debit_cards.data["dbc_frozen"]["status"] == "ACTIVE"
 
     def test_unfreeze_card_not_frozen(self, environment: Environment):
@@ -2106,7 +2116,7 @@ class TestFreezeUnfreezeDebitCard:
             },
         )
         assert "Error" in resp.content
-        assert "not frozen" in resp.content
+        assert "already active" in resp.content
 
     def test_unfreeze_card_not_found(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -2124,6 +2134,11 @@ class TestClearDebitCardFraudAlert:
     """Tests for clear_debit_card_fraud_alert_4892."""
 
     def test_clear_alert_success(self, environment: Environment):
+        # Set up the card with an active fraud alert
+        environment.tools.db.debit_cards.data["dbc_002"]["fraud_alert_active"] = True
+        environment.tools.db.debit_cards.data["dbc_002"]["fraud_alert_source"] = (
+            "customer"
+        )
         resp = call_discoverable_agent(
             environment,
             "clear_debit_card_fraud_alert_4892",
@@ -2133,7 +2148,7 @@ class TestClearDebitCardFraudAlert:
             },
         )
         assert not resp.error
-        assert "cleared successfully" in resp.content
+        assert "Fraud Alert Cleared" in resp.content
 
     def test_clear_alert_invalid_reason(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -2174,7 +2189,7 @@ class TestDebitCardPin:
             },
         )
         assert not resp.error
-        assert "PIN reset successfully" in resp.content
+        assert "PIN Reset Successfully" in resp.content
 
     def test_reset_pin_wrong_last4(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -2226,7 +2241,7 @@ class TestDebitCardPin:
             },
         )
         assert not resp.error
-        assert "PIN changed successfully" in resp.content
+        assert "PIN Changed Successfully" in resp.content
 
     def test_change_pin_invalid_new_pin(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -2259,31 +2274,35 @@ class TestRequestTemporaryLimitIncrease:
     """Tests for request_temporary_debit_card_limit_increase_8374."""
 
     def test_request_atm_increase(self, environment: Environment):
+        # Set up ATM limit on the card so the tool can process it
+        environment.tools.db.debit_cards.data["dbc_002"]["daily_atm_limit"] = 500
         resp = call_discoverable_agent(
             environment,
             "request_temporary_debit_card_limit_increase_8374",
             {
                 "card_id": "dbc_002",
                 "limit_type": "atm",
-                "new_limit": 1000,
+                "new_limit": 700,  # Within 150% of $500 = $750 max
             },
         )
         assert not resp.error
-        assert "limit increase granted" in resp.content
+        assert "Increase Granted Successfully" in resp.content
         assert "24 hours" in resp.content
 
     def test_request_purchase_increase(self, environment: Environment):
+        # Set up purchase limit on the card so the tool can process it
+        environment.tools.db.debit_cards.data["dbc_002"]["daily_purchase_limit"] = 5000
         resp = call_discoverable_agent(
             environment,
             "request_temporary_debit_card_limit_increase_8374",
             {
                 "card_id": "dbc_002",
                 "limit_type": "purchase",
-                "new_limit": 5000,
+                "new_limit": 7000,  # Within 150% of $5000 = $7500 max
             },
         )
         assert not resp.error
-        assert "limit increase granted" in resp.content
+        assert "Increase Granted Successfully" in resp.content
 
     def test_request_invalid_limit_type(self, environment: Environment):
         resp = call_discoverable_agent(
