@@ -66,7 +66,7 @@ def base_knowledge_db() -> TransactionalDB:
                     "user_id": "user_001",
                     "account_type": "checking",
                     "account_class": "Standard Checking",
-                    "balance": 5000.00,
+                    "current_holdings": "5000.00",
                     "status": "OPEN",
                     "opened_date": "01/15/2024",
                 },
@@ -75,7 +75,7 @@ def base_knowledge_db() -> TransactionalDB:
                     "user_id": "user_002",
                     "account_type": "checking",
                     "account_class": "Premium Checking",
-                    "balance": 200.00,
+                    "current_holdings": "200.00",
                     "status": "OPEN",
                     "opened_date": "03/10/2024",
                 },
@@ -84,7 +84,7 @@ def base_knowledge_db() -> TransactionalDB:
                     "user_id": "user_001",
                     "account_type": "savings",
                     "account_class": "High-Yield Savings",
-                    "balance": 10000.00,
+                    "current_holdings": "10000.00",
                     "status": "OPEN",
                     "opened_date": "01/15/2024",
                 },
@@ -93,7 +93,7 @@ def base_knowledge_db() -> TransactionalDB:
                     "user_id": "user_001",
                     "account_type": "checking",
                     "account_class": "Standard Checking",
-                    "balance": 0.00,
+                    "current_holdings": "0.00",
                     "status": "CLOSED",
                     "opened_date": "01/01/2023",
                 },
@@ -1335,7 +1335,10 @@ class TestPayCreditCardFromChecking:
         assert not resp.error
         assert "payment processed successfully" in resp.content
         # Verify checking balance decreased
-        assert environment.tools.db.accounts.data["chk_001"]["balance"] == 4500.00
+        assert (
+            environment.tools.db.accounts.data["chk_001"]["current_holdings"]
+            == "4500.00"
+        )
 
     def test_pay_insufficient_funds(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1581,8 +1584,14 @@ class TestTransferFundsBetweenAccounts:
         )
         assert not resp.error
         assert "transferred successfully" in resp.content
-        assert environment.tools.db.accounts.data["chk_001"]["balance"] == 4000.00
-        assert environment.tools.db.accounts.data["chk_002"]["balance"] == 1200.00
+        assert (
+            environment.tools.db.accounts.data["chk_001"]["current_holdings"]
+            == "4000.00"
+        )
+        assert (
+            environment.tools.db.accounts.data["chk_002"]["current_holdings"]
+            == "1200.00"
+        )
 
     def test_transfer_insufficient_funds(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1652,7 +1661,10 @@ class TestApplyCheckingAccountCredit:
         )
         assert not resp.error
         assert "Credit applied" in resp.content
-        assert environment.tools.db.accounts.data["chk_001"]["balance"] == 5015.00
+        assert (
+            environment.tools.db.accounts.data["chk_001"]["current_holdings"]
+            == "5015.00"
+        )
 
     def test_apply_fee_refund(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1722,7 +1734,10 @@ class TestApplySavingsAccountCredit:
         )
         assert not resp.error
         assert "Credit applied" in resp.content
-        assert environment.tools.db.accounts.data["sav_001"]["balance"] == 10025.50
+        assert (
+            environment.tools.db.accounts.data["sav_001"]["current_holdings"]
+            == "10025.50"
+        )
 
     def test_apply_goodwill_credit(self, environment: Environment):
         resp = call_discoverable_agent(

@@ -72,6 +72,20 @@ TransferReasonLiteral = Literal[
 # =============================================================================
 
 
+def _parse_balance(val: Any) -> float:
+    """Parse a balance value that may be a number or a string like '$2,850.00'."""
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        return float(val.replace("$", "").replace(",", ""))
+    return 0.0
+
+
+def _get_account_balance(account: Dict[str, Any]) -> float:
+    """Get account balance from either 'current_holdings' or 'balance' field."""
+    return _parse_balance(account.get("current_holdings", account.get("balance", 0)))
+
+
 def parse_discoverable_tool_docstring(func) -> Dict[str, Any]:
     """Parse a discoverable tool's docstring into description and parameters.
 
@@ -1249,9 +1263,7 @@ class KnowledgeTools(ToolKitBase):
             "old_card_cancelled": True,
         }
 
-        success = add_to_db(
-            "credit_card_replacement_orders", order_id, order_record, db=self.db
-        )
+        success = add_to_db("credit_card_orders", order_id, order_record, db=self.db)
 
         if not success:
             return f"Error: A replacement order may already exist for this account."
@@ -1321,7 +1333,7 @@ class KnowledgeTools(ToolKitBase):
             return "Error: Missing required parameter: credit_card_account_id"
 
         orders_result = query_database_tool(
-            "credit_card_replacement_orders",
+            "credit_card_orders",
             f'{{"credit_card_account_id": "{credit_card_account_id}"}}',
             db=self.db,
         )
@@ -1695,7 +1707,7 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Checking account '{checking_account_id}' not found."
 
         checking_account = self.db.accounts.data[checking_account_id]
-        current_balance = checking_account.get("balance", 0)
+        current_balance = _get_account_balance(checking_account)
 
         if current_balance < amount:
             return f"Error: Insufficient funds. Available balance: ${current_balance:.2f}, Payment amount: ${amount:.2f}"
@@ -1716,7 +1728,7 @@ class KnowledgeTools(ToolKitBase):
             "accounts",
             db=self.db,
             record_id=checking_account_id,
-            updates={"balance": new_checking_balance},
+            updates={"current_holdings": f"{new_checking_balance:.2f}"},
         )
 
         if not success:
@@ -2048,7 +2060,7 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        balance = account.get("balance", 0)
+        balance = _get_account_balance(account)
 
         if balance != 0:
             return f"Error: Account has a balance of ${balance:.2f}. Balance must be $0.00 to close."
@@ -2145,36 +2157,38 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Destination account '{destination_account_id}' not found."
 
         source = self.db.accounts.data[source_account_id]
-        source_balance = source.get("balance", 0)
+        source_balance = _get_account_balance(source)
 
         if source_balance < amount:
             return f"Error: Insufficient funds. Available: ${source_balance:.2f}"
 
         dest = self.db.accounts.data[destination_account_id]
-        dest_balance = dest.get("balance", 0)
+        dest_balance = _get_account_balance(dest)
 
         # Debit source
+        new_source = source_balance - amount
         update_record_in_db(
             "accounts",
             db=self.db,
             record_id=source_account_id,
-            updates={"balance": source_balance - amount},
+            updates={"current_holdings": f"{new_source:.2f}"},
         )
 
         # Credit destination
+        new_dest = dest_balance + amount
         update_record_in_db(
             "accounts",
             db=self.db,
             record_id=destination_account_id,
-            updates={"balance": dest_balance + amount},
+            updates={"current_holdings": f"{new_dest:.2f}"},
         )
 
         return (
             f"Funds transferred successfully.\n\n"
             f"Executed: transfer_funds_between_bank_accounts_7291\n"
             f"  - Amount: ${amount:.2f}\n"
-            f"  - From: {source_account_id} (New Balance: ${source_balance - amount:.2f})\n"
-            f"  - To: {destination_account_id} (New Balance: ${dest_balance + amount:.2f})"
+            f"  - From: {source_account_id} (New Balance: ${new_source:.2f})\n"
+            f"  - To: {destination_account_id} (New Balance: ${new_dest:.2f})"
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -2208,14 +2222,14 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        current_balance = account.get("balance", 0)
+        current_balance = _get_account_balance(account)
         new_balance = current_balance + amount
 
         update_record_in_db(
             "accounts",
             db=self.db,
             record_id=account_id,
-            updates={"balance": new_balance},
+            updates={"current_holdings": f"{new_balance:.2f}"},
         )
 
         return (
@@ -2258,14 +2272,14 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        current_balance = account.get("balance", 0)
+        current_balance = _get_account_balance(account)
         new_balance = current_balance + amount
 
         update_record_in_db(
             "accounts",
             db=self.db,
             record_id=account_id,
-            updates={"balance": new_balance},
+            updates={"current_holdings": f"{new_balance:.2f}"},
         )
 
         return (
