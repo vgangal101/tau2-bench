@@ -4304,6 +4304,23 @@ class KnowledgeUserTools(ToolKitBase):
             f"  - New Balance: ${new_balance:.2f}"
         )
 
+    # Valid credit card types for applications
+    VALID_CREDIT_CARD_TYPES = [
+        "Bronze Rewards Card",
+        "Business Bronze Rewards Card",
+        "Business Gold Rewards Card",
+        "Business Platinum Rewards Card",
+        "Business Silver Rewards Card",
+        "Crypto-Cash Back",
+        "Diamond Elite Card",
+        "EcoCard",
+        "Gold Rewards Card",
+        "Green Rewards Card",
+        "Platinum Rewards Card",
+        "Silver Rewards Card",
+        "Silver Zoom Card",
+    ]
+
     @is_tool(ToolType.WRITE)
     def apply_for_credit_card(
         self,
@@ -4320,6 +4337,13 @@ class KnowledgeUserTools(ToolKitBase):
             annual_income: Annual income in USD
             rho_bank_subscription: Whether user has Rho-Bank+ subscription
         """
+        # Validate card_type against known credit card types
+        if card_type not in self.VALID_CREDIT_CARD_TYPES:
+            return (
+                f"Error: Invalid card_type '{card_type}'. "
+                f"Must be one of: {self.VALID_CREDIT_CARD_TYPES}"
+            )
+
         # Generate a deterministic application ID from the input parameters
         # This ensures the same inputs produce the same ID for environment evaluation
         application_id = generate_application_id(

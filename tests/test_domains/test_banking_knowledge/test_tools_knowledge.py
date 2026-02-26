@@ -2504,6 +2504,23 @@ class TestApplyForCreditCard:
         assert not resp.error
         assert "submitted" in resp.content.lower()
 
+    def test_apply_invalid_card_type(self, environment: Environment):
+        resp = call(
+            environment,
+            "apply_for_credit_card",
+            {
+                "card_type": "EcoCard (Sustainable Rewards Credit Card)",
+                "customer_name": "Test User",
+                "annual_income": 75000.00,
+                "rho_bank_subscription": False,
+            },
+            requestor="user",
+        )
+        assert "Error" in resp.content
+        assert "Invalid card_type" in resp.content
+        assert "EcoCard" in resp.content
+        assert len(environment.user_tools.db.credit_card_applications.data) == 0
+
 
 class TestSubmitReferral:
     """Tests for submit_referral (user tool)."""
