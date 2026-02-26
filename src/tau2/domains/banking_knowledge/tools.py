@@ -72,6 +72,20 @@ TransferReasonLiteral = Literal[
 # =============================================================================
 
 
+def _parse_balance(val: Any) -> float:
+    """Parse a balance value that may be a number or a string like '$2,850.00'."""
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        return float(val.replace("$", "").replace(",", ""))
+    return 0.0
+
+
+def _get_account_balance(account: Dict[str, Any]) -> float:
+    """Get account balance from either 'current_holdings' or 'balance' field."""
+    return _parse_balance(account.get("current_holdings", account.get("balance", 0)))
+
+
 def parse_discoverable_tool_docstring(func) -> Dict[str, Any]:
     """Parse a discoverable tool's docstring into description and parameters.
 
@@ -943,8 +957,33 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Debit card transaction dispute filed successfully. A case has been opened and provisional credit determination has been recorded.
         """
-        if not transaction_id or not account_id or not card_id or not user_id:
+        if not all(
+            [
+                transaction_id,
+                account_id,
+                card_id,
+                user_id,
+                dispute_category,
+                transaction_date,
+                discovery_date,
+                disputed_amount,
+                transaction_type,
+                pin_compromised,
+                card_action,
+            ]
+        ):
             return "Error: Missing required parameters."
+
+        if customer_max_liability_amount is None:
+            return "Error: customer_max_liability_amount is required."
+
+        if (
+            card_in_possession is None
+            or contacted_merchant is None
+            or police_report_filed is None
+            or written_statement_provided is None
+        ):
+            return "Error: card_in_possession, contacted_merchant, police_report_filed, and written_statement_provided are required boolean fields."
 
         # Validate dispute_category
         valid_categories = [
@@ -992,8 +1031,20 @@ class KnowledgeTools(ToolKitBase):
         if card_action not in valid_card_actions:
             return f"Error: Invalid card_action. Must be one of: {valid_card_actions}"
 
+        # Validate disputed_amount is positive
+        if disputed_amount <= 0:
+            return "Error: disputed_amount must be a positive number."
+
         # Generate a deterministic dispute ID
         dispute_id = generate_dispute_id(user_id, transaction_id)
+
+        # Determine fraud-related fields
+        is_fraud_category = dispute_category in [
+            "unauthorized_transaction",
+            "card_present_fraud",
+            "card_not_present_fraud",
+        ]
+        pin_shared_voluntarily = pin_compromised == "yes_shared"
 
         # Create the debit card dispute record
         dispute_record = {
@@ -1013,15 +1064,16 @@ class KnowledgeTools(ToolKitBase):
             "police_report_filed": police_report_filed,
             "written_statement_provided": written_statement_provided,
             "provisional_credit_eligible": provisional_credit_eligible,
+            "provisional_credit_issued": provisional_credit_eligible,
             "provisional_credit_amount": disputed_amount
             if provisional_credit_eligible
-            else 0,
+            else None,
             "customer_max_liability_amount": customer_max_liability_amount,
             "card_action": card_action,
+            "is_fraud_category": is_fraud_category,
+            "pin_shared_voluntarily": pin_shared_voluntarily,
             "submitted_at": get_today_str(),
-            "status": "SUBMITTED",
-            "investigation_deadline": None,
-            "resolution_date": None,
+            "status": "OPEN",
         }
 
         # Add to the debit_card_disputes table
@@ -1034,11 +1086,9 @@ class KnowledgeTools(ToolKitBase):
 
         # Build response
         result_parts = [
-            "Debit card transaction dispute filed successfully. A case has been opened and provisional credit determination has been recorded.",
-            "",
-            f"Executed: file_debit_card_transaction_dispute_6281",
             f"Dispute ID: {dispute_id}",
             f"Transaction: {transaction_id}",
+            f"Account: {account_id}",
             f"Category: {dispute_category.replace('_', ' ').title()}",
             f"Disputed Amount: ${disputed_amount:.2f}",
             f"Card Action: {card_action.replace('_', ' ').title()}",
@@ -1046,18 +1096,21 @@ class KnowledgeTools(ToolKitBase):
 
         if provisional_credit_eligible:
             result_parts.append(
-                f"Provisional Credit: ELIGIBLE - ${disputed_amount:.2f} to be credited within 10 business days."
+                f"Provisional Credit: ISSUED - ${disputed_amount:.2f} credited within 10 business days per Regulation E."
             )
         else:
-            result_parts.append("Provisional Credit: Not eligible at this time.")
+            result_parts.append(
+                "Provisional Credit: Not eligible - see Debit Card Provisional Credit Guidelines for details."
+            )
 
-        if customer_max_liability_amount == -1:
+        if pin_shared_voluntarily:
             result_parts.append(
-                "Customer Liability: Unlimited (reported after 60 days)"
+                "WARNING: Customer indicated PIN was shared voluntarily. This may affect liability determination."
             )
-        else:
+
+        if is_fraud_category and not police_report_filed and disputed_amount > 500:
             result_parts.append(
-                f"Customer Max Liability: ${customer_max_liability_amount:.2f}"
+                "RECOMMENDATION: For fraud disputes over $500, filing a police report is recommended."
             )
 
         return "\n".join(result_parts)
@@ -1081,27 +1134,31 @@ class KnowledgeTools(ToolKitBase):
             return "Error: Missing required parameter: card_id"
 
         # Check if card exists
-        if card_id not in self.db.debit_cards.data:
+        debit_card = self.db.debit_cards.data.get(card_id)
+        if not debit_card:
             return f"Error: Debit card '{card_id}' not found."
 
-        # Update the card's recurring_block setting
-        success, updated_record = update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"recurring_payments_blocked": block_recurring},
-        )
+        # Check card status - can only update ACTIVE cards
+        card_status = debit_card.get("status", "").upper()
+        if card_status != "ACTIVE":
+            return f"Error: Cannot update recurring block settings for a card with status '{card_status}'. Card must be ACTIVE."
 
-        if not success:
-            return f"Error: Failed to update debit card '{card_id}'."
+        # Update the recurring_blocked field
+        debit_card["recurring_blocked"] = block_recurring
 
-        action = "blocked" if block_recurring else "unblocked"
-        return (
-            f"Debit card recurring payment settings updated successfully.\n\n"
-            f"Executed: set_debit_card_recurring_block_7382\n"
-            f"Arguments: {json.dumps({'card_id': card_id, 'block_recurring': block_recurring}, indent=2)}\n"
-            f"Debit card {card_id}: Recurring payments are now {action}."
-        )
+        if block_recurring:
+            return (
+                f"Recurring payments BLOCKED for debit card {card_id}.\n"
+                f"All recurring/subscription charges will be declined.\n"
+                f"One-time purchases are not affected.\n"
+                f"This change takes effect within 24 hours."
+            )
+        else:
+            return (
+                f"Recurring payments UNBLOCKED for debit card {card_id}.\n"
+                f"Recurring/subscription charges will now be allowed.\n"
+                f"This change takes effect within 24 hours."
+            )
 
     @is_discoverable_tool(ToolType.READ)
     def get_debit_dispute_status_7483(self, user_id: str) -> str:
@@ -1152,33 +1209,164 @@ class KnowledgeTools(ToolKitBase):
         if not transaction_id:
             return "Error: Missing required parameter: transaction_id"
 
-        # Query the ATM deposit images table
-        images_result = query_database_tool(
-            "atm_deposit_images",
-            f'{{"transaction_id": "{transaction_id}"}}',
-            db=self.db,
-        )
+        # Verify the transaction exists
+        if transaction_id not in self.db.bank_account_transaction_history.data:
+            return f"Error: Transaction '{transaction_id}' not found."
 
-        result_parts = [
-            "ATM deposit images retrieved successfully.",
-            "",
-            f"Executed: get_atm_deposit_images_8473",
-            f"ATM deposit images for transaction {transaction_id}:",
-        ]
+        txn = self.db.bank_account_transaction_history.data[transaction_id]
 
-        has_images = (
-            "No records found" not in images_result
-            and "No results found" not in images_result
-        )
+        # Verify it's an ATM deposit transaction
+        if txn.get("type") != "atm_deposit":
+            return f"Error: Transaction '{transaction_id}' is not an ATM deposit. This tool only works for ATM deposit transactions."
 
-        if has_images:
-            result_parts.append(images_result)
+        # Check if it's a Rho-Bank ATM
+        description = txn.get("description", "")
+        if (
+            "RHO-BANK" not in description.upper()
+            and "RHOBANK" not in description.upper()
+        ):
+            return f"Error: Transaction '{transaction_id}' is from a third-party ATM. Deposit images are only available for Rho-Bank ATM deposits. For third-party ATM disputes, a chargeback request must be submitted to the ATM network."
+
+        # Hardcoded deposit image descriptions for specific test transaction IDs
+        deposit_image_data = {
+            "btxn_834027370c20": {
+                "atm_id": "ATM #3921",
+                "deposit_date": txn.get("date", "Unknown"),
+                "envelope_contents": """
+=== ATM DEPOSIT ENVELOPE SCAN ===
+Envelope ID: ENV-2025-3921-00923
+Deposit Time: 3:47 PM CST
+ATM Location: Rho-Bank ATM #3921, Cedar Lane Branch, Austin, TX
+
+--- ENVELOPE CONTENTS ---
+Item 1: Personal Check
+  - Check Number: 7284
+  - Drawn On: First Texas Bank
+  - Payee: Derek Yamamoto
+  - Amount: $875.00
+  - Memo: "October rent refund"
+  - Signature: Present and legible
+  - Date on Check: 11/03/2025
+
+Item 2: Cash
+  - Denomination breakdown:
+    * 2 x $100 bills = $200.00
+    * 3 x $20 bills = $60.00
+  - Total Cash: $260.00
+
+--- DEPOSIT SUMMARY ---
+Check Total: $875.00
+Cash Total: $260.00
+GRAND TOTAL: $1,135.00
+
+--- MACHINE RECORD ---
+Amount Recorded by ATM: $385.00
+DISCREPANCY DETECTED: $750.00 difference
+
+--- IMAGE QUALITY ---
+Envelope scan: CLEAR
+Check front: CLEAR
+Check back (endorsement): CLEAR - endorsed "For Deposit Only - Derek Yamamoto"
+Cash image: CLEAR - bills visible and countable
+""",
+                "verification_notes": "Images clearly show deposit contents totaling $1,135.00. ATM machine recorded only $385.00. Discrepancy of $750.00 confirmed via image review.",
+            },
+            "btxn_test_deposit_001": {
+                "atm_id": "ATM #3921",
+                "deposit_date": txn.get("date", "Unknown"),
+                "envelope_contents": """
+=== ATM DEPOSIT ENVELOPE SCAN ===
+Envelope ID: ENV-2025-3921-00847
+Deposit Time: 2:34 PM EST
+ATM Location: Rho-Bank ATM #3921, 742 Oak Avenue, Portland, OR
+
+--- ENVELOPE CONTENTS ---
+Item 1: Personal Check
+  - Check Number: 4821
+  - Drawn On: First National Bank
+  - Payee: Linda Patterson
+  - Amount: $875.00
+  - Memo: "October rent refund"
+  - Signature: Present and legible
+  - Date on Check: 11/05/2025
+
+Item 2: Cash
+  - Denomination breakdown:
+    * 2 x $100 bills = $200.00
+    * 3 x $20 bills = $60.00
+  - Total Cash: $260.00
+
+--- DEPOSIT SUMMARY ---
+Check Total: $875.00
+Cash Total: $260.00
+GRAND TOTAL: $1,135.00
+
+--- MACHINE RECORD ---
+Amount Recorded by ATM: $385.00
+DISCREPANCY DETECTED: $750.00 difference
+
+--- IMAGE QUALITY ---
+Envelope scan: CLEAR
+Check front: CLEAR
+Check back (endorsement): CLEAR - endorsed "For Deposit Only - Linda Patterson"
+Cash image: CLEAR - bills visible and countable
+""",
+                "verification_notes": "Images clearly show deposit contents totaling $1,135.00. ATM machine recorded only $385.00. Discrepancy of $750.00 confirmed via image review.",
+            },
+            "btxn_test_atm_dep_partial": {
+                "atm_id": "ATM #5847",
+                "deposit_date": txn.get("date", "Unknown"),
+                "envelope_contents": """
+=== ATM DEPOSIT ENVELOPE SCAN ===
+Envelope ID: ENV-2025-5847-00293
+Deposit Time: 10:15 AM EST
+
+--- ENVELOPE CONTENTS ---
+Item 1: Personal Check
+  - Check Number: 7392
+  - Amount: $500.00
+
+--- DEPOSIT SUMMARY ---
+Check Total: $500.00
+Cash Total: $0.00
+GRAND TOTAL: $500.00
+
+--- MACHINE RECORD ---
+Amount Recorded by ATM: $500.00
+No discrepancy detected.
+""",
+                "verification_notes": "Images confirm deposit matches recorded amount. No discrepancy found.",
+            },
+        }
+
+        if transaction_id in deposit_image_data:
+            data = deposit_image_data[transaction_id]
+            result = f"""ATM Deposit Image Retrieval Results
+=====================================
+Transaction ID: {transaction_id}
+ATM: {data["atm_id"]}
+Deposit Date: {data["deposit_date"]}
+
+{data["envelope_contents"]}
+
+--- VERIFICATION NOTES ---
+{data["verification_notes"]}
+"""
+            return result
         else:
-            result_parts.append(
-                "\nNo ATM deposit images found for this transaction. Images may not be available for all ATM deposits."
-            )
+            return f"""ATM Deposit Image Retrieval Results
+=====================================
+Transaction ID: {transaction_id}
+ATM: {description}
+Deposit Date: {txn.get("date", "Unknown")}
+Amount Recorded: ${abs(txn.get("amount", 0)):.2f}
 
-        return "\n".join(result_parts)
+--- IMAGE STATUS ---
+Status: IMAGES NOT AVAILABLE
+Reason: Deposit images for this transaction have either expired (older than 90 days) or were not captured by the ATM system.
+
+For deposits without available images, the dispute will proceed based on customer statement and ATM journal records only. Investigation timeline may be extended.
+"""
 
     @is_discoverable_tool(ToolType.WRITE)
     def order_replacement_credit_card_7291(
@@ -1249,27 +1437,39 @@ class KnowledgeTools(ToolKitBase):
             "old_card_cancelled": True,
         }
 
-        success = add_to_db(
-            "credit_card_replacement_orders", order_id, order_record, db=self.db
-        )
+        success = add_to_db("credit_card_orders", order_id, order_record, db=self.db)
 
         if not success:
-            return f"Error: A replacement order may already exist for this account."
+            return (
+                "Error: Order may have already been placed for this card replacement."
+            )
 
-        shipping_time = (
+        # Cancel the old credit card for security
+        if credit_card_account_id in self.db.credit_card_accounts.data:
+            self.db.credit_card_accounts.data[credit_card_account_id]["status"] = (
+                "CLOSED"
+            )
+            self.db.credit_card_accounts.data[credit_card_account_id]["closed_date"] = (
+                get_today_str()
+            )
+
+        shipping_method = "Expedited" if expedited_shipping else "Standard"
+        expected_delivery = (
             "2-3 business days" if expedited_shipping else "7-10 business days"
         )
 
-        return (
-            f"Replacement credit card order placed successfully. The old card has been cancelled for security.\n\n"
-            f"Executed: order_replacement_credit_card_7291\n"
-            f"Order ID: {order_id}\n"
-            f"Account: {credit_card_account_id}\n"
-            f"Reason: {reason.replace('_', ' ').title()}\n"
-            f"Shipping: {shipping_address}\n"
-            f"Expedited: {'Yes' if expedited_shipping else 'No'}\n"
-            f"Estimated Arrival: {shipping_time}"
-        )
+        result_parts = [
+            f"Order ID: {order_id}",
+            f"Card Account: {credit_card_account_id}",
+            f"Reason: {reason.replace('_', ' ').title()}",
+            f"Shipping Address: {shipping_address}",
+            f"Shipping Method: {shipping_method}",
+            f"Expected Delivery: {expected_delivery}",
+            "",
+            "The old card has been cancelled for security. The new card will have the same account number but a new card number and CVV.",
+        ]
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.READ)
     def get_user_dispute_history_7291(self, user_id: str) -> str:
@@ -1321,7 +1521,7 @@ class KnowledgeTools(ToolKitBase):
             return "Error: Missing required parameter: credit_card_account_id"
 
         orders_result = query_database_tool(
-            "credit_card_replacement_orders",
+            "credit_card_orders",
             f'{{"credit_card_account_id": "{credit_card_account_id}"}}',
             db=self.db,
         )
@@ -1575,6 +1775,16 @@ class KnowledgeTools(ToolKitBase):
         if reason not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
 
+        # Verify the credit card account exists
+        result = query_database_tool(
+            "credit_card_accounts",
+            f'{{"account_id": "{credit_card_account_id}"}}',
+            db=self.db,
+        )
+
+        if "No results found" in result or "No records found" in result:
+            return f"Error: Credit card account '{credit_card_account_id}' not found."
+
         flag_id = generate_account_flag_id(
             credit_card_account_id, flag_type, expiration_date
         )
@@ -1589,6 +1799,7 @@ class KnowledgeTools(ToolKitBase):
             "effective_date": today,
             "expiration_date": expiration_date,
             "reason": reason,
+            "applied_at": today,
             "status": "ACTIVE",
         }
 
@@ -1597,17 +1808,20 @@ class KnowledgeTools(ToolKitBase):
         )
 
         if not success:
-            return f"Error: A similar flag may already exist for this account."
+            return f"Error: Failed to apply account flag. Flag ID '{flag_id}' may already exist."
+
+        flag_type_display = flag_type.replace("_", " ").title()
+        reason_display = reason.replace("_", " ").title()
 
         return (
-            f"Account flag applied successfully.\n\n"
-            f"Executed: apply_credit_card_account_flag_6147\n"
+            f"Account flag applied successfully!\n"
             f"  - Flag ID: {flag_id}\n"
             f"  - Account: {credit_card_account_id}\n"
-            f"  - Flag Type: {flag_type.replace('_', ' ').title()}\n"
-            f"  - Effective: {today}\n"
-            f"  - Expires: {expiration_date}\n"
-            f"  - Reason: {reason.replace('_', ' ').title()}"
+            f"  - User ID: {user_id}\n"
+            f"  - Flag Type: {flag_type_display}\n"
+            f"  - Effective Date: {today}\n"
+            f"  - Expiration Date: {expiration_date}\n"
+            f"  - Reason: {reason_display}"
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -1685,80 +1899,71 @@ class KnowledgeTools(ToolKitBase):
             or not credit_card_account_id
             or amount is None
         ):
-            return "Error: Missing required parameters."
+            return "Error: Missing required parameters (user_id, checking_account_id, credit_card_account_id, amount)."
 
-        if amount <= 0:
-            return "Error: Payment amount must be positive."
+        # Validate amount is positive
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                return "Error: Payment amount must be a positive number."
+        except (ValueError, TypeError):
+            return "Error: Invalid payment amount. Must be a positive number."
 
-        # Verify checking account exists and has sufficient funds
+        # Verify checking account exists and belongs to the user
         if checking_account_id not in self.db.accounts.data:
             return f"Error: Checking account '{checking_account_id}' not found."
 
         checking_account = self.db.accounts.data[checking_account_id]
-        current_balance = checking_account.get("balance", 0)
+        if checking_account.get("user_id") != user_id:
+            return f"Error: Checking account '{checking_account_id}' does not belong to user '{user_id}'."
 
-        if current_balance < amount:
-            return f"Error: Insufficient funds. Available balance: ${current_balance:.2f}, Payment amount: ${amount:.2f}"
+        if checking_account.get("class") != "checking":
+            return f"Error: Account '{checking_account_id}' is not a checking account."
 
-        # Verify credit card account exists
-        result = query_database_tool(
-            "credit_card_accounts",
-            f'{{"account_id": "{credit_card_account_id}"}}',
-            db=self.db,
-        )
+        # Get checking account balance
+        current_balance = _get_account_balance(checking_account)
 
-        if "No results found" in result or "No records found" in result:
+        if amount > current_balance:
+            return f"Error: Insufficient funds in checking account. Available balance: ${current_balance:.2f}, requested payment: ${amount:.2f}."
+
+        # Verify credit card account exists and belongs to the user
+        if credit_card_account_id not in self.db.credit_card_accounts.data:
             return f"Error: Credit card account '{credit_card_account_id}' not found."
 
-        # Debit checking account
+        cc_account = self.db.credit_card_accounts.data[credit_card_account_id]
+        if cc_account.get("user_id") != user_id:
+            return f"Error: Credit card account '{credit_card_account_id}' does not belong to user '{user_id}'."
+
+        # Get credit card balance
+        cc_balance_str = cc_account.get("current_balance", "$0.00")
+        try:
+            cc_balance = float(str(cc_balance_str).replace("$", "").replace(",", ""))
+        except (ValueError, TypeError):
+            cc_balance = 0.0
+
+        if amount > cc_balance:
+            return f"Error: Payment amount (${amount:.2f}) exceeds credit card balance (${cc_balance:.2f}). Please specify an amount up to the outstanding balance."
+
+        # Process the payment - deduct from checking, reduce CC balance
         new_checking_balance = current_balance - amount
-        success, _ = update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=checking_account_id,
-            updates={"balance": new_checking_balance},
+        new_cc_balance = cc_balance - amount
+
+        # Update the database
+        self.db.accounts.data[checking_account_id]["current_holdings"] = (
+            f"{new_checking_balance:.2f}"
         )
-
-        if not success:
-            return "Error: Failed to debit checking account."
-
-        # Record the payment transaction
-        transaction_id = generate_transaction_id(
-            user_id, "CC_PAYMENT", credit_card_account_id, amount, "Credit Card Payment"
-        )
-
-        today = get_today_str()
-
-        payment_record = {
-            "transaction_id": transaction_id,
-            "user_id": user_id,
-            "credit_card_account_id": credit_card_account_id,
-            "credit_card_type": "N/A",
-            "merchant_name": "Credit Card Payment",
-            "transaction_amount": f"-${amount:.2f}",
-            "transaction_date": today,
-            "category": "Payment",
-            "status": "COMPLETED",
-            "rewards_earned": "0 points",
-            "payment_source": checking_account_id,
-        }
-
-        add_to_db(
-            "credit_card_transaction_history",
-            transaction_id,
-            payment_record,
-            db=self.db,
+        self.db.credit_card_accounts.data[credit_card_account_id]["current_balance"] = (
+            f"${new_cc_balance:.2f}"
         )
 
         return (
-            f"Credit card payment processed successfully.\n\n"
-            f"Executed: pay_credit_card_from_checking_9182\n"
-            f"  - Transaction ID: {transaction_id}\n"
+            f"Payment processed successfully!\n"
             f"  - Payment Amount: ${amount:.2f}\n"
-            f"  - From Checking: {checking_account_id}\n"
-            f"  - To Credit Card: {credit_card_account_id}\n"
-            f"  - Previous Checking Balance: ${current_balance:.2f}\n"
-            f"  - New Checking Balance: ${new_checking_balance:.2f}"
+            f"  - From Checking Account: {checking_account_id}\n"
+            f"  - To Credit Card Account: {credit_card_account_id}\n"
+            f"  - New Checking Balance: ${new_checking_balance:.2f}\n"
+            f"  - New Credit Card Balance: ${new_cc_balance:.2f}\n"
+            f"The payment has been applied immediately."
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -1787,6 +1992,14 @@ class KnowledgeTools(ToolKitBase):
 
         if requested_increase_amount <= 0:
             return "Error: Requested increase amount must be positive."
+
+        # Verify the credit card account exists
+        if credit_card_account_id not in self.db.credit_card_accounts.data:
+            return f"Error: Credit card account '{credit_card_account_id}' not found."
+
+        cc_account = self.db.credit_card_accounts.data[credit_card_account_id]
+        if cc_account.get("user_id") != user_id:
+            return f"Error: Credit card account '{credit_card_account_id}' does not belong to user '{user_id}'."
 
         request_id = generate_credit_limit_increase_request_id(
             credit_card_account_id, user_id, requested_increase_amount
@@ -1873,30 +2086,51 @@ class KnowledgeTools(ToolKitBase):
             Payment history retrieved.
         """
         if not credit_card_account_id or months is None:
-            return "Error: Missing required parameters."
+            return (
+                "Error: Missing required parameters (credit_card_account_id, months)."
+            )
 
-        payment_result = query_database_tool(
-            "credit_card_transaction_history",
-            f'{{"credit_card_account_id": "{credit_card_account_id}", "category": "Payment"}}',
-            db=self.db,
-        )
+        try:
+            months = int(months)
+            if months <= 0:
+                return "Error: months must be a positive integer."
+        except (ValueError, TypeError):
+            return "Error: Invalid months value. Must be a positive integer."
+
+        # Query the payment_history table
+        payments = []
+        for payment_id, payment_data in self.db.payment_history.data.items():
+            if payment_data.get("credit_card_account_id") == credit_card_account_id:
+                payments.append(payment_data)
+
+        if not payments:
+            return f"No payment history found for account '{credit_card_account_id}'."
+
+        # Sort by date (most recent first)
+        payments.sort(key=lambda x: x.get("payment_date") or "", reverse=True)
+
+        # Limit to requested months
+        payments = payments[:months]
+
+        # Count consecutive on-time payments
+        consecutive_on_time = 0
+        for payment in payments:
+            if payment.get("status") == "ON_TIME":
+                consecutive_on_time += 1
+            else:
+                break
 
         result_parts = [
-            "Payment history retrieved.",
-            "",
-            f"Executed: get_payment_history_6183",
-            f"Payment history for account {credit_card_account_id} (last {months} months):",
+            f"Payment history for account '{credit_card_account_id}' (last {months} months):",
+            f"Consecutive on-time payments: {consecutive_on_time}",
         ]
 
-        has_records = (
-            "No records found" not in payment_result
-            and "No results found" not in payment_result
-        )
-
-        if has_records:
-            result_parts.append(payment_result)
-        else:
-            result_parts.append("\nNo payment records found for this account.")
+        for payment in payments:
+            result_parts.append(
+                f"\n  - Payment Date: {payment.get('payment_date')}\n"
+                f"    Amount: {payment.get('amount')}\n"
+                f"    Status: {payment.get('status')}"
+            )
 
         return "\n".join(result_parts)
 
@@ -1920,22 +2154,115 @@ class KnowledgeTools(ToolKitBase):
         if not credit_card_account_id or not user_id or new_credit_limit is None:
             return "Error: Missing required parameters."
 
-        # Update the credit limit
-        success, updated_record = update_record_in_db(
-            "credit_card_accounts",
-            db=self.db,
-            record_id=credit_card_account_id,
-            updates={"credit_limit": new_credit_limit},
-        )
-
-        if not success:
+        # Verify the credit card account exists
+        if credit_card_account_id not in self.db.credit_card_accounts.data:
             return f"Error: Credit card account '{credit_card_account_id}' not found."
 
+        cc_account = self.db.credit_card_accounts.data[credit_card_account_id]
+        if cc_account.get("user_id") != user_id:
+            return f"Error: Credit card account '{credit_card_account_id}' does not belong to user '{user_id}'."
+
+        # ===========================================
+        # ELIGIBILITY CHECKS - All must pass
+        # Generic error message if ANY check fails
+        # ===========================================
+        ineligible = False
+
+        # Check 1: No pending disputes
+        if (
+            hasattr(self.db, "transaction_disputes")
+            and self.db.transaction_disputes.data
+        ):
+            for dispute_id, dispute in self.db.transaction_disputes.data.items():
+                if dispute.get("user_id") == user_id and dispute.get("status") in [
+                    "SUBMITTED",
+                    "UNDER_REVIEW",
+                    "PENDING",
+                ]:
+                    ineligible = True
+                    break
+
+        # Check 2: No pending replacement cards
+        if (
+            not ineligible
+            and hasattr(self.db, "credit_card_orders")
+            and self.db.credit_card_orders.data
+        ):
+            for order_id, order in self.db.credit_card_orders.data.items():
+                if order.get(
+                    "credit_card_account_id"
+                ) == credit_card_account_id and order.get("status") in [
+                    "PENDING",
+                    "PROCESSING",
+                    "SHIPPED",
+                ]:
+                    ineligible = True
+                    break
+
+        # Check 3: Account must be in good standing
+        if not ineligible:
+            account_status = cc_account.get("account_status", "").upper()
+            if account_status in [
+                "PAST_DUE",
+                "DELINQUENT",
+                "COLLECTIONS",
+                "CLOSED",
+            ]:
+                ineligible = True
+
+        if ineligible:
+            return (
+                "Error: Credit limit increase request cannot be approved at this time."
+            )
+
+        # Get current credit limit
+        current_limit_str = cc_account.get("credit_limit", "$0.00")
+        try:
+            current_limit = float(
+                str(current_limit_str).replace("$", "").replace(",", "")
+            )
+        except (ValueError, TypeError):
+            current_limit = 0.0
+
+        # Update the credit limit
+        new_limit = float(new_credit_limit)
+        self.db.credit_card_accounts.data[credit_card_account_id]["credit_limit"] = (
+            f"${new_limit:.2f}"
+        )
+
+        today = get_today_str()
+
+        # Create an approval record
+        request_id = generate_credit_limit_increase_request_id(
+            credit_card_account_id, user_id, new_limit - current_limit
+        )
+
+        approval_record = {
+            "request_id": request_id,
+            "credit_card_account_id": credit_card_account_id,
+            "user_id": user_id,
+            "previous_limit": f"${current_limit:.2f}",
+            "new_limit": f"${new_limit:.2f}",
+            "increase_amount": f"${new_limit - current_limit:.2f}",
+            "decision_date": today,
+            "status": "APPROVED",
+        }
+
+        add_to_db(
+            "credit_limit_increase_requests",
+            request_id,
+            approval_record,
+            db=self.db,
+        )
+
         return (
-            f"Credit limit increase approved and applied successfully.\n\n"
-            f"Executed: approve_credit_limit_increase_5847\n"
+            f"Credit limit increase approved!\n"
             f"  - Account: {credit_card_account_id}\n"
-            f"  - New Credit Limit: ${new_credit_limit:,}"
+            f"  - Previous Limit: ${current_limit:.2f}\n"
+            f"  - New Limit: ${new_limit:.2f}\n"
+            f"  - Increase: ${new_limit - current_limit:.2f}\n"
+            f"  - Effective Date: {today}\n"
+            f"The customer will receive a confirmation email."
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -1950,7 +2277,7 @@ class KnowledgeTools(ToolKitBase):
         Args:
             credit_card_account_id (string): The credit card account ID
             user_id (string): The customer's unique identifier in the system
-            denial_reason (string): The reason for denying the request. Must be one of: 'insufficient_income', 'recent_delinquency', 'account_too_new', 'high_utilization', 'recent_cli_granted', 'other'
+            denial_reason (string): The reason for denying the request. Must be one of: 'insufficient_account_age', 'cooldown_period_active', 'pending_disputes', 'pending_replacement_card', 'past_due_balance', 'high_utilization', 'insufficient_payment_history', 'requested_amount_exceeds_limit', 'other'
 
         Returns:
             Credit limit increase request denied.
@@ -1959,21 +2286,52 @@ class KnowledgeTools(ToolKitBase):
             return "Error: Missing required parameters."
 
         valid_reasons = [
-            "insufficient_income",
-            "recent_delinquency",
-            "account_too_new",
+            "insufficient_account_age",
+            "cooldown_period_active",
+            "pending_disputes",
+            "pending_replacement_card",
+            "past_due_balance",
             "high_utilization",
-            "recent_cli_granted",
+            "insufficient_payment_history",
+            "requested_amount_exceeds_limit",
             "other",
         ]
         if denial_reason not in valid_reasons:
-            return f"Error: Invalid denial_reason. Must be one of: {valid_reasons}"
+            return f"Error: Invalid denial_reason. Must be one of: {', '.join(valid_reasons)}"
+
+        # Verify the credit card account exists
+        if credit_card_account_id not in self.db.credit_card_accounts.data:
+            return f"Error: Credit card account '{credit_card_account_id}' not found."
+
+        today = get_today_str()
+
+        # Create a denial record
+        request_id = generate_credit_limit_increase_request_id(
+            credit_card_account_id, user_id, 0.0
+        )
+
+        denial_record = {
+            "request_id": request_id,
+            "credit_card_account_id": credit_card_account_id,
+            "user_id": user_id,
+            "denial_reason": denial_reason,
+            "decision_date": today,
+            "status": "DENIED",
+        }
+
+        add_to_db(
+            "credit_limit_increase_requests",
+            request_id,
+            denial_record,
+            db=self.db,
+        )
 
         return (
-            f"Credit limit increase request denied.\n\n"
-            f"Executed: deny_credit_limit_increase_5848\n"
+            f"Credit limit increase request denied.\n"
             f"  - Account: {credit_card_account_id}\n"
-            f"  - Denial Reason: {denial_reason.replace('_', ' ').title()}"
+            f"  - Denial Reason: {denial_reason}\n"
+            f"  - Date: {today}\n"
+            f"The customer will receive a notification explaining the denial."
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -1993,6 +2351,8 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Bank account opened successfully.
         """
+        from datetime import datetime
+
         if not user_id or not account_type or not account_class:
             return "Error: Missing required parameters."
 
@@ -2000,10 +2360,84 @@ class KnowledgeTools(ToolKitBase):
         if account_type not in valid_types:
             return f"Error: Invalid account_type. Must be one of: {valid_types}"
 
+        today_date = get_now()
+
+        def get_account_age_days(acc: Dict[str, Any]) -> int:
+            date_opened_str = acc.get("date_opened", "")
+            try:
+                date_opened = datetime.strptime(date_opened_str, "%m/%d/%Y")
+                return (today_date - date_opened).days
+            except ValueError:
+                return 0
+
+        # Get all user's accounts for eligibility checks
+        user_accounts = [
+            acc
+            for acc_id, acc in self.db.accounts.data.items()
+            if acc.get("user_id") == user_id
+        ]
+
+        # ========== PERSONAL SAVINGS ELIGIBILITY ==========
+        # Requires: personal checking account open for at least 14 days
+        if account_type == "savings":
+            has_eligible_checking = False
+            for acc in user_accounts:
+                acc_type = acc.get("account_type", acc.get("class", ""))
+                status = acc.get("status", "")
+                if acc_type in ["checking", "personal_checking"] and status in [
+                    "OPEN",
+                    "ACTIVE",
+                ]:
+                    if get_account_age_days(acc) >= 14:
+                        has_eligible_checking = True
+                        break
+
+            if not has_eligible_checking:
+                return "Error: Account eligibility requirements not met."
+
+        # ========== BUSINESS CHECKING ELIGIBILITY ==========
+        # Requires: 1) No accounts with CLOSED status, 2) Personal checking with OPEN status
+        if account_type == "business_checking":
+            has_closed_account = any(
+                acc.get("status") == "CLOSED" for acc in user_accounts
+            )
+            if has_closed_account:
+                return "Error: Account eligibility requirements not met."
+
+            has_personal_checking = any(
+                acc.get("account_type", acc.get("class", ""))
+                in ["checking", "personal_checking"]
+                and acc.get("status", "") in ["OPEN", "ACTIVE"]
+                for acc in user_accounts
+            )
+            if not has_personal_checking:
+                return "Error: Account eligibility requirements not met."
+
+        # ========== BUSINESS SAVINGS ELIGIBILITY ==========
+        # Requires: 1) Business checking with OPEN status for 30+ days, 2) No negative balances
+        if account_type == "business_savings":
+            for acc in user_accounts:
+                balance = _parse_balance(
+                    acc.get("current_holdings", acc.get("balance", 0))
+                )
+                if balance < 0:
+                    return "Error: Account eligibility requirements not met."
+
+            has_eligible_business_checking = False
+            for acc in user_accounts:
+                acc_type = acc.get("account_type", acc.get("class", ""))
+                status = acc.get("status", "")
+                if acc_type == "business_checking" and status in ["OPEN", "ACTIVE"]:
+                    if get_account_age_days(acc) >= 30:
+                        has_eligible_business_checking = True
+                        break
+
+            if not has_eligible_business_checking:
+                return "Error: Account eligibility requirements not met."
+
         # Generate account ID
-        account_id = _deterministic_id(
-            f"acct_{user_id}_{account_type}_{account_class}"
-        )[:16]
+        seed = f"account:{user_id}:{account_type}:{account_class}"
+        account_id = _deterministic_id(seed)
 
         today = get_today_str()
 
@@ -2012,61 +2446,134 @@ class KnowledgeTools(ToolKitBase):
             "user_id": user_id,
             "account_type": account_type,
             "account_class": account_class,
-            "balance": 0.0,
+            "current_holdings": "0.00",
             "status": "OPEN",
-            "opened_date": today,
+            "date_opened": today,
         }
 
         success = add_to_db("accounts", account_id, account_record, db=self.db)
 
         if not success:
-            return "Error: Account may already exist."
+            return (
+                f"Failed to open account: Account ID '{account_id}' may already exist."
+            )
 
         return (
-            f"Bank account opened successfully.\n\n"
-            f"Executed: open_bank_account_4821\n"
+            f"Bank account opened successfully!\n"
             f"  - Account ID: {account_id}\n"
-            f"  - Type: {account_type}\n"
-            f"  - Class: {account_class}\n"
-            f"  - Status: OPEN"
+            f"  - User ID: {user_id}\n"
+            f"  - Account Type: {account_type}\n"
+            f"  - Account Class: {account_class}\n"
+            f"  - Status: OPEN\n"
+            f"  - Initial Balance: $0.00\n"
+            f"  - Date Opened: {today}"
         )
 
     @is_discoverable_tool(ToolType.WRITE)
-    def close_bank_account_7392(self, account_id: str) -> str:
+    def close_bank_account_7392(
+        self,
+        account_id: str,
+        reason: str = "Customer requested closure",
+        waive_early_closure_fee: bool = False,
+    ) -> str:
         """Close a customer's bank account (checking or savings).
 
         Args:
             account_id (string): The ID of the bank account to close
+            reason (string, optional): The reason for closing the account
+            waive_early_closure_fee (boolean, optional): Whether to waive early closure fees
 
         Returns:
             Bank account closed successfully.
         """
+        from datetime import datetime
+
+        # Early closure fee configuration by account tier
+        PERSONAL_CHECKING_EARLY_CLOSURE = {
+            "Light Blue Account": {"fee": 15, "window_days": 30},
+            "Light Green Account": {"fee": 15, "window_days": 30},
+            "Green Fee-Free Account": {"fee": 15, "window_days": 30},
+            "Blue Account": {"fee": 25, "window_days": 60},
+            "Green Account": {"fee": 25, "window_days": 60},
+            "Evergreen Account": {"fee": 50, "window_days": 90},
+            "Bluest Account": {"fee": 100, "window_days": 180},
+        }
+        PERSONAL_SAVINGS_EARLY_CLOSURE = {
+            "Bronze Account": {"fee": 20, "window_days": 60},
+            "Silver Account": {"fee": 35, "window_days": 90},
+            "Silver Plus Account": {"fee": 35, "window_days": 90},
+            "Gold Account": {"fee": 75, "window_days": 180},
+            "Gold Plus Account": {"fee": 75, "window_days": 180},
+            "Gold Years Account": {"fee": 75, "window_days": 180},
+            "Platinum Account": {"fee": 150, "window_days": 270},
+            "Platinum Plus Account": {"fee": 150, "window_days": 270},
+            "Diamond Elite Account": {"fee": 150, "window_days": 270},
+        }
+
         if not account_id:
-            return "Error: Missing required parameter: account_id"
+            return "Error: Missing required parameter (account_id)."
 
         if account_id not in self.db.accounts.data:
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        balance = account.get("balance", 0)
 
-        if balance != 0:
-            return f"Error: Account has a balance of ${balance:.2f}. Balance must be $0.00 to close."
+        if account.get("status") == "CLOSED":
+            return f"Error: Account '{account_id}' is already closed."
 
-        success, _ = update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=account_id,
-            updates={"status": "CLOSED", "closed_date": get_today_str()},
-        )
+        balance = _get_account_balance(account)
 
-        if not success:
-            return f"Error: Failed to close account '{account_id}'."
+        # Check for early closure fee requirements
+        early_closure_fee_applied = 0.0
+        if not waive_early_closure_fee:
+            account_level = account.get("level", "")
+            account_class = account.get("class", "")
+            date_opened_str = account.get("date_opened", "")
+
+            early_closure_config = None
+            if account_class == "checking":
+                early_closure_config = PERSONAL_CHECKING_EARLY_CLOSURE.get(
+                    account_level
+                )
+            elif account_class == "savings":
+                early_closure_config = PERSONAL_SAVINGS_EARLY_CLOSURE.get(account_level)
+
+            if early_closure_config and date_opened_str:
+                try:
+                    date_opened = datetime.strptime(date_opened_str, "%m/%d/%Y")
+                    today_date = get_now()
+                    account_age_days = (today_date - date_opened).days
+
+                    if account_age_days < early_closure_config["window_days"]:
+                        required_fee = early_closure_config["fee"]
+                        if balance < required_fee:
+                            return "Error: Account unable to be closed."
+                        else:
+                            early_closure_fee_applied = required_fee
+                except ValueError:
+                    pass
+
+        # After deducting early closure fee (if any), remaining balance must be $0
+        remaining_balance = balance - early_closure_fee_applied
+        if remaining_balance != 0:
+            return f"Error: Account balance must be $0.00 before closing. Current balance: ${balance:.2f}"
+
+        today = get_today_str()
+
+        account["status"] = "CLOSED"
+        account["date_closed"] = today
+        account["closure_reason"] = reason
+        account["early_closure_fee_waived"] = waive_early_closure_fee
 
         return (
-            f"Bank account closed successfully.\n\n"
-            f"Executed: close_bank_account_7392\n"
-            f"Account {account_id} has been closed."
+            f"Bank account closed successfully!\n"
+            f"  - Account ID: {account_id}\n"
+            f"  - Account Type: {account.get('account_type', 'N/A')}\n"
+            f"  - Account Class: {account.get('account_class', 'N/A')}\n"
+            f"  - Status: CLOSED\n"
+            f"  - Date Closed: {today}\n"
+            f"  - Reason: {reason}\n"
+            f"  - Early Closure Fee Waived: {'Yes' if waive_early_closure_fee else 'No'}"
         )
 
     @is_discoverable_tool(ToolType.READ)
@@ -2133,10 +2640,18 @@ class KnowledgeTools(ToolKitBase):
             Funds transferred successfully.
         """
         if not source_account_id or not destination_account_id or amount is None:
-            return "Error: Missing required parameters."
+            return "Error: Missing required parameters (source_account_id, destination_account_id, amount)."
+
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            return f"Error: Invalid amount '{amount}'. Must be a number."
 
         if amount <= 0:
             return "Error: Transfer amount must be positive."
+
+        if source_account_id == destination_account_id:
+            return "Error: Source and destination accounts cannot be the same."
 
         if source_account_id not in self.db.accounts.data:
             return f"Error: Source account '{source_account_id}' not found."
@@ -2145,36 +2660,35 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Destination account '{destination_account_id}' not found."
 
         source = self.db.accounts.data[source_account_id]
-        source_balance = source.get("balance", 0)
-
-        if source_balance < amount:
-            return f"Error: Insufficient funds. Available: ${source_balance:.2f}"
+        if source.get("status") not in ("ACTIVE", "OPEN"):
+            return f"Error: Source account '{source_account_id}' is not active."
 
         dest = self.db.accounts.data[destination_account_id]
-        dest_balance = dest.get("balance", 0)
+        if dest.get("status") not in ("ACTIVE", "OPEN"):
+            return (
+                f"Error: Destination account '{destination_account_id}' is not active."
+            )
 
-        # Debit source
-        update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=source_account_id,
-            updates={"balance": source_balance - amount},
-        )
+        source_balance = _get_account_balance(source)
+        if source_balance < amount:
+            return (
+                f"Error: Insufficient funds. Source account balance is ${source_balance:.2f}, "
+                f"but transfer amount is ${amount:.2f}."
+            )
 
-        # Credit destination
-        update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=destination_account_id,
-            updates={"balance": dest_balance + amount},
-        )
+        dest_balance = _get_account_balance(dest)
+
+        # Update balances
+        new_source = source_balance - amount
+        new_dest = dest_balance + amount
+        source["current_holdings"] = f"${new_source:.2f}"
+        dest["current_holdings"] = f"${new_dest:.2f}"
 
         return (
-            f"Funds transferred successfully.\n\n"
-            f"Executed: transfer_funds_between_bank_accounts_7291\n"
+            f"Transfer completed successfully!\n"
             f"  - Amount: ${amount:.2f}\n"
-            f"  - From: {source_account_id} (New Balance: ${source_balance - amount:.2f})\n"
-            f"  - To: {destination_account_id} (New Balance: ${dest_balance + amount:.2f})"
+            f"  - From: {source_account_id} (new balance: ${new_source:.2f})\n"
+            f"  - To: {destination_account_id} (new balance: ${new_dest:.2f})"
         )
 
     @is_discoverable_tool(ToolType.WRITE)
@@ -2208,22 +2722,51 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        current_balance = account.get("balance", 0)
+
+        # Verify it's a checking account
+        account_class = account.get("class", "").lower()
+        if account_class != "checking":
+            return f"Error: Account '{account_id}' is not a checking account. Credits can only be applied to checking accounts."
+
+        # Check account status
+        if account.get("status") not in ("ACTIVE", "OPEN"):
+            return f"Error: Account '{account_id}' is not active."
+
+        current_balance = _get_account_balance(account)
         new_balance = current_balance + amount
 
-        update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=account_id,
-            updates={"balance": new_balance},
+        # Update the account balance
+        account["current_holdings"] = f"${new_balance:.2f}"
+
+        # Create transaction record
+        transaction_id = f"txn_{_deterministic_id(f'checking_credit:{account_id}:{credit_type}:{amount}:{get_today_str()}')}"
+
+        if credit_type == "rebate_credit":
+            description = "REBATE CREDIT - CUSTOMER SERVICE"
+        else:
+            description = "FEE REFUND - CUSTOMER SERVICE"
+
+        transaction_record = {
+            "transaction_id": transaction_id,
+            "account_id": account_id,
+            "date": get_today_str(),
+            "description": description,
+            "amount": amount,
+            "type": credit_type,
+            "status": "posted",
+        }
+
+        self.db.bank_account_transaction_history.data[transaction_id] = (
+            transaction_record
         )
 
         return (
-            f"Credit applied to checking account successfully.\n\n"
-            f"Executed: apply_checking_account_credit_5829\n"
+            f"\nCredit applied successfully!\n"
+            f"  - Transaction ID: {transaction_id}\n"
             f"  - Account: {account_id}\n"
-            f"  - Credit Amount: ${amount:.2f}\n"
-            f"  - Credit Type: {credit_type.replace('_', ' ').title()}\n"
+            f"  - Credit Type: {credit_type}\n"
+            f"  - Amount: ${amount:.2f}\n"
+            f"  - Previous Balance: ${current_balance:.2f}\n"
             f"  - New Balance: ${new_balance:.2f}"
         )
 
@@ -2258,22 +2801,53 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Account '{account_id}' not found."
 
         account = self.db.accounts.data[account_id]
-        current_balance = account.get("balance", 0)
+
+        # Verify it's a savings account
+        account_class = account.get("class", "").lower()
+        if account_class not in ("saving", "savings"):
+            return f"Error: Account '{account_id}' is not a savings account. This tool only applies to savings accounts."
+
+        # Check account status
+        if account.get("status") not in ("ACTIVE", "OPEN"):
+            return f"Error: Account '{account_id}' is not active."
+
+        current_balance = _get_account_balance(account)
         new_balance = current_balance + amount
 
-        update_record_in_db(
-            "accounts",
-            db=self.db,
-            record_id=account_id,
-            updates={"balance": new_balance},
+        # Update the account balance
+        account["current_holdings"] = f"{new_balance:.2f}"
+
+        # Create transaction record
+        transaction_id = f"txn_{_deterministic_id(f'savings_credit:{account_id}:{credit_type}:{amount}:{get_today_str()}')}"
+
+        if credit_type == "interest_correction":
+            description = "INTEREST CORRECTION - CUSTOMER SERVICE"
+        elif credit_type == "fee_refund":
+            description = "FEE REFUND - CUSTOMER SERVICE"
+        else:
+            description = "GOODWILL CREDIT - CUSTOMER SERVICE"
+
+        transaction_record = {
+            "transaction_id": transaction_id,
+            "account_id": account_id,
+            "date": get_today_str(),
+            "description": description,
+            "amount": amount,
+            "type": credit_type,
+            "status": "posted",
+        }
+
+        self.db.bank_account_transaction_history.data[transaction_id] = (
+            transaction_record
         )
 
         return (
-            f"Credit applied to savings account successfully.\n\n"
-            f"Executed: apply_savings_account_credit_6831\n"
+            f"\nCredit applied successfully!\n"
+            f"  - Transaction ID: {transaction_id}\n"
             f"  - Account: {account_id}\n"
-            f"  - Credit Amount: ${amount:.2f}\n"
-            f"  - Credit Type: {credit_type.replace('_', ' ').title()}\n"
+            f"  - Credit Type: {credit_type}\n"
+            f"  - Amount: ${amount:.2f}\n"
+            f"  - Previous Balance: ${current_balance:.2f}\n"
             f"  - New Balance: ${new_balance:.2f}"
         )
 
@@ -2307,31 +2881,53 @@ class KnowledgeTools(ToolKitBase):
         ):
             return "Error: Missing required parameters."
 
-        report_id = _deterministic_id(
-            f"interest_report_{account_id}_{user_id}_{expected_apy}_{actual_apy}"
-        )[:16]
+        # Validate numeric values
+        try:
+            expected_apy = float(expected_apy)
+            actual_apy = float(actual_apy)
+            amount_difference = float(amount_difference)
+        except (ValueError, TypeError):
+            return "Error: expected_apy, actual_apy, and amount_difference must be numbers."
+
+        # Verify account exists
+        account = self.db.accounts.data.get(account_id)
+        if account is None:
+            return f"Error: Account '{account_id}' not found."
+
+        # Verify user exists
+        user = self.db.users.data.get(user_id)
+        if user is None:
+            return f"Error: User '{user_id}' not found."
+
+        report_id = f"IDR_{_deterministic_id(f'interest_report:{account_id}:{user_id}:{expected_apy}:{actual_apy}:{get_today_str()}')}"
 
         report_record = {
             "report_id": report_id,
             "account_id": account_id,
             "user_id": user_id,
+            "account_level": account.get("level", "Unknown"),
             "expected_apy": expected_apy,
             "actual_apy": actual_apy,
+            "apy_difference": round(expected_apy - actual_apy, 4),
             "amount_difference": amount_difference,
-            "submitted_at": get_today_str(),
-            "status": "SUBMITTED",
+            "submitted_date": get_today_str(),
+            "status": "PENDING_REVIEW",
         }
 
         add_to_db("interest_discrepancy_reports", report_id, report_record, db=self.db)
 
         return (
-            f"Interest discrepancy report submitted successfully. Backend team will investigate.\n\n"
-            f"Executed: submit_interest_discrepancy_report_7294\n"
+            f"\nInterest Discrepancy Report Submitted Successfully!\n"
             f"  - Report ID: {report_id}\n"
-            f"  - Account: {account_id}\n"
+            f"  - Account: {account_id} ({account.get('level', 'Unknown')})\n"
+            f"  - Customer: {user.get('name', 'Unknown')}\n"
             f"  - Expected APY: {expected_apy}%\n"
             f"  - Actual APY: {actual_apy}%\n"
-            f"  - Difference: ${amount_difference:.2f}"
+            f"  - APY Difference: {round(expected_apy - actual_apy, 4)}%\n"
+            f"  - Amount Difference: ${amount_difference:.2f}\n"
+            f"  - Status: PENDING_REVIEW\n"
+            f"\nThe backend team will investigate this discrepancy and ensure "
+            f"correct APY calculations are applied going forward."
         )
 
     @is_discoverable_tool(ToolType.READ)
@@ -2346,6 +2942,10 @@ class KnowledgeTools(ToolKitBase):
         """
         if not account_id:
             return "Error: Missing required parameter: account_id"
+
+        # Verify the account exists
+        if account_id not in self.db.accounts.data:
+            return f"Error: Account '{account_id}' not found."
 
         txn_result = query_database_tool(
             "bank_account_transaction_history",
@@ -2397,60 +2997,268 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Debit card order placed successfully.
         """
-        if (
-            not account_id
-            or not user_id
-            or not delivery_option
-            or not card_design
-            or not shipping_address
+        excess_replacement_fee = excess_replacement_fee or 0
+
+        # Ensure fees are numbers
+        try:
+            delivery_fee = float(delivery_fee) if delivery_fee is not None else None
+        except (TypeError, ValueError):
+            return "Error: delivery_fee must be a number."
+
+        try:
+            design_fee = float(design_fee) if design_fee is not None else None
+        except (TypeError, ValueError):
+            return "Error: design_fee must be a number."
+
+        try:
+            excess_replacement_fee = float(excess_replacement_fee)
+        except (TypeError, ValueError):
+            excess_replacement_fee = 0
+
+        if not all(
+            [
+                account_id,
+                user_id,
+                delivery_option,
+                delivery_fee is not None,
+                card_design,
+                design_fee is not None,
+                shipping_address,
+            ]
         ):
-            return "Error: Missing required parameters."
+            return "Error: Missing required parameters. Required: account_id, user_id, delivery_option, delivery_fee, card_design, design_fee, shipping_address."
 
         valid_delivery = ["STANDARD", "EXPEDITED", "RUSH"]
-        if delivery_option not in valid_delivery:
+        if delivery_option.upper() not in valid_delivery:
             return f"Error: Invalid delivery_option. Must be one of: {valid_delivery}"
+        delivery_option = delivery_option.upper()
 
         valid_design = ["CLASSIC", "PREMIUM", "CUSTOM"]
-        if card_design not in valid_design:
+        if card_design.upper() not in valid_design:
             return f"Error: Invalid card_design. Must be one of: {valid_design}"
+        card_design = card_design.upper()
 
+        # Verify the account exists and is a checking account
+        if account_id not in self.db.accounts.data:
+            return f"Error: Account '{account_id}' not found."
+
+        account = self.db.accounts.data[account_id]
+
+        if account.get("class") != "checking":
+            return f"Error: Debit cards can only be ordered for checking accounts. Account '{account_id}' is a {account.get('class')} account."
+
+        if account.get("status") != "OPEN":
+            return f"Error: Account must be OPEN. Account '{account_id}' has status: {account.get('status')}"
+
+        if account.get("user_id") != user_id:
+            return f"Error: Account '{account_id}' does not belong to user '{user_id}'."
+
+        # Check minimum balance ($25)
+        try:
+            current_holdings = float(
+                str(account.get("current_holdings", "0")).replace(",", "")
+            )
+        except ValueError:
+            current_holdings = 0.0
+
+        if current_holdings < 25.0:
+            return f"Error: Account must have a minimum balance of $25. Current balance: ${current_holdings:.2f}"
+
+        # Check for pending debit card orders for this account
+        for order in self.db.debit_card_orders.data.values():
+            if (
+                order.get("account_id") == account_id
+                and order.get("status") == "PENDING"
+            ):
+                return f"Error: There is already a pending debit card order for account '{account_id}'."
+
+        # Check if customer already has an active debit card for this account
+        active_cards_count = sum(
+            1
+            for card in self.db.debit_cards.data.values()
+            if card.get("account_id") == account_id and card.get("status") == "ACTIVE"
+        )
+        if active_cards_count >= 1:
+            return f"Error: Account '{account_id}' already has an active debit card. Maximum 1 active card per checking account."
+
+        # Calculate total fees
+        total_fee = delivery_fee + design_fee + excess_replacement_fee
+
+        # Check if account has sufficient funds for fees
+        if total_fee > 0 and current_holdings < total_fee:
+            return f"Error: Insufficient funds for fees. Total fees: ${total_fee:.2f}. Current balance: ${current_holdings:.2f}"
+
+        # Calculate expected delivery
+        delivery_times = {
+            "STANDARD": "7-10 business days",
+            "EXPEDITED": "3-5 business days",
+            "RUSH": "1-2 business days",
+        }
+        expected_delivery = delivery_times[delivery_option]
+
+        # Generate order ID
         order_date = get_today_str()
-        card_id = generate_debit_card_id(account_id, user_id, order_date)
         order_id = generate_debit_card_order_id(account_id, user_id, delivery_option)
 
-        # Generate last 4 digits
-        last_4 = _deterministic_id(f"card_{card_id}")[:4].upper()
-        while not last_4.isdigit():
-            last_4 = str(hash(last_4) % 10000).zfill(4)
+        # Create the order record
+        order_record = {
+            "order_id": order_id,
+            "account_id": account_id,
+            "user_id": user_id,
+            "delivery_option": delivery_option,
+            "card_design": card_design,
+            "shipping_address": shipping_address,
+            "delivery_fee": delivery_fee,
+            "design_fee": design_fee,
+            "excess_replacement_fee": excess_replacement_fee,
+            "total_fee": total_fee,
+            "order_date": order_date,
+            "expected_delivery": expected_delivery,
+            "status": "PENDING",
+        }
+
+        success = add_to_db("debit_card_orders", order_id, order_record, db=self.db)
+        if not success:
+            return "Error: Failed to create debit card order. Order may already exist."
+
+        # Deduct fees from the checking account if applicable
+        if total_fee > 0:
+            new_balance = current_holdings - total_fee
+            self.db.accounts.data[account_id]["current_holdings"] = f"{new_balance:.2f}"
+
+            # Create a transaction record for the fee
+            fee_description_parts = []
+            if delivery_fee > 0:
+                fee_description_parts.append(f"Delivery ${delivery_fee}")
+            if design_fee > 0:
+                fee_description_parts.append(f"Design ${design_fee}")
+            if excess_replacement_fee > 0:
+                fee_description_parts.append(
+                    f"Excess Replacement ${excess_replacement_fee:.0f}"
+                )
+            fee_description = (
+                f"DEBIT CARD ORDER FEE - {', '.join(fee_description_parts)}"
+            )
+
+            fee_txn_id = f"btxn_dcfee_{order_id[-8:]}"
+            fee_transaction = {
+                "transaction_id": fee_txn_id,
+                "account_id": account_id,
+                "date": order_date,
+                "description": fee_description,
+                "amount": -total_fee,
+                "type": "debit_card_fee",
+                "status": "posted",
+            }
+            add_to_db(
+                "bank_account_transaction_history",
+                fee_txn_id,
+                fee_transaction,
+                db=self.db,
+            )
+
+        # Create the debit card entry in debit_cards table with PENDING status
+        card_id = generate_debit_card_id(account_id, user_id, order_date)
+
+        # Generate last 4 digits and CVV deterministically
+        card_details_seed = f"card_details:{card_id}"
+        last_4_hash = _deterministic_id(card_details_seed + ":last4", length=8)
+        cvv_hash = _deterministic_id(card_details_seed + ":cvv", length=6)
+
+        last_4_digits = "".join(c for c in last_4_hash if c.isdigit())[:4].zfill(4)
+        cvv = "".join(c for c in cvv_hash if c.isdigit())[:3].zfill(3)
+
+        # Get cardholder name from users table
+        cardholder_name = "CARDHOLDER"
+        if user_id in self.db.users.data:
+            user = self.db.users.data[user_id]
+            cardholder_name = user.get("name", "CARDHOLDER").upper()
+
+        # Calculate expiration date (4 years from now)
+        try:
+            parts = order_date.split("/")
+            exp_month = parts[0]
+            exp_year = str(int(parts[2]) + 4)
+            if exp_month in ["01", "03", "05", "07", "08", "10", "12"]:
+                exp_day = "31"
+            elif exp_month == "02":
+                exp_day = "28"
+            else:
+                exp_day = "30"
+            expiration_date = f"{exp_month}/{exp_day}/{exp_year}"
+        except (ValueError, IndexError):
+            expiration_date = "12/31/2029"
+
+        # Determine issue_reason
+        existing_cards = [
+            c
+            for c in self.db.debit_cards.data.values()
+            if c.get("account_id") == account_id
+        ]
+        closed_card = next(
+            (c for c in existing_cards if c.get("status") == "CLOSED"), None
+        )
+        if closed_card:
+            closure_reason = closed_card.get("closure_reason", "first_card")
+            if closure_reason in ["lost", "stolen", "fraud", "fraud_suspected"]:
+                issue_reason = (
+                    closure_reason if closure_reason != "fraud_suspected" else "fraud"
+                )
+            else:
+                issue_reason = "first_card"
+        elif existing_cards:
+            issue_reason = "first_card"
+        else:
+            issue_reason = "new_account"
 
         card_record = {
             "card_id": card_id,
             "account_id": account_id,
             "user_id": user_id,
-            "last_4_digits": last_4,
+            "cardholder_name": cardholder_name,
+            "last_4_digits": last_4_digits,
+            "cvv": cvv,
             "status": "PENDING",
-            "issue_reason": "new_account",
-            "date_issued": get_today_str(),
-            "delivery_option": delivery_option,
+            "issue_date": order_date,
+            "expiration_date": expiration_date,
             "card_design": card_design,
-            "shipping_address": shipping_address,
+            "issue_reason": issue_reason,
         }
 
         add_to_db("debit_cards", card_id, card_record, db=self.db)
 
-        total_fee = delivery_fee + design_fee + (excess_replacement_fee or 0)
+        # Build response
+        result_parts = [
+            "Debit Card Order Confirmed",
+            f"Order ID: {order_id}",
+            f"Card ID: {card_id}",
+            f"Linked Account: {account_id}",
+            f"Delivery Option: {delivery_option}",
+            f"Card Design: {card_design}",
+            f"Shipping Address: {shipping_address}",
+            f"Expected Delivery: {expected_delivery}",
+            "",
+            "Note: Card will arrive with status PENDING. Customer must call to activate after receiving the card.",
+        ]
 
-        return (
-            f"Debit card order placed successfully.\n\n"
-            f"Executed: order_debit_card_5739\n"
-            f"  - Order ID: {order_id}\n"
-            f"  - Card ID: {card_id}\n"
-            f"  - Last 4: {last_4}\n"
-            f"  - Account: {account_id}\n"
-            f"  - Delivery: {delivery_option} (${delivery_fee:.2f})\n"
-            f"  - Design: {card_design} (${design_fee:.2f})\n"
-            f"  - Total Fees: ${total_fee:.2f}"
-        )
+        if total_fee > 0:
+            fee_details = []
+            if delivery_fee > 0:
+                fee_details.append(f"Delivery: ${delivery_fee}")
+            if design_fee > 0:
+                fee_details.append(f"Design: ${design_fee}")
+            if excess_replacement_fee > 0:
+                fee_details.append(f"Excess Replacement: ${excess_replacement_fee:.0f}")
+            result_parts.append(
+                f"Total Fees: ${total_fee:.2f} ({', '.join(fee_details)}) - CHARGED to account {account_id}"
+            )
+            result_parts.append(
+                f"New Account Balance: ${current_holdings - total_fee:.2f}"
+            )
+        else:
+            result_parts.append("Total Fees: $0 (No additional charges)")
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def activate_debit_card_8291(
@@ -2487,18 +3295,41 @@ class KnowledgeTools(ToolKitBase):
         if error:
             return error
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"status": "ACTIVE", "activated_date": get_today_str()},
-        )
+        account_id = card.get("account_id")
 
-        return (
-            f"New debit card activated successfully.\n\n"
-            f"Executed: activate_debit_card_8291\n"
-            f"Card {card_id} is now active."
-        )
+        # Activate the card
+        card["status"] = "ACTIVE"
+        card["activated_date"] = get_today_str()
+
+        # Deactivate any other active cards for the same account
+        deactivated_cards = []
+        for other_card_id, other_card in self.db.debit_cards.data.items():
+            if (
+                other_card_id != card_id
+                and other_card.get("account_id") == account_id
+                and other_card.get("status") == "ACTIVE"
+            ):
+                other_card["status"] = "DEACTIVATED"
+                other_card["deactivated_date"] = get_today_str()
+                other_card["deactivation_reason"] = "New card activated"
+                deactivated_cards.append(other_card_id)
+
+        result_parts = [
+            "New Debit Card Activation Successful",
+            f"Card ID: {card_id}",
+            "Status: ACTIVE",
+            f"Activation Date: {get_today_str()}",
+            "",
+            "Your card is now ready to use at any ATM or point of sale terminal.",
+            "For security, please sign the back of your card.",
+        ]
+
+        if deactivated_cards:
+            result_parts.append(
+                f"\nNote: Previous card(s) have been deactivated: {', '.join(deactivated_cards)}"
+            )
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def activate_debit_card_8292(
@@ -2535,18 +3366,53 @@ class KnowledgeTools(ToolKitBase):
         if error:
             return error
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"status": "ACTIVE", "activated_date": get_today_str()},
-        )
+        account_id = card.get("account_id")
+        issue_reason = card.get("issue_reason", "lost")
 
-        return (
-            f"Replacement debit card activated successfully.\n\n"
-            f"Executed: activate_debit_card_8292\n"
-            f"Card {card_id} is now active."
-        )
+        # Activate the card
+        card["status"] = "ACTIVE"
+        card["activated_date"] = get_today_str()
+
+        # Deactivate any other active cards for the same account (immediately for security)
+        deactivated_cards = []
+        for other_card_id, other_card in self.db.debit_cards.data.items():
+            if (
+                other_card_id != card_id
+                and other_card.get("account_id") == account_id
+                and other_card.get("status") == "ACTIVE"
+            ):
+                other_card["status"] = "DEACTIVATED"
+                other_card["deactivated_date"] = get_today_str()
+                other_card["deactivation_reason"] = (
+                    f"Replacement card activated ({issue_reason})"
+                )
+                deactivated_cards.append(other_card_id)
+
+        result_parts = [
+            "Replacement Debit Card Activation Successful",
+            f"Card ID: {card_id}",
+            f"Replacement Reason: {issue_reason.replace('_', ' ').title()}",
+            "Status: ACTIVE",
+            f"Activation Date: {get_today_str()}",
+            "",
+            "Your replacement card is now ready to use.",
+            "",
+            "IMPORTANT SECURITY REMINDERS:",
+            "- Please review your recent transactions for any unauthorized charges",
+            "- Report any suspicious activity immediately",
+        ]
+
+        if issue_reason == "fraud":
+            result_parts.append(
+                "- Since fraud was suspected, we recommend changing your online banking password"
+            )
+
+        if deactivated_cards:
+            result_parts.append(
+                f"\nPrevious card(s) have been deactivated for security: {', '.join(deactivated_cards)}"
+            )
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def activate_debit_card_8293(
@@ -2586,18 +3452,52 @@ class KnowledgeTools(ToolKitBase):
         if error:
             return error
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"status": "ACTIVE", "activated_date": get_today_str()},
-        )
+        account_id = card.get("account_id")
+        issue_reason = card.get("issue_reason", "expired")
 
-        return (
-            f"Reissued debit card activated successfully.\n\n"
-            f"Executed: activate_debit_card_8293\n"
-            f"Card {card_id} is now active."
-        )
+        # Activate the card
+        card["status"] = "ACTIVE"
+        card["activated_date"] = get_today_str()
+
+        # For reissued cards, old card has 24-hour grace period
+        old_cards_with_grace = []
+        for other_card_id, other_card in self.db.debit_cards.data.items():
+            if (
+                other_card_id != card_id
+                and other_card.get("account_id") == account_id
+                and other_card.get("status") == "ACTIVE"
+            ):
+                other_card["status"] = "GRACE_PERIOD"
+                other_card["grace_period_ends"] = get_today_str()
+                other_card["deactivation_reason"] = (
+                    f"Reissued card activated ({issue_reason})"
+                )
+                old_cards_with_grace.append(other_card_id)
+
+        result_parts = [
+            "Reissued Debit Card Activation Successful",
+            f"Card ID: {card_id}",
+            f"Reissue Reason: {issue_reason.replace('_', ' ').title()}",
+            "Status: ACTIVE",
+            f"Activation Date: {get_today_str()}",
+            "",
+            "Your reissued card is now ready to use.",
+        ]
+
+        if old_cards_with_grace:
+            result_parts.append(
+                f"\nNote: Your previous card(s) ({', '.join(old_cards_with_grace)}) will remain active for 24 hours as a grace period."
+            )
+            result_parts.append(
+                "After 24 hours, the old card(s) will be automatically deactivated."
+            )
+
+        if issue_reason in ["expired", "bank_reissue"]:
+            result_parts.append(
+                "\nReminder: If your card number changed, please update any recurring payments with your new card details."
+            )
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def close_debit_card_4721(self, card_id: str, reason: str) -> str:
@@ -2611,7 +3511,7 @@ class KnowledgeTools(ToolKitBase):
             Debit card closed successfully.
         """
         if not card_id or not reason:
-            return "Error: Missing required parameters."
+            return "Error: Missing required parameters. Required: card_id, reason."
 
         valid_reasons = [
             "lost",
@@ -2621,28 +3521,58 @@ class KnowledgeTools(ToolKitBase):
             "no_longer_needed",
             "account_closing",
         ]
-        if reason not in valid_reasons:
+        if reason.lower() not in valid_reasons:
             return f"Error: Invalid reason. Must be one of: {valid_reasons}"
+        reason = reason.lower()
 
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={
-                "status": "CLOSED",
-                "closed_date": get_today_str(),
-                "close_reason": reason,
-            },
+        card = self.db.debit_cards.data[card_id]
+
+        # Check card status - can only close ACTIVE or PENDING cards
+        if card.get("status") not in ["ACTIVE", "PENDING"]:
+            return f"Error: Debit card '{card_id}' cannot be closed. Current status: {card.get('status')}. Only ACTIVE or PENDING cards can be closed."
+
+        previous_status = card.get("status")
+
+        # Close the card
+        card["status"] = "CLOSED"
+        card["closed_date"] = get_today_str()
+        card["closure_reason"] = reason
+
+        result_parts = [
+            "Debit Card Closed Successfully",
+            f"Card ID: {card_id}",
+            f"Previous Status: {previous_status}",
+            "New Status: CLOSED",
+            f"Closure Reason: {reason.replace('_', ' ').title()}",
+            f"Closure Date: {get_today_str()}",
+            "",
+        ]
+
+        if reason in ["lost", "stolen", "fraud_suspected"]:
+            result_parts.append(
+                "IMPORTANT: This card has been immediately deactivated for security."
+            )
+            result_parts.append("Any pending transactions may still be processed.")
+            if reason == "fraud_suspected":
+                result_parts.append(
+                    "Please advise the customer to review recent transactions and file disputes for any unauthorized charges."
+                )
+                result_parts.append(
+                    "Also recommend changing their online banking password."
+                )
+
+        result_parts.append("")
+        result_parts.append(
+            "Note: This card cannot be reactivated. If the customer needs a new card, they can order one through the standard ordering process."
+        )
+        result_parts.append(
+            "Any recurring payments linked to this card will need to be updated with new payment information."
         )
 
-        return (
-            f"Debit card closed successfully.\n\n"
-            f"Executed: close_debit_card_4721\n"
-            f"Card {card_id} has been closed. Reason: {reason}"
-        )
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def freeze_debit_card_3892(self, card_id: str) -> str:
@@ -2655,23 +3585,40 @@ class KnowledgeTools(ToolKitBase):
             Debit card frozen successfully.
         """
         if not card_id:
-            return "Error: Missing required parameter: card_id"
+            return "Error: Missing required parameter: card_id."
 
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"status": "FROZEN", "frozen_date": get_today_str()},
-        )
+        card = self.db.debit_cards.data[card_id]
 
-        return (
-            f"Debit card frozen successfully.\n\n"
-            f"Executed: freeze_debit_card_3892\n"
-            f"Card {card_id} is now frozen. All transactions will be declined."
-        )
+        # Check card status - can only freeze ACTIVE cards
+        if card.get("status") == "FROZEN":
+            return f"Error: Debit card '{card_id}' is already frozen."
+
+        if card.get("status") != "ACTIVE":
+            return f"Error: Debit card '{card_id}' cannot be frozen. Current status: {card.get('status')}. Only ACTIVE cards can be frozen."
+
+        # Freeze the card
+        card["status"] = "FROZEN"
+        card["frozen_date"] = get_today_str()
+
+        result_parts = [
+            "Debit Card Frozen Successfully",
+            f"Card ID: {card_id}",
+            "Status: FROZEN",
+            f"Frozen Date: {get_today_str()}",
+            "",
+            "While frozen:",
+            "- All new purchase transactions will be declined",
+            "- Recurring payments and subscriptions will be declined",
+            "- Pending transactions already authorized may still process",
+            "",
+            "To unfreeze, the customer can call customer service or use the mobile app.",
+            "If the card is confirmed lost or stolen, recommend closing the card permanently instead.",
+        ]
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def unfreeze_debit_card_3893(self, card_id: str) -> str:
@@ -2684,27 +3631,41 @@ class KnowledgeTools(ToolKitBase):
             Debit card unfrozen successfully.
         """
         if not card_id:
-            return "Error: Missing required parameter: card_id"
+            return "Error: Missing required parameter: card_id."
 
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
         card = self.db.debit_cards.data[card_id]
+
+        if card.get("status") == "ACTIVE":
+            return f"Error: Debit card '{card_id}' is already active."
+
         if card.get("status") != "FROZEN":
-            return f"Error: Card is not frozen. Current status: {card.get('status')}"
+            return f"Error: Debit card '{card_id}' cannot be unfrozen. Current status: {card.get('status')}. Only FROZEN cards can be unfrozen."
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={"status": "ACTIVE", "unfrozen_date": get_today_str()},
-        )
+        # Verify the linked account is still open
+        account_id = card.get("account_id")
+        if account_id and account_id in self.db.accounts.data:
+            account = self.db.accounts.data[account_id]
+            if account.get("status") != "OPEN":
+                return f"Error: The linked checking account '{account_id}' is no longer open. Card cannot be unfrozen."
 
-        return (
-            f"Debit card unfrozen successfully.\n\n"
-            f"Executed: unfreeze_debit_card_3893\n"
-            f"Card {card_id} is now active again."
-        )
+        # Unfreeze the card
+        card["status"] = "ACTIVE"
+        card["unfrozen_date"] = get_today_str()
+
+        result_parts = [
+            "Debit Card Unfrozen Successfully",
+            f"Card ID: {card_id}",
+            "Status: ACTIVE",
+            f"Unfrozen Date: {get_today_str()}",
+            "",
+            "The card is now active and ready to use immediately.",
+            "All transactions will process normally.",
+        ]
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def clear_debit_card_fraud_alert_4892(self, card_id: str, reason: str) -> str:
@@ -2717,32 +3678,68 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Fraud alert/velocity block cleared successfully.
         """
-        if not card_id or not reason:
-            return "Error: Missing required parameters."
+        if not card_id:
+            return "Error: Missing required parameter: card_id."
+
+        if not reason:
+            return "Error: Missing required parameter: reason."
 
         valid_reasons = ["customer_verified", "velocity_clear"]
         if reason not in valid_reasons:
-            return f"Error: Invalid reason. Must be one of: {valid_reasons}"
+            return f"Error: Invalid reason '{reason}'. Must be one of: {', '.join(valid_reasons)}"
 
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
-        update_record_in_db(
-            "debit_cards",
-            db=self.db,
-            record_id=card_id,
-            updates={
-                "fraud_alert": False,
-                "velocity_block": False,
-                "alert_cleared_date": get_today_str(),
-            },
-        )
+        card = self.db.debit_cards.data[card_id]
 
-        return (
-            f"Fraud alert/velocity block cleared successfully.\n\n"
-            f"Executed: clear_debit_card_fraud_alert_4892\n"
-            f"Card {card_id} alerts cleared. Reason: {reason}"
-        )
+        # Handle velocity block clear
+        if reason == "velocity_clear":
+            if not card.get("velocity_blocked", False):
+                return f"Error: Debit card '{card_id}' does not have an active velocity block."
+
+            card["velocity_blocked"] = False
+            card["velocity_cleared_date"] = get_today_str()
+
+            result_parts = [
+                "Velocity Block Cleared Successfully",
+                f"Card ID: {card_id}",
+                f"Cleared Date: {get_today_str()}",
+                "",
+                "The card is now unblocked and ready for normal use.",
+                "The velocity monitoring will continue - if the same unusual patterns recur,",
+                "the card may be blocked again automatically.",
+            ]
+            return "\n".join(result_parts)
+
+        # Handle fraud alert clear (customer_verified)
+        if reason == "customer_verified":
+            if not card.get("fraud_alert_active", False):
+                return f"Error: Debit card '{card_id}' does not have an active fraud alert."
+
+            # Check if bank-initiated - cannot clear those
+            alert_source = card.get("alert_source")
+            if alert_source == "bank_initiated":
+                return "Error: BANK_INITIATED_ALERT - This fraud alert was initiated by the bank's fraud detection system and cannot be cleared by customer service agents. Please transfer the customer to the security team using transfer_to_human_agents."
+
+            # Clear the fraud alert
+            card["fraud_alert_active"] = False
+            card["alert_source"] = None
+            card["fraud_alert_cleared_date"] = get_today_str()
+
+            result_parts = [
+                "Fraud Alert Cleared Successfully",
+                f"Card ID: {card_id}",
+                f"Cleared Date: {get_today_str()}",
+                "",
+                "The fraud alert has been removed from the card.",
+                "All transactions will process normally.",
+                "",
+                "Remind the customer to review recent transactions and report any unauthorized charges.",
+            ]
+            return "\n".join(result_parts)
+
+        return "Error: Unexpected error processing the request."
 
     @is_discoverable_tool(ToolType.WRITE)
     def reset_debit_card_pin_6284(
@@ -2761,8 +3758,12 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Debit card PIN reset successfully.
         """
-        if not card_id or not last_4_digits or not new_pin:
-            return "Error: Missing required parameters."
+        if not all([card_id, last_4_digits, new_pin]):
+            return "Error: Missing required parameters. Required: card_id, last_4_digits, new_pin."
+
+        # Validate last 4 digits format
+        if not last_4_digits.isdigit() or len(last_4_digits) != 4:
+            return "Error: Last 4 digits must be exactly 4 digits."
 
         pin_error = _validate_pin(new_pin)
         if pin_error:
@@ -2772,14 +3773,33 @@ class KnowledgeTools(ToolKitBase):
             return f"Error: Debit card '{card_id}' not found."
 
         card = self.db.debit_cards.data[card_id]
-        if card.get("last_4_digits") != last_4_digits:
-            return "Error: Last 4 digits do not match."
 
-        return (
-            f"Debit card PIN reset successfully.\n\n"
-            f"Executed: reset_debit_card_pin_6284\n"
-            f"PIN has been reset for card {card_id}."
-        )
+        # Verify last 4 digits match
+        if card.get("last_4_digits") != last_4_digits:
+            return "Error: Card verification failed. The last 4 digits do not match our records."
+
+        # Check card status - can only reset PIN on ACTIVE cards
+        if card.get("status") != "ACTIVE":
+            return f"Error: Cannot reset PIN. Card status is {card.get('status')}. Only ACTIVE cards can have their PIN reset."
+
+        # Reset the PIN and unlock the card
+        card["pin_last_changed"] = get_today_str()
+        card["pin_locked"] = False
+        card["pin_attempts_remaining"] = 3
+
+        result_parts = [
+            "Debit Card PIN Reset Successfully",
+            f"Card ID: {card_id}",
+            f"PIN Changed: {get_today_str()}",
+            "",
+            "The new PIN is effective immediately.",
+            "Your card has been unlocked and is ready to use.",
+            "Customer can use the new PIN for ATM withdrawals and point-of-sale transactions.",
+            "",
+            "Security reminder: Never share your PIN with anyone.",
+        ]
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.WRITE)
     def change_debit_card_pin_6285(
@@ -2798,21 +3818,45 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Debit card PIN changed successfully.
         """
-        if not card_id or not current_pin or not new_pin:
-            return "Error: Missing required parameters."
+        if not all([card_id, current_pin, new_pin]):
+            return "Error: Missing required parameters. Required: card_id, current_pin, new_pin."
+
+        # Validate current PIN format
+        if not current_pin.isdigit() or len(current_pin) != 4:
+            return "Error: Current PIN must be exactly 4 digits."
 
         pin_error = _validate_pin(new_pin)
         if pin_error:
             return f"Error: {pin_error}"
 
+        # Check that new PIN is different from current
+        if current_pin == new_pin:
+            return "Error: New PIN must be different from current PIN."
+
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
-        return (
-            f"Debit card PIN changed successfully.\n\n"
-            f"Executed: change_debit_card_pin_6285\n"
-            f"PIN has been changed for card {card_id}."
-        )
+        card = self.db.debit_cards.data[card_id]
+
+        # Check card status - can only change PIN on ACTIVE cards
+        if card.get("status") != "ACTIVE":
+            return f"Error: Cannot change PIN. Card status is {card.get('status')}. Only ACTIVE cards can have their PIN changed."
+
+        # Change the PIN
+        card["pin_last_changed"] = get_today_str()
+
+        result_parts = [
+            "Debit Card PIN Changed Successfully",
+            f"Card ID: {card_id}",
+            f"PIN Changed: {get_today_str()}",
+            "",
+            "The new PIN is effective immediately.",
+            "Customer can use the new PIN for ATM withdrawals and point-of-sale transactions.",
+            "",
+            "Security reminder: Never share your PIN with anyone.",
+        ]
+
+        return "\n".join(result_parts)
 
     @is_discoverable_tool(ToolType.READ)
     def get_debit_cards_by_account_id_7823(self, account_id: str) -> str:
@@ -2825,28 +3869,44 @@ class KnowledgeTools(ToolKitBase):
             Debit cards retrieved successfully.
         """
         if not account_id:
-            return "Error: Missing required parameter: account_id"
+            return "Error: Missing required parameter 'account_id'."
 
-        # Filter debit cards by account_id
-        account_cards = [
-            card
-            for card in self.db.debit_cards.data.values()
-            if card.get("account_id") == account_id
-        ]
+        # Verify the account exists and is a checking account
+        if account_id not in self.db.accounts.data:
+            return f"Error: Account '{account_id}' not found."
 
-        result_parts = [
-            "Debit cards retrieved successfully.",
-            "",
-            f"Executed: get_debit_cards_by_account_id_7823",
-            f"Debit cards for account {account_id}:",
-        ]
+        account = self.db.accounts.data[account_id]
+        account_class = account.get("class", "").lower()
+        if account_class not in ["checking", "business_checking"]:
+            return f"Error: Account '{account_id}' is not a checking account. Debit cards are only available for checking accounts."
 
-        if account_cards:
-            result_parts.append(json.dumps(account_cards, indent=2))
-        else:
-            result_parts.append("\nNo debit cards found for this account.")
+        # Find all debit cards for this account
+        account_cards = []
+        for card_id, card in self.db.debit_cards.data.items():
+            if card.get("account_id") == account_id:
+                card_info = {"card_id": card_id}
+                card_info.update(card)
 
-        return "\n".join(result_parts)
+                # Normalize field names for consistency
+                if (
+                    "last_4_digits" in card_info
+                    and "card_number_last_4" not in card_info
+                ):
+                    card_info["card_number_last_4"] = card_info.pop("last_4_digits")
+                if "issue_date" in card_info and "date_issued" not in card_info:
+                    card_info["date_issued"] = card_info.pop("issue_date")
+                elif "created_date" in card_info and "date_issued" not in card_info:
+                    card_info["date_issued"] = card_info.pop("created_date")
+
+                account_cards.append(card_info)
+
+        if not account_cards:
+            return f"No debit cards found for account '{account_id}'."
+
+        # Sort by date issued (most recent first)
+        account_cards.sort(key=lambda x: x.get("date_issued") or "", reverse=True)
+
+        return json.dumps(account_cards, indent=2)
 
     @is_discoverable_tool(ToolType.WRITE)
     def request_temporary_debit_card_limit_increase_8374(
@@ -2865,27 +3925,131 @@ class KnowledgeTools(ToolKitBase):
         Returns:
             Temporary limit increase granted successfully.
         """
-        if not card_id or not limit_type or new_limit is None:
-            return "Error: Missing required parameters."
+        from datetime import datetime
 
-        valid_types = ["atm", "purchase"]
-        if limit_type not in valid_types:
-            return f"Error: Invalid limit_type. Must be one of: {valid_types}"
+        if not card_id:
+            return "Error: Missing required parameter: card_id."
+
+        if not limit_type:
+            return "Error: Missing required parameter: limit_type."
+
+        if limit_type not in ["atm", "purchase"]:
+            return f"Error: Invalid limit_type '{limit_type}'. Must be 'atm' or 'purchase'."
+
+        if new_limit is None:
+            return "Error: Missing required parameter: new_limit."
+
+        try:
+            new_limit = int(new_limit)
+        except (ValueError, TypeError):
+            return f"Error: new_limit must be an integer, got '{new_limit}'."
 
         if new_limit <= 0:
-            return "Error: New limit must be positive."
+            return "Error: new_limit must be a positive amount."
 
+        # Verify the card exists
         if card_id not in self.db.debit_cards.data:
             return f"Error: Debit card '{card_id}' not found."
 
-        return (
-            f"Temporary limit increase granted successfully.\n\n"
-            f"Executed: request_temporary_debit_card_limit_increase_8374\n"
-            f"  - Card: {card_id}\n"
-            f"  - Limit Type: {limit_type.upper()}\n"
-            f"  - New Limit: ${new_limit:,}\n"
-            f"  - Duration: 24 hours"
-        )
+        card = self.db.debit_cards.data[card_id]
+
+        # Check card status - must be ACTIVE
+        if card.get("status") != "ACTIVE":
+            return f"Error: Debit card '{card_id}' is not active. Current status: {card.get('status')}. Only ACTIVE cards can have limit increases."
+
+        # Get the linked account
+        account_id = card.get("account_id")
+        if not account_id or account_id not in self.db.accounts.data:
+            return f"Error: Could not find linked account for debit card '{card_id}'."
+
+        account = self.db.accounts.data[account_id]
+
+        # Check account status
+        if account.get("status") != "OPEN":
+            return f"Error: The linked account '{account_id}' is not in good standing. Account status: {account.get('status')}."
+
+        # Check account age (must be at least 60 days old)
+        date_opened_str = account.get("date_opened")
+        if date_opened_str:
+            try:
+                date_opened = datetime.strptime(date_opened_str, "%m/%d/%Y")
+                today = datetime.strptime(get_today_str(), "%m/%d/%Y")
+                account_age_days = (today - date_opened).days
+                if account_age_days < 60:
+                    return f"Error: Account must be at least 60 days old for a temporary limit increase. Account age: {account_age_days} days."
+            except ValueError:
+                pass
+
+        # Get current limit based on limit_type
+        if limit_type == "atm":
+            current_limit = card.get("daily_atm_limit")
+            limit_field = "daily_atm_limit"
+            limit_name = "Daily ATM Withdrawal Limit"
+
+            if current_limit is None:
+                account_level = account.get("level", "").lower()
+
+                default_atm_limits = {
+                    "blue account": 500,
+                    "green account": 600,
+                    "light blue account": 400,
+                    "green fee-free account": 500,
+                    "evergreen account": 750,
+                    "bluest account": 1500,
+                    "dark green account": 300,
+                    "gold years account": 600,
+                    "purple account": 1000,
+                }
+
+                # Teen account (Light Green) limits cannot be modified
+                if "light green" in account_level:
+                    return f"Error: Light Green Account (teen checking) cards have policy-based limits that cannot be modified. The daily ATM withdrawal limit of $150 is fixed by account policy for safety reasons. The customer may request the parent/guardian to withdraw cash from their own account if needed."
+
+                current_limit = default_atm_limits.get(account_level)
+                if current_limit is None:
+                    return f"Error: Could not determine the default ATM limit for account type '{account.get('level')}'. Please verify the account type."
+        else:  # purchase
+            current_limit = card.get("daily_purchase_limit")
+            limit_field = "daily_purchase_limit"
+            limit_name = "Daily Purchase Limit"
+
+        if current_limit is None:
+            return f"Error: The card does not have a {limit_name.lower()} configured. This may be a restricted account type where limits are set by account policy and cannot be modified."
+
+        # Check that new limit doesn't exceed 150% of current limit
+        max_allowed = int(current_limit * 1.5)
+        if new_limit > max_allowed:
+            return f"Error: Requested limit ${new_limit} exceeds the maximum allowed temporary increase. Maximum temporary limit is ${max_allowed} (150% of current ${current_limit} limit)."
+
+        # Check that new limit is actually higher than current
+        if new_limit <= current_limit:
+            return f"Error: Requested limit ${new_limit} is not higher than the current limit of ${current_limit}."
+
+        # Grant the temporary increase
+        original_limit = current_limit
+        card[limit_field] = new_limit
+        card[f"temporary_{limit_type}_limit_increase"] = True
+        card[f"original_{limit_type}_limit"] = original_limit
+        card[f"temporary_{limit_type}_limit_expires"] = get_today_str()
+
+        result_parts = [
+            f"Temporary {limit_name} Increase Granted Successfully",
+            f"Card ID: {card_id}",
+            f"Previous Limit: ${original_limit}",
+            f"New Temporary Limit: ${new_limit}",
+            f"Increase Amount: ${new_limit - original_limit}",
+            "",
+            "Important Information:",
+            "- This temporary increase expires in 24 hours",
+            f"- After expiration, the limit will revert to ${original_limit}",
+            "- Only one temporary increase is allowed per 24-hour period",
+            "",
+            "Note: If the customer is at a third-party (non-Rho-Bank) ATM, that ATM may have its own",
+            "per-transaction or daily limits that Rho-Bank cannot override. The customer may need to",
+            "use a Rho-Bank ATM or make multiple smaller withdrawals at third-party ATMs.",
+        ]
+
+        return "\n".join(result_parts)
 
 
 class KnowledgeUserTools(ToolKitBase):
