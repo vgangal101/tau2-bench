@@ -299,18 +299,32 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
 
     async def _async_run_tick(self, user_audio: bytes, tick_number: int) -> TickResult:
         """Async tick execution."""
-        # Send any pending tool results first
-        for (
-            call_id,
-            name,
-            result_str,
-            request_response,
-            is_error,
-        ) in self._pending_tool_results:
-            await self.provider.send_tool_response(
-                call_id, name, result_str, is_error=is_error
+        # Send all pending tool results in a single batch call.
+        # Gemini may respond after each individual send_tool_response,
+        # so batching prevents the model from re-calling tools it hasn't
+        # seen results for yet.
+        if self._pending_tool_results:
+            from google.genai import types
+
+            function_responses = []
+            for (
+                call_id,
+                name,
+                result_str,
+                request_response,
+                is_error,
+            ) in self._pending_tool_results:
+                payload = {"error": result_str} if is_error else {"output": result_str}
+                function_responses.append(
+                    types.FunctionResponse(id=call_id, name=name, response=payload)
+                )
+            await self.provider._session.send_tool_response(
+                function_responses=function_responses
             )
-        self._pending_tool_results.clear()
+            logger.debug(
+                f"Sent {len(function_responses)} tool results to Gemini in one batch"
+            )
+            self._pending_tool_results.clear()
 
         # Convert user audio from telephony to Gemini format
         gemini_audio = self._audio_converter.convert_input(user_audio)
