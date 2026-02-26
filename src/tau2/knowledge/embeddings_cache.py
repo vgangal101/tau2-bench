@@ -1,5 +1,3 @@
-"""Embeddings cache for storing and retrieving pre-computed embeddings."""
-
 import hashlib
 import json
 import os
@@ -80,12 +78,8 @@ class EmbeddingsCache:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Metadata file to track cache entries
         self.metadata_file = self.cache_dir / "metadata.json"
         self.metadata = self._load_metadata()
-
-        # File for cached documents
-        self.docs_cache_file = self.cache_dir / "docs.pkl"
 
     def _load_metadata(self) -> Dict:
         """Load cache metadata from disk."""
@@ -98,23 +92,6 @@ class EmbeddingsCache:
         """Save cache metadata to disk."""
         with open(self.metadata_file, "w") as f:
             json.dump(self.metadata, f, indent=2)
-
-    def get_cached_docs(self) -> Optional[List[Dict[str, Any]]]:
-        if not self.docs_cache_file.exists():
-            return None
-        try:
-            with open(self.docs_cache_file, "rb") as f:
-                return pickle.load(f)
-        except Exception as e:
-            print(f"⚠️  Error reading cached docs: {e}")
-            return None
-
-    def put_cached_docs(self, docs: List[Dict[str, Any]]) -> None:
-        try:
-            with open(self.docs_cache_file, "wb") as f:
-                pickle.dump(docs, f)
-        except Exception as e:
-            print(f"⚠️  Error caching docs: {e}")
 
     def _compute_document_hash(self, documents: List[Dict[str, str]]) -> str:
         """
@@ -559,21 +536,14 @@ def warm_kb_cache(
         print(f"✅ Using in-memory cached documents ({len(cached_docs)} docs)")
         docs = cached_docs
     else:
-        disk_cached_docs = cache.get_cached_docs()
-        if disk_cached_docs is not None:
-            print(f"✅ Using disk-cached documents ({len(disk_cached_docs)} docs)")
-            docs = disk_cached_docs
-            set_cached_docs(docs)
-        else:
-            print("🔄 Loading documents...")
-            knowledge_base = get_knowledge_base()
-            docs = [
-                {"id": doc.id, "text": doc.content, "title": doc.title}
-                for doc in knowledge_base.documents.values()
-            ]
-            set_cached_docs(docs)
-            cache.put_cached_docs(docs)
-            print(f"✅ Cached documents ({len(docs)} docs)")
+        print("🔄 Loading documents...")
+        knowledge_base = get_knowledge_base()
+        docs = [
+            {"id": doc.id, "text": doc.content, "title": doc.title}
+            for doc in knowledge_base.documents.values()
+        ]
+        set_cached_docs(docs)
+        print(f"✅ Loaded {len(docs)} documents")
 
     if embedder_configs:
         for embedder_type, embedder_params in embedder_configs:
