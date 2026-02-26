@@ -1009,7 +1009,7 @@ class TestFileDebitCardTransactionDispute:
             },
         )
         assert not resp.error
-        assert "filed successfully" in resp.content
+        assert "Dispute ID:" in resp.content
         assert len(environment.tools.db.debit_card_disputes.data) == 1
 
     def test_file_debit_dispute_invalid_category(self, environment: Environment):
@@ -1053,19 +1053,14 @@ class TestSetDebitCardRecurringBlock:
             },
         )
         assert not resp.error
-        assert "updated successfully" in resp.content
-        assert "blocked" in resp.content
+        assert "BLOCKED" in resp.content
         assert (
-            environment.tools.db.debit_cards.data["dbc_002"][
-                "recurring_payments_blocked"
-            ]
+            environment.tools.db.debit_cards.data["dbc_002"]["recurring_blocked"]
             is True
         )
 
     def test_unblock_recurring(self, environment: Environment):
-        environment.tools.db.debit_cards.data["dbc_002"][
-            "recurring_payments_blocked"
-        ] = True
+        environment.tools.db.debit_cards.data["dbc_002"]["recurring_blocked"] = True
         resp = call_discoverable_agent(
             environment,
             "set_debit_card_recurring_block_7382",
@@ -1075,7 +1070,7 @@ class TestSetDebitCardRecurringBlock:
             },
         )
         assert not resp.error
-        assert "unblocked" in resp.content
+        assert "UNBLOCKED" in resp.content
 
     def test_block_nonexistent_card(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -1671,7 +1666,7 @@ class TestApplyCheckingAccountCredit:
         assert "Credit applied" in resp.content
         assert (
             environment.tools.db.accounts.data["chk_001"]["current_holdings"]
-            == "5015.00"
+            == "$5015.00"
         )
 
     def test_apply_fee_refund(self, environment: Environment):
@@ -3009,7 +3004,7 @@ class TestReadOnlyDiscoverableAgentTools:
             },
         )
         assert not resp.error
-        assert "Debit cards retrieved" in resp.content
+        assert "card_id" in resp.content
 
     def test_get_user_dispute_history(self, environment: Environment):
         resp = call_discoverable_agent(
@@ -3061,6 +3056,301 @@ class TestReadOnlyDiscoverableAgentTools:
             },
         )
         assert not resp.error
+
+
+# =============================================================================
+# 18. Tau-knowledge Parity Tests
+#
+# These tests verify behavior that exists in the tau-knowledge branch.
+# They catch missing validation checks and logic that should have been
+# ported from tau-knowledge to dev/tau3.
+# =============================================================================
+
+
+class TestApplyCheckingAccountCreditParity:
+    """Verify apply_checking_account_credit_5829 matches tau-knowledge checks."""
+
+    def test_credit_to_savings_account_rejected(self, environment: Environment):
+        """tau-knowledge rejects credits to non-checking accounts."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_checking_account_credit_5829",
+            {
+                "account_id": "sav_001",  # savings account
+                "amount": 100.0,
+                "credit_type": "rebate_credit",
+            },
+        )
+        assert "Error" in resp.content
+        assert "checking" in resp.content.lower()
+
+    def test_credit_to_closed_account_rejected(self, environment: Environment):
+        """tau-knowledge rejects credits to non-active accounts."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_checking_account_credit_5829",
+            {
+                "account_id": "chk_closed",
+                "amount": 50.0,
+                "credit_type": "fee_refund",
+            },
+        )
+        assert "Error" in resp.content
+        assert "not active" in resp.content.lower() or "CLOSED" in resp.content
+
+    def test_credit_creates_transaction_record(self, environment: Environment):
+        """tau-knowledge creates a transaction record in bank_account_transaction_history."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_checking_account_credit_5829",
+            {
+                "account_id": "chk_001",
+                "amount": 100.0,
+                "credit_type": "rebate_credit",
+            },
+        )
+        assert not resp.error
+        # Verify transaction was recorded
+        assert len(environment.tools.db.bank_account_transaction_history.data) > 0
+
+
+class TestApplySavingsAccountCreditParity:
+    """Verify apply_savings_account_credit_6831 matches tau-knowledge checks."""
+
+    def test_credit_to_checking_account_rejected(self, environment: Environment):
+        """tau-knowledge rejects credits to non-savings accounts."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_savings_account_credit_6831",
+            {
+                "account_id": "chk_001",  # checking account
+                "amount": 100.0,
+                "credit_type": "fee_refund",
+            },
+        )
+        assert "Error" in resp.content
+        assert "savings" in resp.content.lower()
+
+    def test_credit_to_closed_savings_rejected(self, environment: Environment):
+        """tau-knowledge rejects credits to non-active savings accounts."""
+        # Change sav_001 status to CLOSED for this test
+        environment.tools.db.accounts.data["sav_001"]["status"] = "CLOSED"
+        resp = call_discoverable_agent(
+            environment,
+            "apply_savings_account_credit_6831",
+            {
+                "account_id": "sav_001",
+                "amount": 50.0,
+                "credit_type": "fee_refund",
+            },
+        )
+        assert "Error" in resp.content
+
+    def test_credit_creates_transaction_record(self, environment: Environment):
+        """tau-knowledge creates a transaction record in bank_account_transaction_history."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_savings_account_credit_6831",
+            {
+                "account_id": "sav_001",
+                "amount": 100.0,
+                "credit_type": "fee_refund",
+            },
+        )
+        assert not resp.error
+        assert len(environment.tools.db.bank_account_transaction_history.data) > 0
+
+
+class TestSetDebitCardRecurringBlockParity:
+    """Verify set_debit_card_recurring_block_7382 matches tau-knowledge checks."""
+
+    def test_block_on_non_active_card_rejected(self, environment: Environment):
+        """tau-knowledge rejects recurring block changes on non-ACTIVE cards."""
+        resp = call_discoverable_agent(
+            environment,
+            "set_debit_card_recurring_block_7382",
+            {
+                "card_id": "dbc_001",  # status is PENDING
+                "block_recurring": True,
+            },
+        )
+        assert "Error" in resp.content
+        assert "ACTIVE" in resp.content or "status" in resp.content.lower()
+
+
+class TestGetDebitCardsByAccountIdParity:
+    """Verify get_debit_cards_by_account_id_7823 matches tau-knowledge checks."""
+
+    def test_account_not_found(self, environment: Environment):
+        """tau-knowledge returns error for non-existent account."""
+        resp = call_discoverable_agent(
+            environment,
+            "get_debit_cards_by_account_id_7823",
+            {"account_id": "acct_nonexistent"},
+        )
+        assert "Error" in resp.content or "not found" in resp.content.lower()
+
+    def test_savings_account_rejected(self, environment: Environment):
+        """tau-knowledge rejects queries for non-checking accounts."""
+        resp = call_discoverable_agent(
+            environment,
+            "get_debit_cards_by_account_id_7823",
+            {"account_id": "sav_001"},
+        )
+        assert "Error" in resp.content
+        assert "checking" in resp.content.lower()
+
+
+class TestSubmitInterestDiscrepancyReportParity:
+    """Verify submit_interest_discrepancy_report_7294 matches tau-knowledge checks."""
+
+    def test_account_not_found(self, environment: Environment):
+        """tau-knowledge checks account existence."""
+        resp = call_discoverable_agent(
+            environment,
+            "submit_interest_discrepancy_report_7294",
+            {
+                "account_id": "acct_nonexistent",
+                "user_id": "user_001",
+                "expected_apy": 2.5,
+                "actual_apy": 1.5,
+                "amount_difference": 50.0,
+            },
+        )
+        assert "Error" in resp.content
+        assert "not found" in resp.content.lower()
+
+    def test_user_not_found(self, environment: Environment):
+        """tau-knowledge checks user existence."""
+        resp = call_discoverable_agent(
+            environment,
+            "submit_interest_discrepancy_report_7294",
+            {
+                "account_id": "sav_001",
+                "user_id": "user_nonexistent",
+                "expected_apy": 2.5,
+                "actual_apy": 1.5,
+                "amount_difference": 50.0,
+            },
+        )
+        assert "Error" in resp.content
+        assert "not found" in resp.content.lower()
+
+
+class TestGetPaymentHistoryParity:
+    """Verify get_payment_history_6183 matches tau-knowledge checks."""
+
+    def test_zero_months_rejected(self, environment: Environment):
+        """tau-knowledge rejects months <= 0."""
+        resp = call_discoverable_agent(
+            environment,
+            "get_payment_history_6183",
+            {
+                "credit_card_account_id": "cc_001",
+                "months": 0,
+            },
+        )
+        assert "Error" in resp.content
+        assert "positive" in resp.content.lower() or "must be" in resp.content.lower()
+
+    def test_negative_months_rejected(self, environment: Environment):
+        """tau-knowledge rejects negative months."""
+        resp = call_discoverable_agent(
+            environment,
+            "get_payment_history_6183",
+            {
+                "credit_card_account_id": "cc_001",
+                "months": -3,
+            },
+        )
+        assert "Error" in resp.content
+
+
+class TestFileDebitCardDisputeParity:
+    """Verify file_debit_card_transaction_dispute_6281 matches tau-knowledge checks."""
+
+    def test_invalid_dispute_category_rejected(self, environment: Environment):
+        """tau-knowledge validates dispute_category."""
+        # First add a debit card transaction
+        environment.tools.db.bank_account_transaction_history.data["dtxn_001"] = {
+            "transaction_id": "dtxn_001",
+            "account_id": "chk_001",
+            "date": "11/01/2025",
+            "description": "ATM Withdrawal",
+            "amount": -200.00,
+            "type": "atm_withdrawal",
+        }
+        resp = call_discoverable_agent(
+            environment,
+            "file_debit_card_transaction_dispute_6281",
+            {
+                "transaction_id": "dtxn_001",
+                "account_id": "chk_001",
+                "card_id": "dbc_002",
+                "user_id": "user_001",
+                "dispute_category": "INVALID_CATEGORY",
+                "transaction_type": "atm_withdrawal",
+                "disputed_amount": 200.00,
+                "customer_max_liability_amount": 50.00,
+                "card_in_possession": True,
+                "contacted_merchant": False,
+                "police_report_filed": False,
+                "written_statement_provided": True,
+                "pin_compromised": "no",
+                "card_action": "freeze",
+                "description": "Unauthorized ATM withdrawal",
+            },
+        )
+        assert "Error" in resp.content
+        assert "dispute_category" in resp.content.lower() or "Invalid" in resp.content
+
+    def test_negative_disputed_amount_rejected(self, environment: Environment):
+        """tau-knowledge rejects non-positive disputed amounts."""
+        resp = call_discoverable_agent(
+            environment,
+            "file_debit_card_transaction_dispute_6281",
+            {
+                "transaction_id": "dtxn_001",
+                "account_id": "chk_001",
+                "card_id": "dbc_002",
+                "user_id": "user_001",
+                "dispute_category": "unauthorized_transaction",
+                "transaction_date": "11/01/2025",
+                "discovery_date": "11/05/2025",
+                "transaction_type": "pin_purchase",
+                "disputed_amount": -50.00,
+                "customer_max_liability_amount": 0.00,
+                "card_in_possession": True,
+                "contacted_merchant": False,
+                "police_report_filed": False,
+                "written_statement_provided": True,
+                "provisional_credit_eligible": False,
+                "pin_compromised": "no",
+                "card_action": "keep_active",
+            },
+        )
+        assert "Error" in resp.content
+        assert "positive" in resp.content.lower() or "amount" in resp.content.lower()
+
+
+class TestApplyCreditCardAccountFlagParity:
+    """Verify apply_credit_card_account_flag_6147 matches tau-knowledge checks."""
+
+    def test_nonexistent_cc_account_rejected(self, environment: Environment):
+        """tau-knowledge checks CC account existence."""
+        resp = call_discoverable_agent(
+            environment,
+            "apply_credit_card_account_flag_6147",
+            {
+                "credit_card_account_id": "cc_nonexistent",
+                "user_id": "user_001",
+                "flag_type": "annual_fee_waived",
+                "expiration_date": "12/31/2025",
+                "reason": "retention_offer",
+            },
+        )
+        assert "Error" in resp.content
+        assert "not found" in resp.content.lower()
 
 
 if __name__ == "__main__":
