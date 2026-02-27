@@ -72,6 +72,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         seed: Optional[int] = None,
         simulation_id: Optional[str] = None,
         tick_duration_seconds: Optional[float] = None,
+        timeout: Optional[float] = None,
     ):
         """
         Initialize FullDuplexOrchestrator.
@@ -87,6 +88,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             seed: Optional random seed for reproducibility.
             simulation_id: Optional simulation ID.
             tick_duration_seconds: Duration of each simulation tick in seconds (for timing metadata).
+            timeout: Maximum wallclock time in seconds. None means no timeout.
         """
         super().__init__(
             domain=domain,
@@ -98,6 +100,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             max_errors=max_errors,
             seed=seed,
             simulation_id=simulation_id,
+            timeout=timeout,
         )
 
         # Set mode to FULL_DUPLEX
@@ -521,7 +524,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         """
         Check for full-duplex specific termination conditions.
 
-        Checks max_steps and max_errors after each tick.
+        Checks max_steps, max_errors, and timeout after each tick.
         """
         if self.step_count >= self.max_steps:
             self.done = True
@@ -529,6 +532,7 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         if self.num_errors >= self.max_errors:
             self.done = True
             self.termination_reason = TerminationReason.TOO_MANY_ERRORS
+        self._check_timeout()
 
     def _finalize(self) -> SimulationRun:
         """
