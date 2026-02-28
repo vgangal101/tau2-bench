@@ -132,13 +132,15 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         self.trajectory: list[Message] = []
 
         # Termination tracking
-        self.max_steps = max_steps
-        self.max_errors = max_errors
-        self.timeout = timeout
-        self.step_count = 0
-        self.done = False
+        self.max_steps: int = max_steps
+        self.max_errors: int = max_errors
+        self.timeout: Optional[float] = timeout
+        self.step_count: int = 0
+        self.done: bool = False
         self.termination_reason: Optional[TerminationReason] = None
-        self.num_errors = 0
+        self.num_errors: int = 0
+        self._run_start_time: Optional[str] = None
+        self._run_start_perf: Optional[float] = None
 
     @abstractmethod
     def initialize(self) -> None:
@@ -226,7 +228,7 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
     def _check_timeout(self) -> None:
         if (
             self.timeout is not None
-            and hasattr(self, "_run_start_perf")
+            and self._run_start_perf is not None
             and not self.done
         ):
             elapsed = time.perf_counter() - self._run_start_perf
@@ -250,7 +252,10 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         Returns:
             SimulationRun: The simulation run with all results.
         """
+        self._run_start_time = get_now()
+        self._run_start_perf = time.perf_counter()
         self.initialize()
+
         while not self.done:
             self.step()
             self._check_termination()
@@ -695,19 +700,6 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
                 raise exception_type(
                     f"{self.from_role.value} can only send tool calls. {self.message}"
                 )
-
-    def run(self) -> SimulationRun:
-        """
-        Run the simulation.
-
-        Overrides the base class run() to track timing for finalization.
-
-        Returns:
-            SimulationRun: The simulation run.
-        """
-        self._run_start_time = get_now()
-        self._run_start_perf = time.perf_counter()
-        return super().run()
 
     def _check_termination(self) -> None:
         """

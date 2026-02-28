@@ -619,8 +619,6 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
         Returns:
             SimulationRun: The simulation run.
         """
-        self._run_start_time = get_now()
-        self._run_start_perf = time.perf_counter()
         result = super().run()
         compute_proportional_user_transcripts(self.ticks)
         return result
