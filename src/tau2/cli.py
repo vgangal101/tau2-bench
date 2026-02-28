@@ -140,6 +140,12 @@ def add_run_args(parser):
         help=f"The maximum number of tool errors allowed in a row in the simulation. Default is {DEFAULT_MAX_ERRORS}.",
     )
     parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Maximum wallclock time in seconds for each simulation. No timeout by default.",
+    )
+    parser.add_argument(
         "--save-to",
         type=str,
         required=False,
@@ -643,6 +649,7 @@ def main():
             llm_args_user=args.user_llm_args,
             num_trials=args.num_trials,
             max_errors=args.max_errors,
+            timeout=args.timeout,
             save_to=args.save_to,
             max_concurrency=args.max_concurrency,
             seed=args.seed,

@@ -393,6 +393,7 @@ def build_text_orchestrator(
         solo_mode=solo_mode,
         simulation_id=simulation_id,
         validate_communication=config.enforce_communication_protocol,
+        timeout=config.timeout,
     )
 
     logger.debug(
@@ -495,6 +496,7 @@ def build_voice_orchestrator(
         seed=seed,
         simulation_id=simulation_id,
         tick_duration_seconds=config.audio_native_config.tick_duration_seconds,
+        timeout=config.timeout,
     )
 
     logger.debug(

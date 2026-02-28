@@ -98,6 +98,7 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         max_errors: int = 10,
         seed: Optional[int] = None,
         simulation_id: Optional[str] = None,
+        timeout: Optional[float] = None,
     ):
         """
         Initialize the base orchestrator.
@@ -112,6 +113,7 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
             max_errors: Maximum number of tool execution errors before termination. Defaults to 10.
             seed: Optional random seed for reproducibility. Defaults to None.
             simulation_id: Optional simulation ID. Defaults to generated UUID.
+            timeout: Maximum wallclock time in seconds. None means no timeout.
         """
         self.domain = domain
         self.agent: BaseAgentT = agent
@@ -130,12 +132,15 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         self.trajectory: list[Message] = []
 
         # Termination tracking
-        self.max_steps = max_steps
-        self.max_errors = max_errors
-        self.step_count = 0
-        self.done = False
+        self.max_steps: int = max_steps
+        self.max_errors: int = max_errors
+        self.timeout: Optional[float] = timeout
+        self.step_count: int = 0
+        self.done: bool = False
         self.termination_reason: Optional[TerminationReason] = None
-        self.num_errors = 0
+        self.num_errors: int = 0
+        self._run_start_time: Optional[str] = None
+        self._run_start_perf: Optional[float] = None
 
     @abstractmethod
     def initialize(self) -> None:
@@ -220,6 +225,20 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         """
         pass
 
+    def _check_timeout(self) -> None:
+        if (
+            self.timeout is not None
+            and self._run_start_perf is not None
+            and not self.done
+        ):
+            elapsed = time.perf_counter() - self._run_start_perf
+            if elapsed >= self.timeout:
+                self.done = True
+                self.termination_reason = TerminationReason.TIMEOUT
+                logger.info(
+                    f"Simulation timed out after {elapsed:.1f}s (timeout={self.timeout}s)"
+                )
+
     def run(self) -> SimulationRun:
         """
         Run the simulation.
@@ -233,7 +252,10 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         Returns:
             SimulationRun: The simulation run with all results.
         """
+        self._run_start_time = get_now()
+        self._run_start_perf = time.perf_counter()
         self.initialize()
+
         while not self.done:
             self.step()
             self._check_termination()
@@ -353,6 +375,7 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
         solo_mode: bool = False,
         simulation_id: Optional[str] = None,
         validate_communication: bool = False,
+        timeout: Optional[float] = None,
     ):
         """
         Initialize the Orchestrator for managing simulation between Agent, User, and Environment.
@@ -375,6 +398,7 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
                       Defaults to False.
             validate_communication: If True, validates communication protocol rules (e.g., no mixed
                                    messages with both text and tool calls). Defaults to False.
+            timeout: Maximum wallclock time in seconds. None means no timeout.
         """
         # Initialize base class
         super().__init__(
@@ -387,6 +411,7 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
             max_errors=max_errors,
             seed=seed,
             simulation_id=simulation_id,
+            timeout=timeout,
         )
 
         # Half-duplex specific attributes
@@ -676,24 +701,11 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
                     f"{self.from_role.value} can only send tool calls. {self.message}"
                 )
 
-    def run(self) -> SimulationRun:
-        """
-        Run the simulation.
-
-        Overrides the base class run() to track timing for finalization.
-
-        Returns:
-            SimulationRun: The simulation run.
-        """
-        self._run_start_time = get_now()
-        self._run_start_perf = time.perf_counter()
-        return super().run()
-
     def _check_termination(self) -> None:
         """
         Check for half-duplex specific termination conditions.
 
-        Only checks max_steps/max_errors when not waiting for environment response.
+        Only checks max_steps/max_errors/timeout when not waiting for environment response.
         """
         # Skip termination checks if we're waiting for environment to respond
         if self.to_role == Role.ENV:
@@ -705,6 +717,7 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
         if self.num_errors >= self.max_errors:
             self.done = True
             self.termination_reason = TerminationReason.TOO_MANY_ERRORS
+        self._check_timeout()
 
     def _finalize(self) -> SimulationRun:
         """

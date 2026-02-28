@@ -342,6 +342,13 @@ class BaseRunConfig(BaseModel):
             default=DEFAULT_MAX_ERRORS,
         ),
     ]
+    timeout: Annotated[
+        Optional[float],
+        Field(
+            description="Maximum wallclock time in seconds for a single simulation. None means no timeout.",
+            default=None,
+        ),
+    ]
     save_to: Annotated[
         Optional[str],
         Field(
@@ -1217,6 +1224,7 @@ class TerminationReason(str, Enum):
     USER_STOP = "user_stop"
     AGENT_STOP = "agent_stop"
     MAX_STEPS = "max_steps"
+    TIMEOUT = "timeout"
     TOO_MANY_ERRORS = "too_many_errors"
     AGENT_ERROR = "agent_error"
     USER_ERROR = "user_error"
