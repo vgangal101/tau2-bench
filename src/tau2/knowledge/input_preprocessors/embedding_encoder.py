@@ -47,6 +47,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
         self.input_key = input_key
         self.output_key = output_key
         self._embedder = None
+        self._cache_config: Dict[str, Any] | None = None
 
     def _get_embedder(self):
         if self._embedder is None:
@@ -56,14 +57,29 @@ class EmbeddingEncoder(BaseInputPreprocessor):
                     f"Unknown embedder_type: {self.embedder_type}. Available: {available}"
                 )
 
-            # For query encoding, we want the instruction prefix for Qwen models
-            # The OpenRouterEmbedder will automatically apply the default instruction
-            # if query_instruction is not explicitly set in embedder_params
             self._embedder = EMBEDDER_REGISTRY[self.embedder_type](
                 **self.embedder_params
             )
 
         return self._embedder
+
+    def _get_cache_config(self) -> Dict[str, Any]:
+        """Return embedder params augmented with the effective instruction prefix.
+
+        The instruction prefix affects the embedding output but is derived
+        internally by the embedder (e.g. from DEFAULT_QWEN_QUERY_INSTRUCTION),
+        not passed in embedder_params.  Including it in the cache config
+        ensures that changing the instruction invalidates stale cached
+        embeddings instead of serving them silently.
+        """
+        if self._cache_config is None:
+            embedder = self._get_embedder()
+            config = dict(self.embedder_params)
+            instruction = getattr(embedder, "query_instruction", None)
+            if instruction:
+                config["_query_instruction"] = instruction
+            self._cache_config = config
+        return self._cache_config
 
     def process(
         self, input_data: Dict[str, Any], state: Dict[str, Any]
@@ -75,8 +91,10 @@ class EmbeddingEncoder(BaseInputPreprocessor):
                 f"cannot generate embedding from blank text."
             )
 
+        cache_config = self._get_cache_config()
+
         cached = get_cached_query_embedding(
-            text, self.embedder_type, self.embedder_params
+            text, self.embedder_type, cache_config
         )
         if cached is not None:
             input_data[self.output_key] = cached
@@ -85,7 +103,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
         embedder = self._get_embedder()
         embedding = embedder.embed([text])[0]
 
-        cache_query_embedding(text, embedding, self.embedder_type, self.embedder_params)
+        cache_query_embedding(text, embedding, self.embedder_type, cache_config)
 
         input_data[self.output_key] = embedding
         return input_data
@@ -95,12 +113,14 @@ class EmbeddingEncoder(BaseInputPreprocessor):
     ) -> List[Dict[str, Any]]:
         texts = [input_data[self.input_key] for input_data in input_data_list]
 
+        cache_config = self._get_cache_config()
+
         cached_embeddings: Dict[int, Any] = {}
         texts_to_embed: List[tuple[int, str]] = []
 
         for i, text in enumerate(texts):
             cached = get_cached_query_embedding(
-                text, self.embedder_type, self.embedder_params
+                text, self.embedder_type, cache_config
             )
             if cached is not None:
                 cached_embeddings[i] = cached
@@ -114,7 +134,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
 
             for (i, text), embedding in zip(texts_to_embed, new_embeddings):
                 cache_query_embedding(
-                    text, embedding, self.embedder_type, self.embedder_params
+                    text, embedding, self.embedder_type, cache_config
                 )
                 cached_embeddings[i] = embedding
 
