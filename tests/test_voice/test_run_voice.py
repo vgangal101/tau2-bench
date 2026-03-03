@@ -10,10 +10,8 @@ from tau2.config import (
 )
 from tau2.data_model.simulation import TextRunConfig
 from tau2.data_model.tasks import Task, make_task
-from tau2.data_model.voice import VoiceSettings
+from tau2.data_model.voice import SynthesisConfig, TranscriptionConfig, VoiceSettings
 from tau2.run import EvaluationType, run_task, run_tasks
-from tau2.voice.synthesis.synthesize import SynthesisConfig
-from tau2.voice.transcription.transcribe import TranscriptionConfig
 
 
 @pytest.fixture

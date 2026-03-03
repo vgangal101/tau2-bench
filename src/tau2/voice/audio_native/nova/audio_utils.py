@@ -11,15 +11,19 @@ Note: Output is 24kHz (different from input 16kHz).
 import audioop
 from typing import Optional, Tuple
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
+from tau2.config import (
+    DEFAULT_NOVA_INPUT_SAMPLE_RATE,
+    DEFAULT_NOVA_OUTPUT_SAMPLE_RATE,
+    DEFAULT_TELEPHONY_RATE,
+)
 
 # Telephony format: 8kHz μ-law, 1 byte per sample
 TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
 TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 1 byte/sample for μ-law
 
-# Nova Sonic audio formats (PCM16 mono, 2 bytes per sample)
-NOVA_INPUT_SAMPLE_RATE = 16000  # Input: 16kHz
-NOVA_OUTPUT_SAMPLE_RATE = 24000  # Output: 24kHz
+# Nova Sonic audio formats (from config, PCM16 mono, 2 bytes per sample)
+NOVA_INPUT_SAMPLE_RATE = DEFAULT_NOVA_INPUT_SAMPLE_RATE
+NOVA_OUTPUT_SAMPLE_RATE = DEFAULT_NOVA_OUTPUT_SAMPLE_RATE
 
 
 def telephony_to_nova_input(

@@ -44,6 +44,12 @@ class TestAudioChunking:
             def _perform_turn_taking_action(self, state, action):
                 return None, state
 
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
+                return None, state
+
         # chunk_size is in samples, e.g., 50 samples per chunk
         return SimpleAudioChunker(chunk_size=50)
 
@@ -336,6 +342,12 @@ class TestContentChunksDistribution:
                 return True
 
             def _perform_turn_taking_action(self, state, action):
+                return None, state
+
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
                 return None, state
 
         return SimpleAudioChunker(chunk_size=50)
@@ -742,6 +754,12 @@ class TestAudioScriptGoldChunking:
             def _perform_turn_taking_action(self, state, action):
                 return None, state
 
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
+                return None, state
+
         return SimpleAudioChunker(chunk_size=50)
 
     @pytest.fixture
@@ -1023,6 +1041,12 @@ class TestAudioChunkingAndMergingIntegration:
                 return True
 
             def _perform_turn_taking_action(self, state, action):
+                return None, state
+
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
                 return None, state
 
         return SimpleAudioChunker(chunk_size=50)

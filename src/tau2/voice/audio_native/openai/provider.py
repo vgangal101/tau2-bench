@@ -18,6 +18,7 @@ from tau2.config import (
     DEFAULT_OPENAI_NOISE_REDUCTION,
     DEFAULT_OPENAI_REALTIME_BASE_URL,
     DEFAULT_OPENAI_REALTIME_MODEL,
+    DEFAULT_OPENAI_TRANSCRIPTION_MODEL,
     DEFAULT_OPENAI_VAD_THRESHOLD,
     DEFAULT_OPENAI_VOICE,
 )
@@ -310,13 +311,10 @@ class OpenAIRealtimeProvider:
         # Store audio format for reference
         self._audio_format = audio_format
 
-        # TODO: THIS SHOULD NOT BE THERE!!!
-        full_instructions = f"{system_prompt}\n\nIMPORTANT: Always respond in English regardless of the language detected in the audio input."
-
         session_config = {
             "type": "session.update",
             "session": {
-                "instructions": full_instructions,
+                "instructions": system_prompt,
                 "modalities": modalities,
                 "tools": self._format_tools_for_api(tools),
                 "tool_choice": "auto",
@@ -330,7 +328,7 @@ class OpenAIRealtimeProvider:
             input_config = {
                 "input_audio_format": openai_format,
                 "input_audio_transcription": {
-                    "model": "gpt-4o-transcribe",
+                    "model": DEFAULT_OPENAI_TRANSCRIPTION_MODEL,
                     "language": "en",
                 },
                 "input_audio_noise_reduction": {

@@ -9,6 +9,7 @@ import numpy as np
 from loguru import logger
 from scipy import signal
 
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE
 from tau2.data_model.audio import (
     TELEPHONY_SAMPLE_RATE,
     AudioData,
@@ -47,7 +48,7 @@ TELEPHONY_FORMAT = AudioFormat(
 class StreamingTelephonyConverter:
     """Streaming telephony converter that preserves filter state between chunks."""
 
-    def __init__(self, input_sample_rate: int = 16000):
+    def __init__(self, input_sample_rate: int = DEFAULT_PCM_SAMPLE_RATE):
         self.input_sample_rate = input_sample_rate
         self.resample_state = None
 

@@ -13,18 +13,22 @@ This module provides conversion functions to bridge between formats.
 import audioop
 from typing import Optional, Tuple
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
-from tau2.data_model.audio import AudioEncoding, AudioFormat
-from tau2.voice.audio_native.deepgram.provider import (
-    DEEPGRAM_INPUT_BYTES_PER_SECOND,
-    DEEPGRAM_INPUT_SAMPLE_RATE,
-    DEEPGRAM_OUTPUT_BYTES_PER_SECOND,
-    DEEPGRAM_OUTPUT_SAMPLE_RATE,
+from tau2.config import (
+    DEFAULT_DEEPGRAM_INPUT_SAMPLE_RATE,
+    DEFAULT_DEEPGRAM_OUTPUT_SAMPLE_RATE,
+    DEFAULT_TELEPHONY_RATE,
 )
+from tau2.data_model.audio import AudioEncoding, AudioFormat
 
 # Telephony format: 8kHz μ-law, 1 byte per sample
 TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
 TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 1 byte/sample for μ-law
+
+# Deepgram audio format constants (from config)
+DEEPGRAM_INPUT_SAMPLE_RATE = DEFAULT_DEEPGRAM_INPUT_SAMPLE_RATE
+DEEPGRAM_OUTPUT_SAMPLE_RATE = DEFAULT_DEEPGRAM_OUTPUT_SAMPLE_RATE
+DEEPGRAM_INPUT_BYTES_PER_SECOND = DEEPGRAM_INPUT_SAMPLE_RATE * 2
+DEEPGRAM_OUTPUT_BYTES_PER_SECOND = DEEPGRAM_OUTPUT_SAMPLE_RATE * 2
 
 # Deepgram audio formats (both input and output are 16kHz PCM16)
 DEEPGRAM_INPUT_FORMAT = AudioFormat(

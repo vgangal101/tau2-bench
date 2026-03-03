@@ -57,5 +57,10 @@ def task_with_history_and_env_assertions() -> Task:
 
 
 @pytest.fixture
+def task_with_user_tools() -> Task:
+    return get_tasks("mock", task_ids=["update_task_with_user_tools"])[0]
+
+
+@pytest.fixture
 def task_with_action_checks() -> Task:
     return get_tasks("mock", task_ids=["impossible_task_1"])[0]

@@ -36,7 +36,14 @@ from typing import Any, List, Optional, Tuple
 
 from loguru import logger
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
+    DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS,
+    DEFAULT_TELEPHONY_RATE,
+    TELEPHONY_ULAW_SILENCE,
+)
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -70,9 +77,6 @@ from tau2.voice.audio_native.tick_result import (
 # Telephony at 8kHz μ-law = 8000 bytes per second
 NOVA_TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 8000
 
-# μ-law silence byte
-TELEPHONY_ULAW_SILENCE = b"\x7f"
-
 
 class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
     """Adapter for discrete-time full-duplex simulation with Amazon Nova Sonic API.
@@ -95,12 +99,13 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         provider: Optional provider instance. Created lazily if not provided.
     """
 
-    CHUNK_INTERVAL_MS = 20
+    VOIP_PACKET_INTERVAL_MS = DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS
 
     def __init__(
         self,
         tick_duration_ms: int,
         send_audio_instant: bool = True,
+        model: Optional[str] = None,
         provider: Optional[NovaSonicProvider] = None,
         voice: str = "tiffany",
     ):
@@ -109,14 +114,23 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         Args:
             tick_duration_ms: Duration of each tick in milliseconds. Must be > 0.
             send_audio_instant: If True, send audio in one call (discrete-time mode).
+            model: Model to use. Defaults to None (provider default).
+                If provider is also provided, this is ignored.
             provider: Optional provider instance. Created lazily if not provided.
             voice: Voice to use. Options: matthew, tiffany, amy. Default: tiffany.
         """
         super().__init__(tick_duration_ms)
 
         self.send_audio_instant = send_audio_instant
-        self._chunk_size = int(NOVA_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000)
+        self._chunk_size = int(
+            NOVA_BYTES_PER_SECOND * self.VOIP_PACKET_INTERVAL_MS / 1000
+        )
         self.voice = voice
+
+        if model is not None and provider is not None:
+            raise ValueError("model and provider cannot be provided together")
+
+        self.model = model
 
         # Provider - created lazily if not provided
         self._provider = provider
@@ -163,7 +177,7 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
     def provider(self) -> NovaSonicProvider:
         """Get the provider, creating it if needed."""
         if self._provider is None:
-            self._provider = NovaSonicProvider(voice=self.voice)
+            self._provider = NovaSonicProvider(model_id=self.model, voice=self.voice)
         return self._provider
 
     @property
@@ -199,7 +213,7 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         try:
             self._bg_loop.run_coroutine(
                 self._async_connect(system_prompt, tools, vad_config),
-                timeout=30.0,
+                timeout=DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
             )
             self._connected = True
             logger.info(
@@ -294,7 +308,10 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
 
         if self._bg_loop.is_running:
             try:
-                self._bg_loop.run_coroutine(self._async_disconnect(), timeout=5.0)
+                self._bg_loop.run_coroutine(
+                    self._async_disconnect(),
+                    timeout=DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+                )
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
@@ -353,7 +370,8 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
         try:
             return self._bg_loop.run_coroutine(
                 self._async_run_tick(user_audio, tick_number),
-                timeout=self.tick_duration_ms / 1000 + 30.0,
+                timeout=self.tick_duration_ms / 1000
+                + DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
             )
         except Exception as e:
             logger.error(f"Error in run_tick (tick={tick_number}): {e}")
@@ -406,7 +424,7 @@ class DiscreteTimeNovaAdapter(DiscreteTimeAdapter):
                     chunk = nova_audio[offset : offset + self._chunk_size]
                     await self.provider.send_audio(chunk, self._audio_content_id)
                     offset += len(chunk)
-                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
+                    await asyncio.sleep(self.VOIP_PACKET_INTERVAL_MS / 1000)
 
         async def receive_events():
             elapsed_so_far = asyncio.get_running_loop().time() - tick_start

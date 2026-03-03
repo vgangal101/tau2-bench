@@ -27,7 +27,13 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel
 
-from tau2.config import DEFAULT_NOVA_MODEL, DEFAULT_NOVA_REGION, DEFAULT_NOVA_VOICE
+from tau2.config import (
+    DEFAULT_NOVA_INPUT_SAMPLE_RATE,
+    DEFAULT_NOVA_MODEL,
+    DEFAULT_NOVA_OUTPUT_SAMPLE_RATE,
+    DEFAULT_NOVA_REGION,
+    DEFAULT_NOVA_VOICE,
+)
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.nova.events import (
     BaseNovaEvent,
@@ -70,14 +76,12 @@ def _check_nova_dependencies() -> None:
 
 load_dotenv()
 
-# Audio format constants
-# Input: 16kHz PCM16 mono (what we send to Nova)
-NOVA_INPUT_SAMPLE_RATE = 16000
+# Audio format constants (from config)
+NOVA_INPUT_SAMPLE_RATE = DEFAULT_NOVA_INPUT_SAMPLE_RATE
 NOVA_SAMPLE_RATE = NOVA_INPUT_SAMPLE_RATE  # Alias for compatibility
 NOVA_BYTES_PER_SECOND = NOVA_SAMPLE_RATE * 2  # 2 bytes per sample
 
-# Output: 24kHz PCM16 mono (what Nova sends back)
-NOVA_OUTPUT_SAMPLE_RATE = 24000
+NOVA_OUTPUT_SAMPLE_RATE = DEFAULT_NOVA_OUTPUT_SAMPLE_RATE
 NOVA_OUTPUT_BYTES_PER_SECOND = NOVA_OUTPUT_SAMPLE_RATE * 2
 
 

@@ -31,10 +31,15 @@ from loguru import logger
 from pydantic import BaseModel
 
 from tau2.config import (
+    DEFAULT_DEEPGRAM_INPUT_ENCODING,
+    DEFAULT_DEEPGRAM_INPUT_SAMPLE_RATE,
     DEFAULT_DEEPGRAM_LLM_MODEL,
     DEFAULT_DEEPGRAM_LLM_PROVIDER,
+    DEFAULT_DEEPGRAM_OUTPUT_ENCODING,
+    DEFAULT_DEEPGRAM_OUTPUT_SAMPLE_RATE,
     DEFAULT_DEEPGRAM_STT_MODEL,
     DEFAULT_DEEPGRAM_TTS_MODEL,
+    DEFAULT_DEEPGRAM_VOICE_AGENT_URL,
 )
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.deepgram.events import (
@@ -46,16 +51,12 @@ from tau2.voice.audio_native.deepgram.events import (
 
 load_dotenv()
 
-# Deepgram Voice Agent API constants
-# Reference: https://developers.deepgram.com/docs/voice-agent
-DEEPGRAM_VOICE_AGENT_URL = "wss://agent.deepgram.com/v1/agent/converse"
-
-# Audio format constants
-# Deepgram supports various formats; we use 16kHz linear16 as default
-DEEPGRAM_INPUT_SAMPLE_RATE = 16000
-DEEPGRAM_INPUT_ENCODING = "linear16"
-DEEPGRAM_OUTPUT_SAMPLE_RATE = 16000
-DEEPGRAM_OUTPUT_ENCODING = "linear16"
+# Audio format constants (from config, with derived values)
+DEEPGRAM_VOICE_AGENT_URL = DEFAULT_DEEPGRAM_VOICE_AGENT_URL
+DEEPGRAM_INPUT_SAMPLE_RATE = DEFAULT_DEEPGRAM_INPUT_SAMPLE_RATE
+DEEPGRAM_INPUT_ENCODING = DEFAULT_DEEPGRAM_INPUT_ENCODING
+DEEPGRAM_OUTPUT_SAMPLE_RATE = DEFAULT_DEEPGRAM_OUTPUT_SAMPLE_RATE
+DEEPGRAM_OUTPUT_ENCODING = DEFAULT_DEEPGRAM_OUTPUT_ENCODING
 
 # Bytes per second for default format (16kHz, 16-bit mono)
 DEEPGRAM_INPUT_BYTES_PER_SECOND = DEEPGRAM_INPUT_SAMPLE_RATE * 2
@@ -283,11 +284,6 @@ class DeepgramVoiceAgentProvider:
         self._tools = tools
         self._context_messages = context_messages or []
 
-        # Append instructions for handling mistranscriptions
-        full_prompt = f"""{system_prompt}
-
-IMPORTANT: The user speech you are provided is transcribed speech -- and may contain transcription errors. When collecting customer information (e.g. names, emails, IDs), ask the customer to SPELL IT OUT letter by letter (e.g. "J, O, H, N") to ensure you have the correct information."""
-
         # Build the Settings message
         # Reference: https://developers.deepgram.com/docs/voice-agent-settings
         settings = {
@@ -316,7 +312,7 @@ IMPORTANT: The user speech you are provided is transcribed speech -- and may con
                         "type": llm_provider or self.llm_provider,
                         "model": llm_model or self.llm_model,
                     },
-                    "prompt": full_prompt,  # System prompt with appended instructions
+                    "prompt": system_prompt,
                 },
                 "speak": {
                     "provider": {

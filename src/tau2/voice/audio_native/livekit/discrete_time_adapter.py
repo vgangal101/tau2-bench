@@ -37,6 +37,12 @@ from pydantic import BaseModel
 # This is handled by _preregister_livekit_plugins() in tau2/run.py, which is called
 # before ThreadPoolExecutor creates worker threads. Do NOT import livekit.plugins
 # at module level here as this module may be imported from worker threads.
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_THREAD_JOIN_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
+)
 from tau2.data_model.audio import AudioFormat
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
@@ -179,7 +185,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
                 self.provider.connect(system_prompt, tools),
                 self._loop,
             )
-            future.result(timeout=30.0)
+            future.result(timeout=DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT)
             self._connected = True
             # Reset state for fresh connection
             self._audio_converter.reset()
@@ -205,7 +211,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
                 self._loop,
             )
             try:
-                future.result(timeout=5.0)
+                future.result(timeout=DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT)
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
@@ -239,7 +245,7 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         if self._loop is not None:
             self._loop.call_soon_threadsafe(self._loop.stop)
             if self._thread is not None:
-                self._thread.join(timeout=2.0)
+                self._thread.join(timeout=DEFAULT_AUDIO_NATIVE_THREAD_JOIN_TIMEOUT)
             self._loop = None
             self._thread = None
 
@@ -281,7 +287,10 @@ class LiveKitCascadedAdapter(DiscreteTimeAdapter):
         )
 
         try:
-            result = future.result(timeout=self.tick_duration_ms / 1000 + 30.0)
+            result = future.result(
+                timeout=self.tick_duration_ms / 1000
+                + DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER
+            )
             return result
         except Exception as e:
             logger.error(f"Error in run_tick (tick={tick_number}): {e}")

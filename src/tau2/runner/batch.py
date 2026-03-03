@@ -12,7 +12,9 @@ import asyncio
 import asyncio.base_events
 import json
 import multiprocessing
+import os
 import random
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import ContextVar
@@ -52,7 +54,7 @@ from tau2.user.user_simulator import (
 )
 from tau2.user_simulation_voice_presets import COMPLEXITY_CONFIGS
 from tau2.utils.display import ConsoleDisplay, Text
-from tau2.utils.llm_utils import set_llm_log_dir
+from tau2.utils.llm_utils import llm_log_mode, set_llm_log_dir, set_llm_log_mode
 from tau2.utils.utils import DATA_DIR
 from tau2.voice.synthesis.conversation_builder import generate_simulation_audio
 from tau2.voice.utils.audio_debug import generate_audio_debug_info
@@ -106,6 +108,19 @@ def _init_thread_event_loop():
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+    except Exception:
+        pass
+
+
+def _cleanup_thread_event_loop():
+    """Close the thread-local event loop so it doesn't leak into GC."""
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        _close_event_loop_safely(loop)
+    except RuntimeError:
+        pass
+    try:
+        asyncio.set_event_loop(None)
     except Exception:
         pass
 
@@ -509,9 +524,7 @@ def run_tasks(
     policy_override = None
     if config.domain == "banking_knowledge":
         from tau2.domains.banking_knowledge.environment import get_knowledge_base
-        from tau2.domains.banking_knowledge.retrieval import (
-            get_info_policy_override,
-        )
+        from tau2.domains.banking_knowledge.retrieval import get_info_policy_override
         from tau2.knowledge.embeddings_cache import (
             get_unique_embedder_configs_for_retrieval_configs,
             warm_kb_cache,
@@ -590,12 +603,21 @@ def run_tasks(
         preregister_livekit_plugins()
 
     hallucination_retries = config.hallucination_retries
+    shutdown_event = threading.Event()
+
+    # Capture ContextVar values from the main thread so worker threads
+    # (which get a fresh default context) can re-apply them.
+    _main_thread_llm_log_mode = llm_log_mode.get()
 
     def _run_tracked(
         task: Task, trial: int, seed: int, progress_str: str
     ) -> SimulationRun:
         """Run a single task with tracking, retry, and hallucination retry."""
+        if shutdown_event.is_set():
+            raise KeyboardInterrupt("Shutdown requested")
+
         _init_thread_event_loop()
+        set_llm_log_mode(_main_thread_llm_log_mode)
         task_key = f"{task.id}.{trial}"
         monitor.task_started(task_key, trial)
 
@@ -635,6 +657,8 @@ def run_tasks(
                 retry_delay=config.retry_delay,
                 console_display=console_display,
                 save_fn=save_fn,
+                on_retry=lambda: monitor.task_restarted(task_key),
+                shutdown_event=shutdown_event,
             )
 
             # Hallucination retry: if check detects fabricated info, re-run
@@ -662,7 +686,9 @@ def run_tasks(
                     if save_dir is not None:
                         discarded_dir = save_dir / "hallucination_discarded"
                         discarded_dir.mkdir(parents=True, exist_ok=True)
-                        discarded_path = discarded_dir / "results.json"
+                        discarded_path = (
+                            discarded_dir / "results_user_hallucination.json"
+                        )
 
                         if discarded_path.exists():
                             with open(discarded_path, "r") as fp:
@@ -698,6 +724,7 @@ def run_tasks(
                         )
 
                     # Build feedback and re-run
+                    monitor.task_restarted(task_key)
                     feedback = format_hallucination_feedback(h_check)
                     retry_seed = seed + hallucination_retry_count * 1000
                     result = _execute(
@@ -718,15 +745,37 @@ def run_tasks(
             return result
         finally:
             monitor.task_finished(task_key)
+            _cleanup_thread_event_loop()
 
+    executor = ThreadPoolExecutor(max_workers=config.max_concurrency)
+    futures: dict = {}
     try:
-        with ThreadPoolExecutor(max_workers=config.max_concurrency) as executor:
-            futures = {executor.submit(_run_tracked, *arg): arg for arg in args}
-            for future in as_completed(futures):
-                result = future.result()
-                simulation_results.simulations.append(result)
+        futures = {executor.submit(_run_tracked, *arg): arg for arg in args}
+        for future in as_completed(futures):
+            result = future.result()
+            simulation_results.simulations.append(result)
+    except KeyboardInterrupt:
+        ConsoleDisplay.console.print(
+            "\n[bold red]Ctrl+C received — cancelling remaining tasks...[/bold red]"
+        )
+        shutdown_event.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+        n = len(simulation_results.simulations)
+        ConsoleDisplay.console.print(
+            f"[bold yellow]{n} simulation(s) already checkpointed. "
+            f"Use --auto-resume to continue later.[/bold yellow]"
+        )
+        monitor.stop()
+
+        # Force-exit: background threads (litellm, websocket loops, etc.)
+        # hold the process alive and produce noisy errors during interpreter
+        # shutdown.  All completed results are already on disk via save_fn.
+        os._exit(130)
     finally:
         monitor.stop()
+        if not shutdown_event.is_set():
+            executor.shutdown(wait=True)
 
     ConsoleDisplay.console.print(
         "\n[bold green]Successfully completed all simulations![/bold green]\n"

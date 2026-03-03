@@ -36,7 +36,14 @@ from typing import Any, List, Optional, Tuple
 
 from loguru import logger
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
+    DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS,
+    DEFAULT_TELEPHONY_RATE,
+    TELEPHONY_ULAW_SILENCE,
+)
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -67,9 +74,6 @@ from tau2.voice.audio_native.xai.provider import (
 # xAI with G.711 μ-law at 8kHz = 8000 bytes per second (1 byte per sample)
 XAI_TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 8000
 
-# μ-law silence byte
-TELEPHONY_ULAW_SILENCE = b"\x7f"
-
 
 def calculate_bytes_per_tick(tick_duration_ms: int) -> int:
     """Calculate bytes per tick for G.711 μ-law at 8kHz."""
@@ -96,7 +100,7 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         provider: Optional provider instance. Created lazily if not provided.
     """
 
-    CHUNK_INTERVAL_MS = 20
+    VOIP_PACKET_INTERVAL_MS = DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS
 
     def __init__(
         self,
@@ -117,7 +121,7 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
 
         self.send_audio_instant = send_audio_instant
         self._chunk_size = int(
-            XAI_TELEPHONY_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000
+            XAI_TELEPHONY_BYTES_PER_SECOND * self.VOIP_PACKET_INTERVAL_MS / 1000
         )
         self.voice = voice
 
@@ -185,7 +189,7 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         try:
             self._bg_loop.run_coroutine(
                 self._async_connect(system_prompt, tools, vad_config),
-                timeout=30.0,
+                timeout=DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
             )
             self._connected = True
             logger.info(
@@ -218,7 +222,10 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
 
         if self._bg_loop.is_running:
             try:
-                self._bg_loop.run_coroutine(self._async_disconnect(), timeout=5.0)
+                self._bg_loop.run_coroutine(
+                    self._async_disconnect(),
+                    timeout=DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+                )
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
@@ -257,7 +264,8 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
         try:
             return self._bg_loop.run_coroutine(
                 self._async_run_tick(user_audio, tick_number),
-                timeout=self.tick_duration_ms / 1000 + 30.0,
+                timeout=self.tick_duration_ms / 1000
+                + DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
             )
         except Exception as e:
             logger.error(f"Error in run_tick (tick={tick_number}): {e}")
@@ -307,7 +315,7 @@ class DiscreteTimeXAIAdapter(DiscreteTimeAdapter):
                     chunk = user_audio[offset : offset + self._chunk_size]
                     await self.provider.send_audio(chunk)
                     offset += len(chunk)
-                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
+                    await asyncio.sleep(self.VOIP_PACKET_INTERVAL_MS / 1000)
 
         async def receive_events():
             elapsed_so_far = asyncio.get_running_loop().time() - tick_start

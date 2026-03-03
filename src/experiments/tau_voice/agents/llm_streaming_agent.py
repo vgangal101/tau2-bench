@@ -21,6 +21,7 @@ from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT, LLMAgentState
 from tau2.data_model.audio import TELEPHONY_SAMPLE_RATE
 from tau2.data_model.message import (
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     TurnTakingAction,
     UserMessage,
@@ -207,6 +208,12 @@ class TextStreamingLLMAgent(
             next_agent_chunk = state.output_streaming_queue.pop(0)
             next_agent_chunk.timestamp = get_now()
             is_speech_action = True
+            if (
+                len(state.output_streaming_queue) == 0
+                and state.delivering_tool_result_speech
+            ):
+                state.delivering_tool_result_speech = False
+                logger.debug("Tool result speech delivery complete")
         elif action.action == "stop_talking":
             state.output_streaming_queue = []
         elif action.action == "generate_message":
@@ -251,6 +258,48 @@ class TextStreamingLLMAgent(
             )
         next_agent_chunk.turn_taking_action = action
         return next_agent_chunk, state
+
+    def _process_tool_result(
+        self,
+        tool_result: EnvironmentMessage,
+        state: LLMAgentStreamingState,
+    ) -> Tuple[AssistantMessage, LLMAgentStreamingState]:
+        """Process a tool result by calling the LLM and returning the response."""
+        saved_buffer = state.input_turn_taking_buffer
+        state.input_turn_taking_buffer = [tool_result]
+
+        full_message, state = self._generate_full_duplex_message(tool_result, state)
+
+        state.input_turn_taking_buffer = saved_buffer
+
+        if full_message.is_tool_call():
+            logger.debug("Tool result processing: LLM returned another tool call")
+            return full_message, state
+        else:
+            logger.debug("Tool result processing: queuing speech chunks")
+            chunk_messages = self._create_chunk_messages(full_message)
+            state.output_streaming_queue.extend(chunk_messages)
+            state.delivering_tool_result_speech = True
+            waiting_chunk, state = self._emit_waiting_chunk(state)
+            return waiting_chunk, state
+
+    def _emit_waiting_chunk(
+        self, state: LLMAgentStreamingState
+    ) -> Tuple[AssistantMessage, LLMAgentStreamingState]:
+        """Emit an empty chunk while waiting for tool results."""
+        state.time_since_last_talk += 1
+        chunk = AssistantMessage(
+            role="assistant",
+            content=None,
+            timestamp=get_now(),
+            cost=0.0,
+            usage=None,
+            raw_data=None,
+            chunk_id=0,
+            is_final_chunk=True,
+            contains_speech=False,
+        )
+        return chunk, state
 
     def _generate_full_duplex_message(
         self, message: ValidAgentInputMessage, state: LLMAgentStreamingState
@@ -484,6 +533,12 @@ class VoiceStreamingLLMAgent(
             next_agent_chunk = state.output_streaming_queue.pop(0)
             next_agent_chunk.timestamp = get_now()
             is_speech_action = True
+            if (
+                len(state.output_streaming_queue) == 0
+                and state.delivering_tool_result_speech
+            ):
+                state.delivering_tool_result_speech = False
+                logger.debug("Tool result speech delivery complete")
         elif action.action == "stop_talking":
             state.output_streaming_queue = []
         elif action.action == "generate_message":
@@ -528,6 +583,50 @@ class VoiceStreamingLLMAgent(
             )
         next_agent_chunk.turn_taking_action = action
         return next_agent_chunk, state
+
+    def _process_tool_result(
+        self,
+        tool_result: EnvironmentMessage,
+        state: LLMAgentVoiceStreamingState,
+    ) -> Tuple[AssistantMessage, LLMAgentVoiceStreamingState]:
+        """Process a tool result by calling the LLM and returning the response."""
+        saved_buffer = state.input_turn_taking_buffer
+        state.input_turn_taking_buffer = [tool_result]
+
+        full_message, state = self._generate_full_duplex_voice_message(
+            tool_result, state
+        )
+
+        state.input_turn_taking_buffer = saved_buffer
+
+        if full_message.is_tool_call():
+            logger.debug("Tool result processing: LLM returned another tool call")
+            return full_message, state
+        else:
+            logger.debug("Tool result processing: queuing speech chunks")
+            chunk_messages = self._create_chunk_messages(full_message)
+            state.output_streaming_queue.extend(chunk_messages)
+            state.delivering_tool_result_speech = True
+            waiting_chunk, state = self._emit_waiting_chunk(state)
+            return waiting_chunk, state
+
+    def _emit_waiting_chunk(
+        self, state: LLMAgentVoiceStreamingState
+    ) -> Tuple[AssistantMessage, LLMAgentVoiceStreamingState]:
+        """Emit an empty chunk while waiting for tool results."""
+        state.time_since_last_talk += 1
+        chunk = AssistantMessage(
+            role="assistant",
+            content=None,
+            timestamp=get_now(),
+            cost=0.0,
+            usage=None,
+            raw_data=None,
+            chunk_id=0,
+            is_final_chunk=True,
+            contains_speech=False,
+        )
+        return chunk, state
 
     def _generate_full_duplex_voice_message(
         self, message: ValidAgentInputMessage, state: LLMAgentVoiceStreamingState

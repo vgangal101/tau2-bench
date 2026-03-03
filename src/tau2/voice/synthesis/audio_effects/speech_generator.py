@@ -9,6 +9,7 @@ from typing import Optional
 
 from loguru import logger
 
+from tau2.config import DEFAULT_TELEPHONY_RATE
 from tau2.data_model.audio import AudioData
 from tau2.data_model.audio_effects import UserSpeechInsert
 from tau2.data_model.voice import SynthesisConfig
@@ -29,7 +30,7 @@ class OutOfTurnSpeechGenerator:
         voice_id: str,
         provider: str = "elevenlabs",
         provider_config: Optional[object] = None,
-        target_sample_rate: int = 8000,
+        target_sample_rate: int = DEFAULT_TELEPHONY_RATE,
         seed: int = 42,
         speech_rate: float = 0.0,
     ):

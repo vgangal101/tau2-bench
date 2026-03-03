@@ -9,6 +9,11 @@ import requests
 import websockets
 from dotenv import load_dotenv
 
+from tau2.config import (
+    DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE,
+    DEFAULT_OPENAI_REALTIME_BASE_URL,
+    DEFAULT_WHISPER_MODEL,
+)
 from tau2.data_model.audio import AudioData, AudioEncoding, AudioFormat
 from tau2.data_model.voice import TranscriptionConfig, TranscriptionResult
 from tau2.utils.retry import api_retry
@@ -56,7 +61,7 @@ def _convert_audio_to_pcm16_mono_24000(audio_data: AudioData) -> AudioData:
     try:
         pcm16_audio = convert_to_pcm16(audio_data)
         mono_audio = convert_to_mono(pcm16_audio)
-        resampled_audio = resample_audio(mono_audio, 24000)
+        resampled_audio = resample_audio(mono_audio, DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE)
         return resampled_audio, None
 
     except Exception as e:
@@ -67,7 +72,7 @@ def _validate_pcm16_mono_24000(audio_format: AudioFormat) -> None:
     if (
         audio_format.encoding != AudioEncoding.PCM_S16LE
         or audio_format.channels != 1
-        or audio_format.sample_rate != 24000
+        or audio_format.sample_rate != DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE
     ):
         raise ValueError(
             f"Audio format must be in mono, PCM_S16LE, 24000 Hz, got {audio_format}"
@@ -101,7 +106,7 @@ def transcribe_deepgram(
             "punctuate": str(config.deepgram_punctuate).lower(),
             "smart_format": str(config.deepgram_smart_format).lower(),
             "encoding": "linear16",
-            "sample_rate": "24000",
+            "sample_rate": str(DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE),
             "channels": "1",
         }
 
@@ -159,7 +164,7 @@ def transcribe_whisper(
         with wave.open(wav_buffer, "wb") as wav_file:
             wav_file.setnchannels(1)
             wav_file.setsampwidth(2)
-            wav_file.setframerate(24000)
+            wav_file.setframerate(DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE)
             wav_file.writeframes(audio_data.data)
 
         wav_buffer.seek(0)
@@ -168,7 +173,7 @@ def transcribe_whisper(
         url = "https://api.openai.com/v1/audio/transcriptions"
         headers = {"Authorization": f"Bearer {api_key}"}
         files = {"file": ("audio.wav", wav_data, "audio/wav")}
-        data = {"model": "whisper-1"}
+        data = {"model": DEFAULT_WHISPER_MODEL}
 
         if config.language:
             lang_code = (
@@ -211,7 +216,7 @@ async def transcribe_gpt4o_realtime(
 
         audio_base64 = base64.b64encode(audio_data.data).decode("utf-8")
 
-        url = "wss://api.openai.com/v1/realtime?model=gpt-realtime"
+        url = f"{DEFAULT_OPENAI_REALTIME_BASE_URL}?model=gpt-realtime"
 
         headers = {"Authorization": f"Bearer {api_key}", "OpenAI-Beta": "realtime=v1"}
 

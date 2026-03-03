@@ -46,6 +46,13 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel
 
+from tau2.config import (
+    DEFAULT_QWEN_INPUT_SAMPLE_RATE,
+    DEFAULT_QWEN_MODEL,
+    DEFAULT_QWEN_OUTPUT_SAMPLE_RATE,
+    DEFAULT_QWEN_REALTIME_URL,
+    DEFAULT_QWEN_VOICE,
+)
 from tau2.environment.tool import Tool
 from tau2.utils.retry import websocket_retry
 from tau2.voice.audio_native.qwen.events import (
@@ -57,19 +64,12 @@ from tau2.voice.audio_native.qwen.events import (
 
 load_dotenv()
 
-# Qwen Realtime API constants
-DEFAULT_QWEN_REALTIME_URL = "wss://dashscope-intl.aliyuncs.com/api-ws/v1/realtime"
-DEFAULT_QWEN_MODEL = "qwen3-omni-flash-realtime"
-DEFAULT_QWEN_VOICE = "Cherry"
-
-# Audio format constants
-# Input: PCM16 at 16kHz (what we send to Qwen)
-QWEN_INPUT_SAMPLE_RATE = 16000
+# Audio format constants (from config)
+QWEN_INPUT_SAMPLE_RATE = DEFAULT_QWEN_INPUT_SAMPLE_RATE
 QWEN_INPUT_BYTES_PER_SECOND = QWEN_INPUT_SAMPLE_RATE * 2  # 16-bit = 2 bytes
 
-# Output: PCM24 at 24kHz (what Qwen sends back)
-QWEN_OUTPUT_SAMPLE_RATE = 24000
-QWEN_OUTPUT_BYTES_PER_SECOND = QWEN_OUTPUT_SAMPLE_RATE * 2  # Assuming 16-bit samples
+QWEN_OUTPUT_SAMPLE_RATE = DEFAULT_QWEN_OUTPUT_SAMPLE_RATE
+QWEN_OUTPUT_BYTES_PER_SECOND = QWEN_OUTPUT_SAMPLE_RATE * 2  # 16-bit samples
 
 
 class QwenVADMode(str, Enum):

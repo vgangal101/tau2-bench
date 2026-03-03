@@ -5,9 +5,11 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, computed_field
 
-# Standard sample rates
-TELEPHONY_SAMPLE_RATE = 8000
-PCM_SAMPLE_RATE = 16000
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE, DEFAULT_TELEPHONY_RATE
+
+# Standard sample rates (sourced from config.py - single source of truth)
+TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
+PCM_SAMPLE_RATE = DEFAULT_PCM_SAMPLE_RATE
 
 
 def audio_bytes_to_string(data: bytes) -> str:

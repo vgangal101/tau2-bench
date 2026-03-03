@@ -125,6 +125,16 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
     consecutive_self_speaking_ticks: int = 0
     consecutive_other_speaking_ticks: int = 0
 
+    # Tool result processing state
+    # waiting_for_tool_results: True after emitting a tool call, cleared when
+    # tool results arrive. While True, _get_next_chunk_core emits noise/silence
+    # instead of running normal turn-taking.
+    waiting_for_tool_results: bool = False
+    # delivering_tool_result_speech: True while streaming speech generated from
+    # a tool result. Uses the higher yield_threshold_when_interrupting to make
+    # the participant harder to interrupt during tool-result delivery.
+    delivering_tool_result_speech: bool = False
+
     @property
     def overlap_initiator(self) -> Optional[Literal["self", "other"]]:
         """
@@ -209,14 +219,16 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
 
     def input_from_environment(self) -> bool:
         """
-        Check if the input is from the environment.
+        Check if any chunk in the buffer is from the environment.
+
+        With the new tool result flow, EnvironmentMessages should never appear
+        in the buffer (they go through the tool_results parameter instead).
+        This check is kept as a safety net.
         """
-        if len(self.input_turn_taking_buffer) == 0:
-            return False
-        last_chunk = self.input_turn_taking_buffer[-1]
-        if isinstance(last_chunk, EnvironmentMessage):
-            return True
-        return False
+        return any(
+            isinstance(chunk, EnvironmentMessage)
+            for chunk in self.input_turn_taking_buffer
+        )
 
     def record_tick(
         self,
@@ -359,18 +371,13 @@ class StreamingState(BaseModel, Generic[InputMessageType, OutputMessageType]):
         incoming_chunk: InputMessageType,
     ) -> None:
         """
-        Update the pending chunks.
-        Incoming chunk is never None - empty chunks are represented with contains_speech=False.
+        Update the pending chunks with a participant chunk (speech/audio).
+
+        Incoming chunk is never None - empty chunks are represented with
+        contains_speech=False. EnvironmentMessages (tool results) should NOT
+        be added to this buffer — they are passed via the tool_results parameter
+        of get_next_chunk and recorded as env_chunk in the tick history.
         """
-        if isinstance(incoming_chunk, EnvironmentMessage):
-            if len(self.input_turn_taking_buffer) > 0:
-                raise ValueError(
-                    "Participant should not be receiving a response from the environment if there are unprocessed environment messages in the pending chunks"
-                )
-            if self.is_talking:
-                raise ValueError(
-                    "Participant should not be talking if receiving a response from the environment"
-                )
         self.input_turn_taking_buffer.append(incoming_chunk)
 
 
@@ -1936,6 +1943,57 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def _process_tool_result(
+        self, tool_result: EnvironmentMessage, state: StateType
+    ) -> Tuple[OutputMessageType, StateType]:
+        """
+        Process a tool result by calling the LLM and returning the response.
+
+        Called when tool results arrive (tool_results is not None in get_next_chunk).
+        Similar to the generate_message flow but:
+        - Takes a ToolMessage/MultiToolMessage directly (not merged from buffer)
+        - Does NOT clear input_turn_taking_buffer (participant chunks preserved
+          for timing)
+        - Temporarily sets buffer to [tool_result] so
+          get_linearized_messages(include_pending_input=True) picks it up for
+          LLM context
+
+        If the LLM returns a text response, subclasses should queue the chunks
+        in output_streaming_queue and return a noise/silence chunk for the
+        current tick (deferring speech delivery to normal turn-taking).
+
+        If the LLM returns another tool call, return the tool call message
+        directly (get_next_chunk will set waiting_for_tool_results=True).
+
+        Args:
+            tool_result: The tool result message(s) from the environment.
+            state: The current streaming state.
+
+        Returns:
+            A tuple of the output chunk and updated state.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _emit_waiting_chunk(
+        self, state: StateType
+    ) -> Tuple[OutputMessageType, StateType]:
+        """
+        Emit a chunk while waiting for tool results.
+
+        Called on each tick while waiting_for_tool_results is True and no
+        tool results have arrived yet. Voice participants should emit
+        background noise; text participants should return an empty message.
+
+        Args:
+            state: The current streaming state.
+
+        Returns:
+            A tuple of the waiting chunk and updated state.
+        """
+        raise NotImplementedError
+
     def get_next_chunk(
         self,
         state: StateType,
@@ -1952,6 +2010,14 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         - participant_chunk: speech/audio from the other participant
         - tool_results: results from previously executed tool calls (if any)
 
+        Operates in three modes based on tool call state:
+        1. NORMAL: standard turn-taking (generate, wait, keep_talking, etc.)
+        2. WAITING: tool call was sent, waiting for results — emit noise/silence
+        3. PROCESS TOOL RESULT: tool results arrived — call LLM with result
+
+        Tool results are NEVER added to input_turn_taking_buffer. They are
+        recorded as env_chunk in the tick history for linearization.
+
         Args:
             state: The current state of the conversation.
             participant_chunk: The incoming chunk from the other participant.
@@ -1962,8 +2028,8 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
             A tuple of the next chunk and the updated state.
         """
         state.tick_count += 1
-        if tool_results is not None:
-            state.update_input_turn_taking_buffer(tool_results)
+
+        # Always buffer participant chunk and update timing counters
         state.update_input_turn_taking_buffer(participant_chunk)
         is_speech_chunk = self.speech_detection(participant_chunk)
         logger.debug(f"Speech chunk detected: {is_speech_chunk}")
@@ -1983,16 +2049,34 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         if agent_speech_just_started:
             state.ticks_since_last_backchannel = 1
 
-        next_action = self._next_turn_taking_action(state)
-        next_chunk, new_state = self._perform_turn_taking_action(state, next_action)
+        # --- Mode selection ---
+        if tool_results is not None:
+            # PROCESS TOOL RESULT: results arrived, process immediately
+            logger.debug("Tool results received, processing tool result")
+            state.waiting_for_tool_results = False
+            next_chunk, state = self._process_tool_result(tool_results, state)
+            if next_chunk is not None and next_chunk.is_tool_call():
+                state.waiting_for_tool_results = True
+
+        elif state.waiting_for_tool_results:
+            # WAITING: emit noise/silence, don't respond to other participant
+            logger.debug("Waiting for tool results, emitting waiting chunk")
+            next_chunk, state = self._emit_waiting_chunk(state)
+
+        else:
+            # NORMAL: standard turn-taking
+            next_action = self._next_turn_taking_action(state)
+            next_chunk, state = self._perform_turn_taking_action(state, next_action)
+            if next_chunk is not None and next_chunk.is_tool_call():
+                state.waiting_for_tool_results = True
 
         # TODO: time_since_last_talk should also be updated here, instead of being updated separately in all the different subclasses in _perform_turn_taking_action.
         # Update consecutive self speaking ticks based on whether self emitted speech
         self_emitted_speech = _has_meaningful_content(next_chunk)
         if self_emitted_speech:
-            new_state.consecutive_self_speaking_ticks += 1
+            state.consecutive_self_speaking_ticks += 1
         else:
-            new_state.consecutive_self_speaking_ticks = 0
+            state.consecutive_self_speaking_ticks = 0
 
         # Record this tick in the tick-based history.
         # Both channels are recorded separately: other_chunk for participant speech,
@@ -2002,15 +2086,15 @@ class StreamingMixin(ABC, Generic[InputMessageType, OutputMessageType, StateType
         should_record_other = is_speech_chunk or _has_meaningful_content(
             participant_chunk
         )
-        new_state.record_tick(
-            tick_id=len(new_state.ticks),
+        state.record_tick(
+            tick_id=len(state.ticks),
             timestamp=timestamp,
             self_chunk=next_chunk if _has_meaningful_content(next_chunk) else None,
             other_chunk=participant_chunk if should_record_other else None,
             env_chunk=tool_results,
         )
 
-        return next_chunk, new_state
+        return next_chunk, state
 
 
 ### Utils for streaming operations ###
@@ -2617,16 +2701,23 @@ def basic_turn_taking_policy(
         if state.input_interrupt():
             interruption_length = state.input_ongoing_speech_duration()
 
-            # Choose threshold based on who initiated the overlap (derived from consecutive speaking durations)
+            # Choose threshold based on context
             overlap_initiator = state.overlap_initiator
-            if overlap_initiator == "self":
-                # Self initiated the interruption (self barged in on other)
+            if state.delivering_tool_result_speech:
+                # Tool result speech is assertive — always use the high
+                # "interrupting" threshold so the participant holds its ground
                 active_threshold = yield_threshold_when_interrupting
-                threshold_type = "when_interrupting"
+                threshold_type = "when_interrupting (delivering_tool_result)"
             else:
-                # Other initiated the interruption (other barged in on self)
-                active_threshold = yield_threshold_when_interrupted
-                threshold_type = "when_interrupted"
+                # Normal overlap: choose based on who initiated
+                if overlap_initiator == "self":
+                    # Self initiated the interruption (self barged in on other)
+                    active_threshold = yield_threshold_when_interrupting
+                    threshold_type = "when_interrupting"
+                else:
+                    # Other initiated the interruption (other barged in on self)
+                    active_threshold = yield_threshold_when_interrupted
+                    threshold_type = "when_interrupted"
 
             if (
                 can_be_interrupted

@@ -14,9 +14,11 @@ from loguru import logger
 from pydantic import BaseModel
 
 from tau2.config import (
+    DEFAULT_GEMINI_INPUT_SAMPLE_RATE,
     DEFAULT_GEMINI_LOCATION,
     DEFAULT_GEMINI_MODEL,
     DEFAULT_GEMINI_MODEL_VERTEX,
+    DEFAULT_GEMINI_OUTPUT_SAMPLE_RATE,
     DEFAULT_GEMINI_PROACTIVE_AUDIO,
     DEFAULT_GEMINI_VOICE,
 )
@@ -38,9 +40,9 @@ from tau2.voice.audio_native.gemini.events import (
 
 load_dotenv()
 
-# Audio format constants for Gemini Live
-GEMINI_INPUT_SAMPLE_RATE = 16000  # 16kHz PCM16 mono
-GEMINI_OUTPUT_SAMPLE_RATE = 24000  # 24kHz PCM16 mono
+# Audio format constants for Gemini Live (from config)
+GEMINI_INPUT_SAMPLE_RATE = DEFAULT_GEMINI_INPUT_SAMPLE_RATE
+GEMINI_OUTPUT_SAMPLE_RATE = DEFAULT_GEMINI_OUTPUT_SAMPLE_RATE
 GEMINI_INPUT_BYTES_PER_SECOND = GEMINI_INPUT_SAMPLE_RATE * 2  # 16-bit = 2 bytes
 GEMINI_OUTPUT_BYTES_PER_SECOND = GEMINI_OUTPUT_SAMPLE_RATE * 2
 
@@ -731,10 +733,17 @@ class GeminiLiveProvider:
                 except Exception as e:
                     if self._stop_receive:
                         break
+
+                    # The Google SDK wraps ConnectionClosedOK as APIError
+                    # with code 1000 (normal close). Detect both native
+                    # websocket close exceptions and SDK-wrapped ones.
+                    is_connection_closed = "ConnectionClosed" in type(e).__name__ or (
+                        hasattr(e, "code") and e.code == 1000
+                    )
+
                     logger.error(f"Error in receive loop: {type(e).__name__}: {e}")
 
-                    # For connection closed errors, attempt resumption
-                    if "ConnectionClosed" in type(e).__name__:
+                    if is_connection_closed:
                         logger.warning("Gemini Live API: WebSocket connection closed")
 
                         # Check if resumption is allowed
@@ -795,7 +804,7 @@ class GeminiLiveProvider:
             self._receive_task.cancel()
             try:
                 await self._receive_task
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, Exception):
                 pass
             self._receive_task = None
 

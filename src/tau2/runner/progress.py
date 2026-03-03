@@ -26,6 +26,8 @@ def run_with_retry(
     retry_delay: float = 1.0,
     console_display: bool = True,
     save_fn: Optional[Callable[[SimulationRun], None]] = None,
+    on_retry: Optional[Callable[[], None]] = None,
+    shutdown_event: Optional[threading.Event] = None,
 ) -> SimulationRun:
     """Run a simulation function with retry logic.
 
@@ -41,6 +43,8 @@ def run_with_retry(
         retry_delay: Delay in seconds between retries.
         console_display: Whether to show console output.
         save_fn: Optional callable to save the simulation after success/failure.
+        on_retry: Optional callback invoked before each retry attempt.
+        shutdown_event: If set, aborts retries immediately.
 
     Returns:
         SimulationRun (either successful or a failed placeholder).
@@ -51,6 +55,12 @@ def run_with_retry(
     last_traceback = ""
 
     for attempt in range(max_attempts):
+        if shutdown_event is not None and shutdown_event.is_set():
+            last_error_reason = "Shutdown requested (Ctrl+C)"
+            last_exception = KeyboardInterrupt(last_error_reason)
+            last_traceback = ""
+            break
+
         try:
             if attempt > 0:
                 retry_text = Text(
@@ -58,6 +68,8 @@ def run_with_retry(
                     style="yellow",
                 )
                 ConsoleDisplay.console.print(retry_text)
+                if on_retry:
+                    on_retry()
                 time.sleep(retry_delay)
 
             simulation = run_fn()
@@ -146,7 +158,15 @@ class StatusMonitor:
             self.running_tasks[task_key] = {
                 "start_time": time.time(),
                 "trial": trial,
+                "retries": 0,
             }
+
+    def task_restarted(self, task_key: str):
+        """Reset the start time for a task and increment retry count."""
+        with self._lock:
+            if task_key in self.running_tasks:
+                self.running_tasks[task_key]["start_time"] = time.time()
+                self.running_tasks[task_key]["retries"] += 1
 
     def task_finished(self, task_key: str):
         """Record that a task has finished."""
@@ -176,7 +196,9 @@ class StatusMonitor:
                 task_statuses = []
                 for task_id, info in self.running_tasks.items():
                     elapsed = now - info["start_time"]
-                    task_statuses.append(f"{task_id}({elapsed:.0f}s)")
+                    retries = info.get("retries", 0)
+                    retry_str = f" R{retries}" if retries > 0 else ""
+                    task_statuses.append(f"{task_id}({elapsed:.0f}s{retry_str})")
 
                 reward_str = ""
                 if self.completed_count > 0 and self._simulation_results:

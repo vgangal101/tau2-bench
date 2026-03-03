@@ -319,7 +319,7 @@ class DiscreteTimeAudioNativeAgent(FullDuplexAgent[DiscreteTimeAgentState]):
 
             audio_taps_dir.mkdir(parents=True, exist_ok=True)
             self._agent_input_tap = AudioTap(
-                name="agent_input",
+                name="agent_user-input",
                 output_dir=audio_taps_dir,
                 sample_rate=self.audio_format.sample_rate,
                 encoding=self.audio_format.encoding,

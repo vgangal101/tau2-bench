@@ -33,7 +33,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
-from tau2.config import TELEPHONY_ULAW_SILENCE
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
+    DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS,
+    TELEPHONY_ULAW_SILENCE,
+)
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -90,7 +96,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
             or GOOGLE_APPLICATION_CREDENTIALS).
     """
 
-    CHUNK_INTERVAL_MS = 20
+    VOIP_PACKET_INTERVAL_MS = DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS
 
     def __init__(
         self,
@@ -122,7 +128,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
 
         self.send_audio_instant = send_audio_instant
         self._chunk_size = int(
-            GEMINI_INPUT_BYTES_PER_SECOND * self.CHUNK_INTERVAL_MS / 1000
+            GEMINI_INPUT_BYTES_PER_SECOND * self.VOIP_PACKET_INTERVAL_MS / 1000
         )
 
         # Gemini output format (24kHz PCM16) - for internal processing
@@ -211,7 +217,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         try:
             self._bg_loop.run_coroutine(
                 self._async_connect(system_prompt, tools, vad_config, modality),
-                timeout=30.0,
+                timeout=DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
             )
             self._connected = True
             logger.info(
@@ -248,7 +254,10 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
 
         if self._bg_loop.is_running:
             try:
-                self._bg_loop.run_coroutine(self._async_disconnect(), timeout=5.0)
+                self._bg_loop.run_coroutine(
+                    self._async_disconnect(),
+                    timeout=DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+                )
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
@@ -291,7 +300,8 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
         try:
             return self._bg_loop.run_coroutine(
                 self._async_run_tick(user_audio, tick_number),
-                timeout=self.tick_duration_ms / 1000 + 30.0,
+                timeout=self.tick_duration_ms / 1000
+                + DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
             )
         except Exception as e:
             logger.error(f"Error in run_tick (tick={tick_number}): {e}")
@@ -369,7 +379,7 @@ class DiscreteTimeGeminiAdapter(DiscreteTimeAdapter):
                     chunk = gemini_audio[offset : offset + self._chunk_size]
                     await self.provider.send_audio(chunk)
                     offset += len(chunk)
-                    await asyncio.sleep(self.CHUNK_INTERVAL_MS / 1000)
+                    await asyncio.sleep(self.VOIP_PACKET_INTERVAL_MS / 1000)
 
         async def receive_events():
             elapsed_so_far = asyncio.get_running_loop().time() - tick_start

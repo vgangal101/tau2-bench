@@ -9,6 +9,7 @@ OpenAI Realtime API supports:
 - pcm16: 24kHz, 16-bit signed PCM
 """
 
+from tau2.config import DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE
 from tau2.data_model.audio import (
     TELEPHONY_SAMPLE_RATE,
     AudioEncoding,
@@ -16,7 +17,7 @@ from tau2.data_model.audio import (
 )
 
 # OpenAI Realtime API uses 24kHz for pcm16 format
-OPENAI_PCM16_SAMPLE_RATE = 24000
+OPENAI_PCM16_SAMPLE_RATE = DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE
 
 
 def audio_format_to_openai_string(audio_format: AudioFormat) -> str:

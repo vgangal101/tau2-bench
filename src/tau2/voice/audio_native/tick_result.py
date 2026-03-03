@@ -12,6 +12,7 @@ from typing import Any, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from tau2.config import DEFAULT_TELEPHONY_RATE, TELEPHONY_ULAW_SILENCE
 from tau2.data_model.message import ToolCall
 from tau2.voice.utils.transcript_utils import get_proportional_text
 
@@ -160,7 +161,7 @@ class TickResult(BaseModel):
         description="Expected audio bytes per tick. Required for get_played_agent_audio()",
     )
     bytes_per_second: int = Field(
-        default=8000,
+        default=DEFAULT_TELEPHONY_RATE,
         description="Audio bytes per second (sample_rate * bytes_per_sample). "
         "Used for duration calculations. Default is 8000 (8kHz μ-law).",
     )
@@ -172,7 +173,7 @@ class TickResult(BaseModel):
 
     # --- Silence byte for padding (provider/format-specific) ---
     silence_byte: bytes = Field(
-        default=b"\x7f",
+        default=TELEPHONY_ULAW_SILENCE,
         description="Silence byte value for audio padding. Default is μ-law silence.",
         exclude=True,
     )

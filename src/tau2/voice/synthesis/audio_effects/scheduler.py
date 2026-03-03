@@ -8,6 +8,7 @@ from typing import Literal, Optional
 from loguru import logger
 from pydantic import BaseModel, Field, computed_field
 
+from tau2.config import DEFAULT_TELEPHONY_RATE
 from tau2.data_model.audio_effects import (
     ChannelEffectsConfig,
     ChannelEffectsResult,
@@ -64,7 +65,7 @@ class EffectSchedulerState(BaseModel):
         description="Number of audio samples processed",
     )
     sample_rate: int = Field(
-        default=8000,
+        default=DEFAULT_TELEPHONY_RATE,
         description="Audio sample rate in Hz",
     )
     pending_effects: list[ScheduledEffect] = Field(
@@ -92,7 +93,7 @@ class EffectScheduler:
         source_config: SourceEffectsConfig,
         speech_config: SpeechEffectsConfig,
         channel_config: ChannelEffectsConfig,
-        sample_rate: int = 8000,
+        sample_rate: int = DEFAULT_TELEPHONY_RATE,
         burst_noise_events_per_minute: Optional[float] = None,
         speech_insert_events_per_minute: Optional[float] = None,
         frame_drop_rate: Optional[float] = None,

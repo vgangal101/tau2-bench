@@ -148,6 +148,7 @@ def try_resume(
         ]
     )
     # Remove infrastructure failure simulations so they can be replaced
+    infra_error_count = len(prev_simulation_results.simulations) - len(done_runs)
     prev_simulation_results.simulations = [
         sim
         for sim in prev_simulation_results.simulations
@@ -164,10 +165,20 @@ def try_resume(
         )
         tasks = prev_simulation_results.tasks
 
-        # Re-save with updated tasks list
+    # Re-save checkpoint if anything changed (infra errors removed or tasks added)
+    # so that the on-disk file stays in sync with the in-memory state.
+    # Without this, create_checkpoint_saver's duplicate check would reject
+    # retried simulations because the old infra-error entries still exist on disk.
+    if added_task_ids or infra_error_count > 0:
         with open(save_path, "w") as fp:
             fp.write(prev_simulation_results.model_dump_json(indent=2))
-        logger.info(f"Updated results file with {len(added_task_ids)} new tasks")
+        if added_task_ids:
+            logger.info(f"Updated results file with {len(added_task_ids)} new tasks")
+        if infra_error_count > 0:
+            logger.info(
+                f"Removed {infra_error_count} infrastructure error simulation(s) "
+                "from checkpoint for retry"
+            )
 
     console_text = Text(
         text=f"Resuming run from {len(done_runs)} runs. {len(tasks) * num_trials - len(done_runs)} runs remaining.",

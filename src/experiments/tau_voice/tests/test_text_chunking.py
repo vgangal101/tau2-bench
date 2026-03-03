@@ -39,6 +39,12 @@ class TestTextChunking:
             def _perform_turn_taking_action(self, state, action):
                 return None, state
 
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
+                return None, state
+
         return SimpleTextChunker(chunk_by="chars", chunk_size=10)
 
     @pytest.fixture
@@ -58,6 +64,12 @@ class TestTextChunking:
                 return True
 
             def _perform_turn_taking_action(self, state, action):
+                return None, state
+
+            def _process_tool_result(self, tool_result, state):
+                return None, state
+
+            def _emit_waiting_chunk(self, state):
                 return None, state
 
         return SimpleTextChunker(chunk_by="words", chunk_size=3)

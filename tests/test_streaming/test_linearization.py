@@ -1001,3 +1001,59 @@ class TestLinearizationWithEnvChunk:
         for old_msg, new_msg in zip(old_messages, new_messages):
             assert type(old_msg) is type(new_msg)
             assert old_msg.content == new_msg.content
+
+    def test_tool_result_not_interleaved_with_waiting_tick_speech(self):
+        """Verify tool call/result stay paired even when the other participant
+        speaks during the 1-tick waiting period between tool call and tool
+        result delivery.
+
+        This is the scenario from the EnvironmentMessage bug fix: self makes a
+        tool call at tick 0, other speaks at tick 1 (waiting tick), tool result
+        arrives at tick 2 via env_chunk. The CONTAINMENT_AWARE strategy must
+        ensure tool_call is immediately followed by tool_result in the output,
+        with no interleaved speech from other.
+        """
+        ticks = [
+            ParticipantTick(
+                tick_id=0,
+                timestamp="2024-01-01T00:00:00",
+                self_chunk=tool_call_msg("call_1", "toggle_airplane_mode"),
+                other_chunk=user_msg("Sure, toggling now"),
+            ),
+            ParticipantTick(
+                tick_id=1,
+                timestamp="2024-01-01T00:00:01",
+                other_chunk=user_msg("One moment please"),
+            ),
+            ParticipantTick(
+                tick_id=2,
+                timestamp="2024-01-01T00:00:02",
+                other_chunk=user_msg("Still here"),
+                env_chunk=tool_result_msg("call_1", '{"success": true}'),
+            ),
+        ]
+
+        expanded = _expand_env_chunks(ticks)
+        messages = linearize_ticks(expanded, LinearizationStrategy.CONTAINMENT_AWARE)
+
+        # Find tool call and tool result indices
+        tool_call_idx = None
+        tool_result_idx = None
+        for i, m in enumerate(messages):
+            if hasattr(m, "tool_calls") and m.tool_calls:
+                tool_call_idx = i
+            if isinstance(m, ToolMessage):
+                tool_result_idx = i
+
+        assert tool_call_idx is not None, "Tool call not found in linearized output"
+        assert tool_result_idx is not None, "Tool result not found in linearized output"
+        assert tool_result_idx == tool_call_idx + 1, (
+            f"Tool result (idx={tool_result_idx}) must immediately follow "
+            f"tool call (idx={tool_call_idx}), but there are interleaved messages"
+        )
+
+        # Verify all content is preserved
+        contents = [m.content for m in messages]
+        assert '{"success": true}' in contents
+        assert any("toggling" in (c or "") for c in contents)
+        assert any("moment" in (c or "") for c in contents)

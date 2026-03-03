@@ -37,7 +37,14 @@ from typing import Any, List, Optional
 
 from loguru import logger
 
-from tau2.config import DEFAULT_OPENAI_VAD_THRESHOLD
+from tau2.config import (
+    DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_THREAD_JOIN_TIMEOUT,
+    DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER,
+    DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS,
+    DEFAULT_OPENAI_VAD_THRESHOLD,
+)
 from tau2.data_model.audio import AudioFormat
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.adapter import DiscreteTimeAdapter
@@ -78,8 +85,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
         fast_forward_mode: If True, exit tick early when we have enough audio.
     """
 
-    # Default chunk settings for VoIP-style streaming (20ms chunks)
-    DEFAULT_CHUNK_INTERVAL_MS = 20
+    DEFAULT_VOIP_PACKET_INTERVAL_MS = DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS
 
     def __init__(
         self,
@@ -202,7 +208,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
 
         # Wait for connection with timeout
         try:
-            future.result(timeout=30.0)
+            future.result(timeout=DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT)
             self._connected = True
             logger.info(
                 f"DiscreteTimeAudioNativeAdapter connected to OpenAI Realtime API "
@@ -237,7 +243,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
 
         # Calculate chunk size from audio format (20ms chunks)
         chunk_size = int(
-            audio_format.bytes_per_second * self.DEFAULT_CHUNK_INTERVAL_MS / 1000
+            audio_format.bytes_per_second * self.DEFAULT_VOIP_PACKET_INTERVAL_MS / 1000
         )
 
         # Create tick runner
@@ -247,7 +253,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
             bytes_per_tick=self.bytes_per_tick,
             send_audio_instant=self.send_audio_instant,
             chunk_size=chunk_size,
-            chunk_interval_ms=self.DEFAULT_CHUNK_INTERVAL_MS,
+            voip_packet_interval_ms=self.DEFAULT_VOIP_PACKET_INTERVAL_MS,
             buffer_until_complete=self.buffer_until_complete,
             audio_format=audio_format,
             fast_forward_mode=fast_forward_mode,
@@ -265,7 +271,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
                 self._loop,
             )
             try:
-                future.result(timeout=5.0)
+                future.result(timeout=DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT)
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
 
@@ -305,7 +311,7 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
         if self._loop is not None:
             self._loop.call_soon_threadsafe(self._loop.stop)
             if self._thread is not None:
-                self._thread.join(timeout=2.0)
+                self._thread.join(timeout=DEFAULT_AUDIO_NATIVE_THREAD_JOIN_TIMEOUT)
             self._loop = None
             self._thread = None
 
@@ -357,7 +363,10 @@ class DiscreteTimeAudioNativeAdapter(DiscreteTimeAdapter):
 
         # Wait for result
         try:
-            result = future.result(timeout=self.tick_duration_ms / 1000 + 30.0)
+            result = future.result(
+                timeout=self.tick_duration_ms / 1000
+                + DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER
+            )
             return result
         except Exception as e:
             # Add context about connection state to help diagnose issues

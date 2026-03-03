@@ -13,23 +13,21 @@ This module provides conversion functions to bridge between formats.
 import audioop
 from typing import Optional, Tuple
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
-from tau2.voice.audio_native.qwen.provider import (
-    QWEN_INPUT_SAMPLE_RATE,
-    QWEN_OUTPUT_SAMPLE_RATE,
+from tau2.config import (
+    DEFAULT_QWEN_INPUT_SAMPLE_RATE,
+    DEFAULT_QWEN_OUTPUT_SAMPLE_RATE,
+    DEFAULT_TELEPHONY_RATE,
 )
 
 # Telephony format: 8kHz μ-law, 1 byte per sample
 TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
 TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 1 byte/sample for μ-law
 
-# Qwen audio formats (PCM16 mono, 2 bytes per sample)
-QWEN_INPUT_BYTES_PER_SECOND = (
-    QWEN_INPUT_SAMPLE_RATE * 2
-)  # 16kHz, 16-bit = 32000 bytes/sec
-QWEN_OUTPUT_BYTES_PER_SECOND = (
-    QWEN_OUTPUT_SAMPLE_RATE * 2
-)  # 24kHz, 16-bit = 48000 bytes/sec
+# Qwen audio formats (from config, PCM16 mono, 2 bytes per sample)
+QWEN_INPUT_SAMPLE_RATE = DEFAULT_QWEN_INPUT_SAMPLE_RATE
+QWEN_OUTPUT_SAMPLE_RATE = DEFAULT_QWEN_OUTPUT_SAMPLE_RATE
+QWEN_INPUT_BYTES_PER_SECOND = QWEN_INPUT_SAMPLE_RATE * 2
+QWEN_OUTPUT_BYTES_PER_SECOND = QWEN_OUTPUT_SAMPLE_RATE * 2
 
 
 def telephony_to_qwen_input(

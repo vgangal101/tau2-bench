@@ -33,6 +33,7 @@ from rich.console import Console
 from rich.table import Table
 from typer import Option, Typer
 
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE
 from tau2.data_model.audio_effects import SourceEffectsConfig
 from tau2.data_model.voice import ElevenLabsTTSConfig
 from tau2.data_model.voice_personas import ALL_PERSONAS
@@ -244,7 +245,7 @@ def synthesize(
             console.print(f"[cyan]Noise file:[/cyan] {noise_file.name}")
             background_noise_generator = create_background_noise_generator(
                 config=source_effects_config,
-                sample_rate=16000,
+                sample_rate=DEFAULT_PCM_SAMPLE_RATE,
                 background_noise_file=noise_file,
             )
 

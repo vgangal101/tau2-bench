@@ -21,6 +21,7 @@ from tau2.agent.base.streaming import (
 )
 from tau2.data_model.message import (
     AssistantMessage,
+    EnvironmentMessage,
     Message,
     SystemMessage,
     ToolCall,
@@ -28,10 +29,7 @@ from tau2.data_model.message import (
 )
 from tau2.data_model.persona import InterruptTendency, PersonaConfig
 from tau2.environment.tool import Tool
-from tau2.user.user_simulator import (
-    SYSTEM_PROMPT,
-    get_global_user_sim_guidelines,
-)
+from tau2.user.user_simulator import SYSTEM_PROMPT, get_global_user_sim_guidelines
 from tau2.user.user_simulator_base import (
     OUT_OF_SCOPE,
     STOP,
@@ -363,10 +361,14 @@ class TextStreamingUserSimulator(
             next_user_chunk = state.output_streaming_queue.pop(0)
             next_user_chunk.timestamp = get_now()
             is_speech_action = True
-            # Clear backchannel flag when queue is empty (backchannel complete)
-            if len(state.output_streaming_queue) == 0 and state.is_backchanneling:
-                state.is_backchanneling = False
-                logger.debug("Backchannel complete")
+            # Clear flags when queue is empty
+            if len(state.output_streaming_queue) == 0:
+                if state.is_backchanneling:
+                    state.is_backchanneling = False
+                    logger.debug("Backchannel complete")
+                if state.delivering_tool_result_speech:
+                    state.delivering_tool_result_speech = False
+                    logger.debug("Tool result speech delivery complete")
         elif action.action == "stop_talking":
             state.output_streaming_queue = []
             state.is_backchanneling = False
@@ -418,6 +420,50 @@ class TextStreamingUserSimulator(
             )
         next_user_chunk.turn_taking_action = action
         return next_user_chunk, state
+
+    def _process_tool_result(
+        self,
+        tool_result: EnvironmentMessage,
+        state: UserStreamingState,
+    ) -> Tuple[UserMessage, UserStreamingState]:
+        """Process a tool result by calling the LLM and returning the response."""
+        saved_buffer = state.input_turn_taking_buffer
+        state.input_turn_taking_buffer = [tool_result]
+
+        full_message, state = self._generate_full_duplex_message(tool_result, state)
+
+        state.input_turn_taking_buffer = saved_buffer
+
+        if full_message.is_tool_call():
+            logger.debug("Tool result processing: LLM returned another tool call")
+            return full_message, state
+        elif self.is_stop(full_message):
+            logger.debug("Tool result processing: stop message detected")
+            return full_message, state
+        else:
+            logger.debug("Tool result processing: queuing speech chunks")
+            chunk_messages = self._create_chunk_messages(full_message)
+            state.output_streaming_queue.extend(chunk_messages)
+            state.delivering_tool_result_speech = True
+            waiting_chunk, state = self._emit_waiting_chunk(state)
+            return waiting_chunk, state
+
+    def _emit_waiting_chunk(
+        self, state: UserStreamingState
+    ) -> Tuple[UserMessage, UserStreamingState]:
+        """Emit an empty chunk while waiting for tool results."""
+        state.time_since_last_talk += 1
+        chunk = UserMessage(
+            role="user",
+            content=None,
+            cost=0.0,
+            usage=None,
+            raw_data=None,
+            chunk_id=0,
+            is_final_chunk=True,
+            contains_speech=False,
+        )
+        return chunk, state
 
     def _generate_full_duplex_message(
         self, message: ValidUserInputMessage, state: UserStreamingState

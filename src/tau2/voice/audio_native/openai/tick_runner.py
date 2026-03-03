@@ -79,7 +79,7 @@ class TickRunner:
         send_audio_instant: bool,
         buffer_until_complete: bool,
         chunk_size: int = 160,
-        chunk_interval_ms: int = 20,
+        voip_packet_interval_ms: int = 20,
         audio_format: Optional[AudioFormat] = None,
         fast_forward_mode: bool = False,
     ):
@@ -94,8 +94,8 @@ class TickRunner:
             buffer_until_complete: If True, wait for complete utterances before releasing.
             chunk_size: Only used when send_audio_instant=False.
                 Chunk size in bytes for VoIP-style streaming (default: 160 = 20ms at 8kHz).
-            chunk_interval_ms: Only used when send_audio_instant=False.
-                Sleep duration between chunks in milliseconds (default: 20ms).
+            voip_packet_interval_ms: Only used when send_audio_instant=False.
+                Sleep duration between chunks in milliseconds (default: 20ms, standard RTP pacing).
             audio_format: Audio format for byte-to-duration calculations.
                 Defaults to telephony (8kHz μ-law).
             fast_forward_mode: If True, exit tick early when we have enough audio
@@ -119,7 +119,7 @@ class TickRunner:
         self.bytes_per_tick = bytes_per_tick
         self.send_audio_instant = send_audio_instant
         self.chunk_size = chunk_size
-        self.chunk_interval_ms = chunk_interval_ms
+        self.voip_packet_interval_ms = voip_packet_interval_ms
         self.buffer_until_complete = buffer_until_complete
         self.audio_format = audio_format
         self.fast_forward_mode = fast_forward_mode
@@ -187,7 +187,7 @@ class TickRunner:
                     chunk = user_audio[offset : offset + self.chunk_size]
                     await self.provider.send_audio(chunk)
                     offset += len(chunk)
-                    await asyncio.sleep(self.chunk_interval_ms / 1000)
+                    await asyncio.sleep(self.voip_packet_interval_ms / 1000)
 
         async def receive_events():
             """Receive events until tick time is up or we have enough audio."""

@@ -20,10 +20,13 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from tau2.config import DEFAULT_TICK_DURATION_SECONDS
 from tau2.data_model.audio import AudioData
 from tau2.data_model.message import Tick
 from tau2.data_model.simulation import SimulationRun
 from tau2.voice.utils.audio_io import save_wav_file
+
+DEFAULT_TICK_DURATION_MS = DEFAULT_TICK_DURATION_SECONDS * 1000
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +90,7 @@ class AudioAnalysisReport:
 
 
 def extract_tick_audio_info(
-    tick: Tick, tick_duration_ms: float = 200.0
+    tick: Tick, tick_duration_ms: float = DEFAULT_TICK_DURATION_MS
 ) -> TickAudioInfo:
     """Extract audio information from a single tick.
 
@@ -196,7 +199,7 @@ def extract_tick_audio_info(
 
 def analyze_simulation_audio(
     simulation: SimulationRun,
-    tick_duration_ms: float = 200.0,
+    tick_duration_ms: float = DEFAULT_TICK_DURATION_MS,
     include_tick_details: bool = True,
 ) -> AudioAnalysisReport:
     """Analyze audio timing in a simulation.
@@ -401,7 +404,7 @@ def generate_audio_debug_info(
     output_dir: str | Path,
     save_per_tick_audio_files: bool = False,
     save_silence: bool = False,
-    tick_duration_ms: float = 200.0,
+    tick_duration_ms: float = DEFAULT_TICK_DURATION_MS,
 ) -> AudioAnalysisReport:
     """Generate comprehensive audio debugging information.
 

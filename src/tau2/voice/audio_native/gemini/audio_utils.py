@@ -10,18 +10,22 @@ This module provides conversion functions to bridge between formats.
 import audioop
 from typing import Optional, Tuple
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
-from tau2.data_model.audio import AudioEncoding, AudioFormat
-from tau2.voice.audio_native.gemini.provider import (
-    GEMINI_INPUT_BYTES_PER_SECOND,
-    GEMINI_INPUT_SAMPLE_RATE,
-    GEMINI_OUTPUT_BYTES_PER_SECOND,
-    GEMINI_OUTPUT_SAMPLE_RATE,
+from tau2.config import (
+    DEFAULT_GEMINI_INPUT_SAMPLE_RATE,
+    DEFAULT_GEMINI_OUTPUT_SAMPLE_RATE,
+    DEFAULT_TELEPHONY_RATE,
 )
+from tau2.data_model.audio import AudioEncoding, AudioFormat
 
 # Telephony format: 8kHz μ-law, 1 byte per sample
 TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
 TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 1 byte/sample for μ-law
+
+# Gemini audio format constants (from config)
+GEMINI_INPUT_SAMPLE_RATE = DEFAULT_GEMINI_INPUT_SAMPLE_RATE
+GEMINI_OUTPUT_SAMPLE_RATE = DEFAULT_GEMINI_OUTPUT_SAMPLE_RATE
+GEMINI_INPUT_BYTES_PER_SECOND = GEMINI_INPUT_SAMPLE_RATE * 2  # 16-bit = 2 bytes
+GEMINI_OUTPUT_BYTES_PER_SECOND = GEMINI_OUTPUT_SAMPLE_RATE * 2
 
 # Gemini audio formats
 GEMINI_INPUT_FORMAT = AudioFormat(

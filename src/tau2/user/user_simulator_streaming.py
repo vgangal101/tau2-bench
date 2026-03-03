@@ -532,25 +532,25 @@ class VoiceStreamingUserSimulator(
             self._audio_taps = {
                 # Pipeline-stage taps (existing)
                 "agent_input": AudioTap(
-                    "agent_input",
+                    "user_agent-input",
                     audio_taps_dir,
                     TELEPHONY_SAMPLE_RATE,
                     AudioEncoding.ULAW,
                 ),
                 "tts_output": AudioTap(
-                    "tts_output",
+                    "user_tts-output",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
                 ),
                 "post_noise": AudioTap(
-                    "post_noise",
+                    "user_post-noise",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
                 ),
                 "post_telephony": AudioTap(
-                    "post_telephony",
+                    "user_post-telephony",
                     audio_taps_dir,
                     TELEPHONY_SAMPLE_RATE,
                     AudioEncoding.ULAW,
@@ -563,25 +563,25 @@ class VoiceStreamingUserSimulator(
                 ),
                 # Per-effect multitrack taps (time-aligned, same length)
                 "speech_only": AudioTap(
-                    "speech_only",
+                    "user_speech-only",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
                 ),
                 "background_noise_only": AudioTap(
-                    "background_noise_only",
+                    "user_background-noise-only",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
                 ),
                 "burst_noise_only": AudioTap(
-                    "burst_noise_only",
+                    "user_burst-noise-only",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
                 ),
                 "out_of_turn_speech_only": AudioTap(
-                    "out_of_turn_speech_only",
+                    "user_out-of-turn-speech-only",
                     audio_taps_dir,
                     PCM_SAMPLE_RATE,
                     AudioEncoding.PCM_S16LE,
@@ -1055,9 +1055,13 @@ class VoiceStreamingUserSimulator(
             next_user_chunk.timestamp = get_now()
             is_speech_action = True
             # Clear backchannel flag when queue is empty (backchannel complete)
-            if len(state.output_streaming_queue) == 0 and state.is_backchanneling:
-                state.is_backchanneling = False
-                logger.debug("Backchannel complete")
+            if len(state.output_streaming_queue) == 0:
+                if state.is_backchanneling:
+                    state.is_backchanneling = False
+                    logger.debug("Backchannel complete")
+                if state.delivering_tool_result_speech:
+                    state.delivering_tool_result_speech = False
+                    logger.debug("Tool result speech delivery complete")
         elif action.action == "stop_talking":
             logger.debug("Stopping talking: Flushing output streaming queue")
             state.output_streaming_queue = []
@@ -1070,6 +1074,14 @@ class VoiceStreamingUserSimulator(
             state.input_turn_taking_buffer = []
             if full_message.is_tool_call():
                 logger.debug("Generating message: Tool call detected")
+                noise_chunk = self._apply_chunk_effects(
+                    None, new_state, is_speech=False
+                )
+                full_message.audio_content = noise_chunk.audio_content
+                full_message.audio_format = noise_chunk.audio_format
+                full_message.is_audio = True
+                full_message.contains_speech = False
+                full_message.source_effects = noise_chunk.source_effects
                 full_message.turn_taking_action = action
                 return full_message, new_state
             elif self.is_stop(full_message):
@@ -1135,6 +1147,55 @@ class VoiceStreamingUserSimulator(
         # Set the turn-taking action on the chunk
         next_user_chunk.turn_taking_action = action
         return next_user_chunk, state
+
+    def _process_tool_result(
+        self,
+        tool_result: EnvironmentMessage,
+        state: UserAudioStreamingState,
+    ) -> Tuple[UserMessage, UserAudioStreamingState]:
+        """Process a tool result by calling the LLM and returning the response."""
+        # Temporarily set buffer so get_linearized_messages(include_pending_input=True)
+        # picks up the tool result for LLM context
+        saved_buffer = state.input_turn_taking_buffer
+        state.input_turn_taking_buffer = [tool_result]
+
+        full_message, state = self._generate_full_duplex_voice_message(
+            tool_result, state
+        )
+
+        # Restore participant chunks (preserved for timing)
+        state.input_turn_taking_buffer = saved_buffer
+
+        if full_message.is_tool_call():
+            logger.debug("Tool result processing: LLM returned another tool call")
+            noise_chunk = self._apply_chunk_effects(None, state, is_speech=False)
+            full_message.audio_content = noise_chunk.audio_content
+            full_message.audio_format = noise_chunk.audio_format
+            full_message.is_audio = True
+            full_message.contains_speech = False
+            full_message.source_effects = noise_chunk.source_effects
+            return full_message, state
+        elif self.is_stop(full_message):
+            logger.debug("Tool result processing: stop message detected")
+            return full_message, state
+        else:
+            # Queue chunks but DON'T start streaming yet.
+            # Speech delivery is deferred to normal turn-taking on the next tick.
+            # This ensures overlap/interruption logic applies correctly.
+            logger.debug("Tool result processing: queuing speech chunks")
+            chunk_messages = self._create_chunk_messages(full_message)
+            state.output_streaming_queue.extend(chunk_messages)
+            state.delivering_tool_result_speech = True
+            waiting_chunk, state = self._emit_waiting_chunk(state)
+            return waiting_chunk, state
+
+    def _emit_waiting_chunk(
+        self, state: UserAudioStreamingState
+    ) -> Tuple[UserMessage, UserAudioStreamingState]:
+        """Emit background noise while waiting for tool results."""
+        noise_chunk = self._apply_chunk_effects(None, state, is_speech=False)
+        state.time_since_last_talk += 1
+        return noise_chunk, state
 
     def _generate_full_duplex_voice_message(
         self, message: ValidUserInputMessage, state: UserAudioStreamingState

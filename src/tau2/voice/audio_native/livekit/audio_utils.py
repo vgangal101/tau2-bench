@@ -13,14 +13,14 @@ This module provides conversion functions to bridge between formats.
 import audioop
 from typing import Optional, Tuple
 
-from tau2.config import DEFAULT_TELEPHONY_RATE
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE, DEFAULT_TELEPHONY_RATE
 
 # Telephony format: 8kHz μ-law, 1 byte per sample
 TELEPHONY_SAMPLE_RATE = DEFAULT_TELEPHONY_RATE
 TELEPHONY_BYTES_PER_SECOND = DEFAULT_TELEPHONY_RATE  # 1 byte/sample for μ-law
 
 # STT input format (Deepgram): 16kHz PCM16
-STT_SAMPLE_RATE = 16000
+STT_SAMPLE_RATE = DEFAULT_PCM_SAMPLE_RATE
 STT_BYTES_PER_SECOND = STT_SAMPLE_RATE * 2  # 2 bytes/sample for PCM16
 
 # TTS output format: Variable (default 24kHz for Deepgram Aura)

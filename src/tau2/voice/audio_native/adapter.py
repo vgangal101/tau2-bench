@@ -171,8 +171,8 @@ class DiscreteTimeAdapter(ABC):
 # Adapter factory
 # ---------------------------------------------------------------------------
 
-# Providers where model selection is not wired through the adapter
-_PROVIDERS_WITHOUT_MODEL_SELECTION = ("xai", "nova", "qwen")
+# Providers where the model is determined by the endpoint, not a parameter
+_PROVIDERS_WITH_ENDPOINT_DETERMINED_MODEL = ("xai",)
 
 
 def create_adapter(
@@ -242,11 +242,10 @@ def create_adapter(
         logger.debug(
             f"No model provided, using default model for provider {provider}: {model}"
         )
-    elif provider in _PROVIDERS_WITHOUT_MODEL_SELECTION:
+    elif provider in _PROVIDERS_WITH_ENDPOINT_DETERMINED_MODEL:
         logger.warning(
-            f"model='{model}' was provided but the '{provider}' adapter "
-            f"does not support model selection — the provider's default model will "
-            f"be used. Model selection is supported by: openai, gemini, deepgram, livekit."
+            f"model='{model}' was provided but the '{provider}' provider's model "
+            f"is determined by its endpoint — the provided model will be ignored."
         )
 
     # --- Construct adapter ---
@@ -291,6 +290,7 @@ def create_adapter(
         adapter = DiscreteTimeNovaAdapter(
             tick_duration_ms=tick_duration_ms,
             send_audio_instant=send_audio_instant,
+            model=model,
         )
     elif provider == "qwen":
         from tau2.voice.audio_native.qwen.discrete_time_adapter import (
@@ -300,6 +300,7 @@ def create_adapter(
         adapter = DiscreteTimeQwenAdapter(
             tick_duration_ms=tick_duration_ms,
             send_audio_instant=send_audio_instant,
+            model=model,
         )
     elif provider == "deepgram":
         from tau2.voice.audio_native.deepgram.discrete_time_adapter import (

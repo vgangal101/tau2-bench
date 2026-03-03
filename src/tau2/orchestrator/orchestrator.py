@@ -239,6 +239,28 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
                     f"Simulation timed out after {elapsed:.1f}s (timeout={self.timeout}s)"
                 )
 
+    def _cleanup(self) -> None:
+        """Best-effort cleanup of agent and user resources.
+
+        Called from the ``finally`` block of :meth:`run` so that WebSocket
+        connections, background threads, and other resources are released
+        even when ``step()`` raises an unexpected exception.
+
+        On the normal (non-error) path ``_finalize()`` handles cleanup
+        as part of building the result, so this method is a no-op.
+        """
+        try:
+            if hasattr(self, "agent") and self.agent is not None:
+                self.agent.stop(None, getattr(self, "agent_state", None))
+        except Exception as e:
+            logger.warning(f"Error during agent cleanup: {e}")
+
+        try:
+            if hasattr(self, "user") and self.user is not None:
+                self.user.stop(None, getattr(self, "user_state", None))
+        except Exception as e:
+            logger.warning(f"Error during user cleanup: {e}")
+
     def run(self) -> SimulationRun:
         """
         Run the simulation.
@@ -256,10 +278,21 @@ class BaseOrchestrator(ABC, Generic[BaseAgentT, BaseUserT, TrajectoryItemT]):
         self._run_start_perf = time.perf_counter()
         self.initialize()
 
-        while not self.done:
-            self.step()
-            self._check_termination()
-        return self._finalize()
+        finalized = False
+        try:
+            while not self.done:
+                self.step()
+                self._check_termination()
+            result = self._finalize()
+            finalized = True
+            return result
+        finally:
+            if not finalized:
+                logger.warning(
+                    "Simulation loop exited with an exception — "
+                    "running emergency cleanup"
+                )
+                self._cleanup()
 
     def _initialize_environment(
         self,
@@ -745,8 +778,14 @@ class Orchestrator(BaseOrchestrator[AgentT, UserT, Message]):
                 "Environment should not receive the last message. Last message: "
                 + str(self.message)
             )
-        self.agent.stop(last_msg_to_agent, self.agent_state)
-        self.user.stop(last_msg_to_user, self.user_state)
+        try:
+            self.agent.stop(last_msg_to_agent, self.agent_state)
+        except Exception as e:
+            logger.warning(f"Error stopping agent during finalization: {e}")
+        try:
+            self.user.stop(last_msg_to_user, self.user_state)
+        except Exception as e:
+            logger.warning(f"Error stopping user during finalization: {e}")
 
         # Wrap up the simulation
         duration = time.perf_counter() - self._run_start_perf

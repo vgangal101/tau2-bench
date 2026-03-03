@@ -468,8 +468,11 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
                 )
                 logger.debug(f"  [{participant_name}]   {tc.name}() → {result_preview}")
 
-            # Strip tool_calls from the chunk so it only carries speech/audio.
-            # Tool calls are tracked separately in tick.agent_tool_calls.
+            # Return a copy with tool_calls stripped so the chunk only carries
+            # speech/audio for the other participant. The original chunk (stored
+            # in the participant's tick history via record_tick) must keep its
+            # tool_calls intact for linearization / tool-result pairing.
+            new_chunk = deepcopy(new_chunk)
             new_chunk.tool_calls = None
 
             logger.info(
@@ -544,12 +547,18 @@ class FullDuplexOrchestrator(BaseOrchestrator[StreamingAgentT, StreamingUserT, T
             SimulationRun with all simulation data.
         """
         # Send stop signals to agent and user, forwarding any pending tool results
-        self.agent.stop(
-            None, self.agent_state, tool_results=self.pending_agent_tool_results
-        )
-        self.user.stop(
-            None, self.user_state, tool_results=self.pending_user_tool_results
-        )
+        try:
+            self.agent.stop(
+                None, self.agent_state, tool_results=self.pending_agent_tool_results
+            )
+        except Exception as e:
+            logger.warning(f"Error stopping agent during finalization: {e}")
+        try:
+            self.user.stop(
+                None, self.user_state, tool_results=self.pending_user_tool_results
+            )
+        except Exception as e:
+            logger.warning(f"Error stopping user during finalization: {e}")
 
         # Calculate duration
         duration = time.perf_counter() - self._run_start_perf

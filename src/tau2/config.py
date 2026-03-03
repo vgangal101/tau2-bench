@@ -120,6 +120,9 @@ DEFAULT_OPENAI_VAD_THRESHOLD_LOW = (
 )
 DEFAULT_OPENAI_VAD_THRESHOLD_DEFAULT = 0.5
 DEFAULT_OPENAI_VAD_THRESHOLD = DEFAULT_OPENAI_VAD_THRESHOLD_DEFAULT
+DEFAULT_OPENAI_OUTPUT_SAMPLE_RATE = 24000  # 24kHz, 16-bit signed PCM
+DEFAULT_OPENAI_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
+DEFAULT_WHISPER_MODEL = "whisper-1"
 
 # Gemini Live API configuration
 DEFAULT_GEMINI_MODEL = "models/gemini-live-2.5-flash-native-audio"
@@ -129,27 +132,39 @@ DEFAULT_GEMINI_MODEL_VERTEX = "gemini-live-2.5-flash-native-audio"
 DEFAULT_GEMINI_VOICE = "Zephyr"
 DEFAULT_GEMINI_PROACTIVE_AUDIO = True  # Allow model to ignore irrelevant audio input
 DEFAULT_GEMINI_LOCATION = "us-central1"
+DEFAULT_GEMINI_INPUT_SAMPLE_RATE = 16000  # 16kHz, 16-bit signed PCM, mono
+DEFAULT_GEMINI_OUTPUT_SAMPLE_RATE = 24000  # 24kHz, 16-bit signed PCM, mono
 
 # xAI Grok Voice Agent API configuration
 DEFAULT_XAI_REALTIME_BASE_URL = "wss://api.x.ai/v1/realtime"
 DEFAULT_XAI_VOICE = "Ara"  # Options: Ara, Rex, Sal, Eve, Leo
-DEFAULT_XAI_MODEL = "grok-3"  # Placeholder - xAI may update model names
+DEFAULT_XAI_MODEL = "xai-realtime"  # Model is determined by the WebSocket endpoint
 
 # Amazon Nova Sonic API configuration
 DEFAULT_NOVA_MODEL = "amazon.nova-2-sonic-v1:0"
 DEFAULT_NOVA_VOICE = "tiffany"  # Options: matthew, tiffany, amy
 DEFAULT_NOVA_REGION = "us-east-1"
+DEFAULT_NOVA_INPUT_SAMPLE_RATE = 16000  # 16kHz, 16-bit signed PCM, mono
+DEFAULT_NOVA_OUTPUT_SAMPLE_RATE = 24000  # 24kHz, 16-bit signed PCM, mono
 
 # Qwen Omni Flash Realtime API configuration
+DEFAULT_QWEN_REALTIME_URL = "wss://dashscope-intl.aliyuncs.com/api-ws/v1/realtime"
 DEFAULT_QWEN_MODEL = "qwen3-omni-flash-realtime"
 DEFAULT_QWEN_VOICE = "Cherry"
+DEFAULT_QWEN_INPUT_SAMPLE_RATE = 16000  # 16kHz, 16-bit signed PCM, mono
+DEFAULT_QWEN_OUTPUT_SAMPLE_RATE = 24000  # 24kHz, 16-bit signed PCM, mono
 
 # Deepgram Voice Agent API configuration
 # Note: Deepgram is a cascaded system (STT→LLM→TTS), not a native audio model
+DEFAULT_DEEPGRAM_VOICE_AGENT_URL = "wss://agent.deepgram.com/v1/agent/converse"
 DEFAULT_DEEPGRAM_STT_MODEL = "nova-3"  # Deepgram STT model
 DEFAULT_DEEPGRAM_LLM_PROVIDER = "open_ai"  # LLM provider (open_ai, anthropic, etc.)
 DEFAULT_DEEPGRAM_LLM_MODEL = "gpt-5.1"  # LLM used by Deepgram Voice Agent
 DEFAULT_DEEPGRAM_TTS_MODEL = "aura-2-thalia-en"  # TTS voice model
+DEFAULT_DEEPGRAM_INPUT_SAMPLE_RATE = 16000  # 16kHz, 16-bit signed PCM, mono
+DEFAULT_DEEPGRAM_OUTPUT_SAMPLE_RATE = 16000  # 16kHz, 16-bit signed PCM, mono
+DEFAULT_DEEPGRAM_INPUT_ENCODING = "linear16"
+DEFAULT_DEEPGRAM_OUTPUT_ENCODING = "linear16"
 
 # Audio-native provider
 DEFAULT_AUDIO_NATIVE_PROVIDER = "openai"  # Options: "openai", "gemini", "xai", "nova", "qwen", "deepgram", "livekit"
@@ -175,7 +190,13 @@ AUDIO_NATIVE_PROVIDER_TYPES = {
     "deepgram": "cascaded",
     "livekit": "cascaded",
 }
-# Providers that prefer plain text prompts (no XML tags) by default
+# Shared adapter timing constants
+DEFAULT_AUDIO_NATIVE_VOIP_PACKET_INTERVAL_MS = 20  # Interval between audio send calls when streaming to WebSocket (standard RTP pacing)
+DEFAULT_AUDIO_NATIVE_CONNECT_TIMEOUT = 30.0  # seconds
+DEFAULT_AUDIO_NATIVE_DISCONNECT_TIMEOUT = 5.0  # seconds
+DEFAULT_AUDIO_NATIVE_THREAD_JOIN_TIMEOUT = 2.0  # seconds
+DEFAULT_AUDIO_NATIVE_TICK_TIMEOUT_BUFFER = 30.0  # extra seconds added to tick timeout
+
 # Retry configuration for audio-native tasks
 DEFAULT_AUDIO_NATIVE_MAX_RETRIES = 3
 DEFAULT_AUDIO_NATIVE_RETRY_DELAY_SECONDS = 5.0

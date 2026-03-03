@@ -24,6 +24,11 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import BaseModel
 
+from tau2.config import (
+    DEFAULT_TELEPHONY_RATE,
+    DEFAULT_XAI_REALTIME_BASE_URL,
+    DEFAULT_XAI_VOICE,
+)
 from tau2.environment.tool import Tool
 from tau2.utils.retry import websocket_retry
 from tau2.voice.audio_native.xai.events import (
@@ -34,10 +39,6 @@ from tau2.voice.audio_native.xai.events import (
 )
 
 load_dotenv()
-
-# xAI API constants
-DEFAULT_XAI_BASE_URL = "wss://api.x.ai/v1/realtime"
-DEFAULT_XAI_VOICE = "Ara"  # Options: Ara, Rex, Sal, Eve, Leo
 
 
 class XAIAudioFormat(str, Enum):
@@ -100,7 +101,7 @@ class XAIRealtimeProvider:
         ```
     """
 
-    BASE_URL = DEFAULT_XAI_BASE_URL
+    BASE_URL = DEFAULT_XAI_REALTIME_BASE_URL
     DEFAULT_VOICE = DEFAULT_XAI_VOICE
 
     def __init__(
@@ -108,7 +109,7 @@ class XAIRealtimeProvider:
         api_key: Optional[str] = None,
         voice: Optional[str] = None,
         audio_format: XAIAudioFormat = XAIAudioFormat.PCMU,
-        sample_rate: int = 8000,
+        sample_rate: int = DEFAULT_TELEPHONY_RATE,
     ):
         """Initialize the xAI Realtime provider.
 

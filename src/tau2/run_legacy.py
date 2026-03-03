@@ -61,7 +61,7 @@ from tau2.user_simulation_voice_presets import (
     sample_voice_config,
 )
 from tau2.utils.display import ConsoleDisplay, Text
-from tau2.utils.llm_utils import set_llm_log_dir
+from tau2.utils.llm_utils import llm_log_mode, set_llm_log_dir, set_llm_log_mode
 from tau2.utils.pydantic_utils import get_pydantic_hash
 from tau2.utils.utils import DATA_DIR, get_commit_hash, get_now, show_dict_diff
 from tau2.voice.synthesis.conversation_builder import generate_simulation_audio
@@ -831,10 +831,15 @@ def run_tasks(
                     os.unlink(tmp_path)
                 raise
 
+    # Capture ContextVar values from the main thread so worker threads
+    # (which get a fresh default context) can re-apply them.
+    _main_thread_llm_log_mode = llm_log_mode.get()
+
     def _run(
         task: Task, trial: int, seed: int, progress_str: str
     ) -> Optional[SimulationRun]:
         _init_thread_event_loop()
+        set_llm_log_mode(_main_thread_llm_log_mode)
 
         console_text = Text(
             text=f"{progress_str}. Running task {task.id}, trial {trial + 1}",

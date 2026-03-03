@@ -19,6 +19,7 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE
 from tau2.voice.utils.audio_io import load_wav_file, save_wav_file
 from tau2.voice.utils.audio_preprocessing import (
     convert_to_mono,
@@ -30,7 +31,7 @@ from tau2.voice.utils.audio_preprocessing import (
 def convert_audio_file(
     input_path: Path,
     output_path: Path,
-    target_sample_rate: int = 16000,
+    target_sample_rate: int = DEFAULT_PCM_SAMPLE_RATE,
 ) -> bool:
     """
     Convert a single audio file to PCM 16-bit mono at the target sample rate.
@@ -72,7 +73,7 @@ def convert_audio_file(
 def convert_directory(
     input_dir: Path,
     output_dir: Path,
-    target_sample_rate: int = 16000,
+    target_sample_rate: int = DEFAULT_PCM_SAMPLE_RATE,
     file_pattern: str = "*.wav",
     preserve_structure: bool = True,
 ) -> tuple[int, int]:
@@ -145,8 +146,8 @@ def main():
     parser.add_argument(
         "--sample-rate",
         type=int,
-        default=16000,
-        help="Target sample rate in Hz (default: 16000)",
+        default=DEFAULT_PCM_SAMPLE_RATE,
+        help=f"Target sample rate in Hz (default: {DEFAULT_PCM_SAMPLE_RATE})",
     )
     parser.add_argument(
         "--pattern",

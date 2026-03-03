@@ -25,6 +25,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import aiohttp
 from loguru import logger
 
+from tau2.config import DEFAULT_PCM_SAMPLE_RATE
 from tau2.data_model.message import ToolCall
 from tau2.environment.tool import Tool
 from tau2.voice.audio_native.livekit.config import (
@@ -583,7 +584,7 @@ class CascadedVoiceProvider:
 
             # Create an AudioFrame from raw bytes
             # Deepgram expects 16kHz mono PCM
-            sample_rate = 16000
+            sample_rate = DEFAULT_PCM_SAMPLE_RATE
             num_channels = 1
             samples_per_channel = len(audio) // 2  # 16-bit samples
 
