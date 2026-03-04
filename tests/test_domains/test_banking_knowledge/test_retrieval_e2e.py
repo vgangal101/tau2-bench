@@ -10,6 +10,7 @@ gated by OPENAI_API_KEY / OPENROUTER_API_KEY env vars.
 from __future__ import annotations
 
 import os
+import shutil
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
@@ -25,6 +26,10 @@ requires_openai = pytest.mark.skipif(
 requires_openrouter = pytest.mark.skipif(
     not os.environ.get("OPENROUTER_API_KEY"),
     reason="OPENROUTER_API_KEY not set",
+)
+requires_sandbox_runtime = pytest.mark.skipif(
+    shutil.which("srt") is None,
+    reason="sandbox-runtime (srt) is not installed",
 )
 
 DOCUMENTS: List[Dict[str, Any]] = [
@@ -105,8 +110,8 @@ _ALL_VARIANTS = [
     ("bm25_grep", {"KB_search", "grep"}, None),
     ("bm25_reranker_grep", {"KB_search", "grep"}, None),
     ("grep_only", {"grep"}, None),
-    ("terminal_use", {"shell"}, None),
-    ("terminal_use_write", {"shell"}, None),
+    ("terminal_use", {"shell"}, "sandbox_runtime"),
+    ("terminal_use_write", {"shell"}, "sandbox_runtime"),
     ("qwen_embeddings", {"KB_search"}, "openrouter"),
     ("qwen_embeddings_reranker", {"KB_search"}, "openrouter"),
     ("qwen_embeddings_grep", {"KB_search", "grep"}, "openrouter"),
@@ -123,6 +128,8 @@ def _api_mark(gate):
         return requires_openrouter
     if gate == "openai":
         return requires_openai
+    if gate == "sandbox_runtime":
+        return requires_sandbox_runtime
     return pytest.mark.skipif(False, reason="")
 
 
@@ -618,6 +625,7 @@ class TestRequiredDocumentRetrievability:
 class TestGetEnvironmentLivePath:
     """Test the exact function the live path calls: get_environment()."""
 
+    @requires_openrouter
     def test_default_variant_produces_valid_environment(self):
         from tau2.domains.banking_knowledge.environment import get_environment
 
@@ -1143,24 +1151,24 @@ class TestCachePipelineIntegration:
     """Cached pipeline must produce identical results to a fresh one."""
 
     @pytest.mark.parametrize(
-        "embedder_type, embedder_params, query, gate",
+        "embedder_type, embedder_params, query",
         [
             pytest.param(
                 "openrouter",
                 {"model": "qwen3-embedding-8b"},
                 "savings account interest",
-                requires_openrouter,
+                marks=requires_openrouter,
             ),
             pytest.param(
                 "openai",
                 {"model": "text-embedding-3-large"},
                 "credit card rewards",
-                requires_openai,
+                marks=requires_openai,
             ),
         ],
     )
     def test_cached_pipeline_matches_fresh(
-        self, embedder_type, embedder_params, query, gate
+        self, embedder_type, embedder_params, query
     ):
         from tau2.domains.banking_knowledge.retrieval import (
             create_embedding_retrieval_pipeline,
