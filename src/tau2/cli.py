@@ -393,7 +393,14 @@ def add_run_args(parser):
         type=str,
         default=None,
         choices=sorted(get_all_retrieval_config_names()),
-        help="Knowledge retrieval config name (knowledge domain only).",
+        help=(
+            "Knowledge retrieval config name (banking_knowledge domain). "
+            "Offline: no_knowledge, full_kb, golden_retrieval, bm25, bm25_grep, grep_only. "
+            "Requires OPENAI_API_KEY: openai_embeddings*. "
+            "Requires OPENROUTER_API_KEY: qwen_embeddings*. "
+            "Requires sandbox-runtime: terminal_use*. "
+            "Default: bm25."
+        ),
     )
     parser.add_argument(
         "--retrieval-config-kwargs",

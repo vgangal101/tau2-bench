@@ -1,32 +1,43 @@
 # Knowledge Retrieval
 
-Domains with a knowledge base (currently just `banking-knowledge`) require a `--retrieval-config` flag that controls how the agent accesses the knowledge base.
+Domains with a knowledge base (currently just `banking_knowledge`) use a `--retrieval-config` flag that controls how the agent accesses the knowledge base.
 
 ```bash
 tau2 run --domain banking_knowledge --retrieval-config <config_name> --agent-llm gpt-4.1 --user-llm gpt-4.1
 ```
 
+If `--retrieval-config` is omitted, the default is `bm25` (offline, no API keys needed). A warning is printed to remind you to choose a config explicitly.
+
 ## Retrieval Configs
 
-| Config | Tools | Description |
-|--------|-------|-------------|
-| `no_knowledge` | None | Agent has no access to the knowledge base |
-| `full_kb` | None | Entire knowledge base injected into the system prompt |
-| `golden_retrieval` | None | Only task-required documents injected into context |
-| `grep_only` | `grep` | Regex pattern search over documents |
-| `bm25` | `KB_search` | BM25 keyword retrieval |
-| `openai_embeddings` | `KB_search` | OpenAI `text-embedding-3-large` (requires `OPENAI_API_KEY`) |
-| `qwen_embeddings` | `KB_search` | Qwen `qwen3-embedding-8b` via OpenRouter (requires `OPENROUTER_API_KEY`) |
-| `terminal_use` | `shell` | Agent explores KB files via shell commands in a sandbox |
-| `terminal_use_write` | `shell` | Same as `terminal_use` but with write access |
+| Config | Tools | Requirements |
+|--------|-------|--------------|
+| `no_knowledge` | None | None (offline) |
+| `full_kb` | None | None (offline) |
+| `golden_retrieval` | None | None (offline) |
+| `grep_only` | `grep` | None (offline) |
+| `bm25` | `KB_search` | None (offline) |
+| `openai_embeddings` | `KB_search` | `OPENAI_API_KEY` |
+| `qwen_embeddings` | `KB_search` | `OPENROUTER_API_KEY` |
+| `terminal_use` | `shell` | `sandbox-runtime` (see below) |
+| `terminal_use_write` | `shell` | `sandbox-runtime` (see below) |
 
-The `bm25`, `openai_embeddings`, and `qwen_embeddings` configs can also be combined with a `_reranker` suffix (adds an LLM reranker postprocessor), a `_grep` suffix (adds a `grep` tool), or both (e.g. `openai_embeddings_reranker_grep`).
+The `bm25`, `openai_embeddings`, and `qwen_embeddings` configs can also be combined with:
+- `_reranker` suffix — adds an LLM reranker postprocessor (requires `OPENAI_API_KEY`)
+- `_grep` suffix — adds a `grep` tool
+- Both (e.g. `openai_embeddings_reranker_grep`)
+
+Note: `*_reranker` variants always require `OPENAI_API_KEY` for the pointwise LLM reranker, even when the base embedder uses a different provider (e.g. `qwen_embeddings_reranker` needs both `OPENROUTER_API_KEY` and `OPENAI_API_KEY`).
+
+## Embedding Cache
+
+Embedding-based configs (`openai_embeddings*`, `qwen_embeddings*`) cache document embeddings on disk at `data/.embeddings_cache` (gitignored). This avoids re-computing embeddings on repeated runs. The cache is automatically invalidated when document content changes.
 
 ## Additional Setup
 
 ### OpenRouter API Key
 
-The `qwen_embeddings*` configs route through [OpenRouter](https://openrouter.ai/). Set the `OPENROUTER_API_KEY` environment variable (or add it to your `.env` file).
+The `qwen_embeddings*` configs route through [OpenRouter](https://openrouter.ai/). Set the `OPENROUTER_API_KEY` environment variable (or add it to your `.env` file — see `.env.example`).
 
 ### sandbox-runtime
 

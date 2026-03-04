@@ -55,7 +55,8 @@ PROMPTS_DIR = DATA_DIR / "tau2" / "domains" / "banking_knowledge" / "prompts"
 COMPONENTS_DIR = PROMPTS_DIR / "components"
 
 # Default variant used when no explicit retrieval_variant is provided.
-DEFAULT_RETRIEVAL_VARIANT = "qwen_embeddings"
+# Using bm25 so that banking_knowledge works out of the box without API keys.
+DEFAULT_RETRIEVAL_VARIANT = "bm25"
 
 # ---------------------------------------------------------------------------
 # Prompt template loading (moved from retrieval_config.py, unchanged)

@@ -68,7 +68,13 @@ Domain tool tests in `tests/test_domains/test_<domain>/`:
 The `banking_knowledge` domain has an extended test structure:
 - `test_tools_knowledge.py` — standard domain tool tests
 - `test_retrieval_system.py` — tests for the retrieval pipeline (embeddings, BM25, grep, reranking)
+- `test_retrieval_e2e.py` — end-to-end retrieval config tests with dependency-gated variants
 - `tasks/test_task_*.py` — per-task scenario tests with shared fixtures in `tasks/conftest.py`
+
+Retrieval e2e tests use skip markers to gate tests that require external dependencies:
+- `requires_openai` — skips when `OPENAI_API_KEY` is not set (openai_embeddings variants)
+- `requires_openrouter` — skips when `OPENROUTER_API_KEY` is not set (qwen_embeddings variants)
+- `requires_sandbox_runtime` — skips when `srt` CLI is not installed (terminal_use variants)
 
 ### Asyncio
 

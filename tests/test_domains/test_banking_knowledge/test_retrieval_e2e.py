@@ -148,9 +148,7 @@ def _build_toolkit(variant_name: str, **kwargs):
         variant = resolve_variant(variant_name, **kwargs)
         if variant.kb_search and variant.kb_search.reranker:
             variant.kb_search.reranker = False
-        return build_tools(
-            variant, MagicMock(spec=TransactionalDB), _make_mock_kb()
-        )
+        return build_tools(variant, MagicMock(spec=TransactionalDB), _make_mock_kb())
 
 
 def _clear_query_embedding_cache() -> None:
@@ -218,14 +216,10 @@ class TestAllVariantsToolInvocation:
         if "KB_search" in t
     ]
     _GREP_VARIANTS = [
-        pytest.param(v, marks=_api_mark(g))
-        for v, t, g in _ALL_VARIANTS
-        if "grep" in t
+        pytest.param(v, marks=_api_mark(g)) for v, t, g in _ALL_VARIANTS if "grep" in t
     ]
     _SHELL_VARIANTS = [
-        pytest.param(v, marks=_api_mark(g))
-        for v, t, g in _ALL_VARIANTS
-        if "shell" in t
+        pytest.param(v, marks=_api_mark(g)) for v, t, g in _ALL_VARIANTS if "shell" in t
     ]
 
     @pytest.mark.parametrize("variant_name", _KB_SEARCH_VARIANTS)
@@ -315,13 +309,18 @@ class TestLiveEmbeddingModelUsage:
             calls.append((self.model_api_string, len(texts)))
             return original_embed(self, texts, max_retries=max_retries)
 
-        with patch.object(OpenRouterEmbedder, "embed", new=_spy), patch.object(
-            embedding_indexer, "get_embeddings_cache", return_value=isolated_cache
+        with (
+            patch.object(OpenRouterEmbedder, "embed", new=_spy),
+            patch.object(
+                embedding_indexer, "get_embeddings_cache", return_value=isolated_cache
+            ),
         ):
             toolkit = _build_toolkit("qwen_embeddings", top_k=5)
             toolkit.KB_search(query=f"mortgage lending {os.urandom(8).hex()}")
 
-        assert any(m == "qwen/qwen3-embedding-8b" and n == len(DOCUMENTS) for m, n in calls)
+        assert any(
+            m == "qwen/qwen3-embedding-8b" and n == len(DOCUMENTS) for m, n in calls
+        )
         assert any(m == "qwen/qwen3-embedding-8b" and n == 1 for m, n in calls)
 
     @requires_openai
@@ -339,13 +338,18 @@ class TestLiveEmbeddingModelUsage:
             calls.append((self.model, len(texts)))
             return original_embed(self, texts)
 
-        with patch.object(OpenAIEmbedder, "embed", new=_spy), patch.object(
-            embedding_indexer, "get_embeddings_cache", return_value=isolated_cache
+        with (
+            patch.object(OpenAIEmbedder, "embed", new=_spy),
+            patch.object(
+                embedding_indexer, "get_embeddings_cache", return_value=isolated_cache
+            ),
         ):
             toolkit = _build_toolkit("openai_embeddings", top_k=5)
             toolkit.KB_search(query=f"credit card rewards {os.urandom(8).hex()}")
 
-        assert any(m == "text-embedding-3-large" and n == len(DOCUMENTS) for m, n in calls)
+        assert any(
+            m == "text-embedding-3-large" and n == len(DOCUMENTS) for m, n in calls
+        )
         assert any(m == "text-embedding-3-large" and n == 1 for m, n in calls)
 
 
@@ -515,9 +519,7 @@ class TestPolicyTemplateIntegrity:
         assert len(tasks_with_docs) > 0
         task = tasks_with_docs[0]
 
-        policy = build_policy(
-            resolve_variant("golden_retrieval"), knowledge_base, task
-        )
+        policy = build_policy(resolve_variant("golden_retrieval"), knowledge_base, task)
         for doc_ref in task.required_documents:
             doc = knowledge_base.get_document(doc_ref)
             if doc:
@@ -588,9 +590,7 @@ class TestRequiredDocumentRetrievability:
     def test_every_required_doc_content_is_in_pipeline(
         self, tasks, knowledge_base, grep_pipeline
     ):
-        all_required = {
-            ref for t in tasks for ref in (t.required_documents or [])
-        }
+        all_required = {ref for t in tasks for ref in (t.required_documents or [])}
         content_map = grep_pipeline.state.get("doc_content_map", {})
         missing, corrupted = [], []
         for doc_ref in sorted(all_required):
@@ -609,9 +609,7 @@ class TestRequiredDocumentRetrievability:
         self, tasks, knowledge_base, bm25_pipeline
     ):
         """BM25 title recall >= 80% (many titles are shared across docs)."""
-        all_required = {
-            ref for t in tasks for ref in (t.required_documents or [])
-        }
+        all_required = {ref for t in tasks for ref in (t.required_documents or [])}
         found = sum(
             1
             for ref in all_required
@@ -625,11 +623,15 @@ class TestRequiredDocumentRetrievability:
 class TestGetEnvironmentLivePath:
     """Test the exact function the live path calls: get_environment()."""
 
-    @requires_openrouter
     def test_default_variant_produces_valid_environment(self):
+        import warnings
+
         from tau2.domains.banking_knowledge.environment import get_environment
 
-        env = get_environment()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            env = get_environment()
+            assert any("--retrieval-config" in str(m.message) for m in w)
         assert env.policy and len(env.policy) > 100
         assert env.tools is not None
         assert env.user_tools is not None
@@ -757,17 +759,13 @@ class TestQwenInstructionPrefixImpact:
     CORRECT_INSTRUCTION = (
         "Given a web search query, retrieve relevant passages that answer the query"
     )
-    WRONG_INSTRUCTION = (
-        "Translate the following text into formal academic French prose"
-    )
+    WRONG_INSTRUCTION = "Translate the following text into formal academic French prose"
 
     @pytest.fixture(scope="class")
     def doc_embedding(self):
         from tau2.knowledge.embedders.openrouter_embedder import OpenRouterEmbedder
 
-        embedder = OpenRouterEmbedder(
-            model="qwen3-embedding-8b", query_instruction=""
-        )
+        embedder = OpenRouterEmbedder(model="qwen3-embedding-8b", query_instruction="")
         return embedder.embed([DOCUMENTS[0]["text"]])[0]
 
     @pytest.fixture(scope="class")
@@ -876,7 +874,6 @@ class TestOpenAIEmbeddingPipelineRigorous:
 
 
 class TestInMemoryDocsCacheCorrectness:
-
     def setup_method(self):
         from tau2.knowledge.embeddings_cache import clear_cached_docs
 
@@ -921,7 +918,6 @@ class TestInMemoryDocsCacheCorrectness:
 
 
 class TestQueryEmbeddingCacheCorrectness:
-
     def setup_method(self):
         _clear_query_embedding_cache()
 
@@ -951,7 +947,9 @@ class TestQueryEmbeddingCacheCorrectness:
         )
 
         cache_query_embedding("hello", np.array([1.0]), "openai", {"model": "test"})
-        assert get_cached_query_embedding("goodbye", "openai", {"model": "test"}) is None
+        assert (
+            get_cached_query_embedding("goodbye", "openai", {"model": "test"}) is None
+        )
 
     def test_different_embedder_type_returns_none(self):
         import numpy as np
@@ -962,7 +960,9 @@ class TestQueryEmbeddingCacheCorrectness:
         )
 
         cache_query_embedding("hello", np.array([1.0]), "openai", {"model": "test"})
-        assert get_cached_query_embedding("hello", "openrouter", {"model": "test"}) is None
+        assert (
+            get_cached_query_embedding("hello", "openrouter", {"model": "test"}) is None
+        )
 
     def test_different_model_returns_none(self):
         import numpy as np
@@ -985,9 +985,7 @@ class TestQueryEmbeddingCacheCorrectness:
 
         emb = np.array([1.0, 2.0, 3.0])
         cache_query_embedding("hello", emb, "openai", {"model": "m", "dim": 3})
-        cached = get_cached_query_embedding(
-            "hello", "openai", {"dim": 3, "model": "m"}
-        )
+        cached = get_cached_query_embedding("hello", "openai", {"dim": 3, "model": "m"})
         assert cached is not None
         assert np.array_equal(cached, emb)
 
@@ -1056,7 +1054,6 @@ class TestEncoderCacheConfigIncludesInstruction:
 
 
 class TestDiskEmbeddingsCacheCorrectness:
-
     @pytest.fixture
     def cache(self, tmp_path):
         from tau2.knowledge.embeddings_cache import EmbeddingsCache
@@ -1092,8 +1089,12 @@ class TestDiskEmbeddingsCacheCorrectness:
         cache.put(sample_docs, "openai", emb_a, ["d1", "d2"], {"model": "test"})
         cache.put(sample_docs, "openrouter", emb_b, ["d1", "d2"], {"model": "test"})
 
-        assert np.array_equal(cache.get(sample_docs, "openai", {"model": "test"})[0], emb_a)
-        assert np.array_equal(cache.get(sample_docs, "openrouter", {"model": "test"})[0], emb_b)
+        assert np.array_equal(
+            cache.get(sample_docs, "openai", {"model": "test"})[0], emb_a
+        )
+        assert np.array_equal(
+            cache.get(sample_docs, "openrouter", {"model": "test"})[0], emb_b
+        )
 
     def test_different_model_is_separate_cache(self, cache, sample_docs):
         import numpy as np
@@ -1103,14 +1104,24 @@ class TestDiskEmbeddingsCacheCorrectness:
         cache.put(sample_docs, "openai", emb_a, ["d1", "d2"], {"model": "model-a"})
         cache.put(sample_docs, "openai", emb_b, ["d1", "d2"], {"model": "model-b"})
 
-        assert np.array_equal(cache.get(sample_docs, "openai", {"model": "model-a"})[0], emb_a)
-        assert np.array_equal(cache.get(sample_docs, "openai", {"model": "model-b"})[0], emb_b)
+        assert np.array_equal(
+            cache.get(sample_docs, "openai", {"model": "model-a"})[0], emb_a
+        )
+        assert np.array_equal(
+            cache.get(sample_docs, "openai", {"model": "model-b"})[0], emb_b
+        )
 
     def test_content_change_invalidates_cache(self, cache):
         import numpy as np
 
         docs_v1 = [{"id": "d1", "text": "original"}, {"id": "d2", "text": "other"}]
-        cache.put(docs_v1, "openai", np.array([[1, 2], [3, 4]]), ["d1", "d2"], {"model": "test"})
+        cache.put(
+            docs_v1,
+            "openai",
+            np.array([[1, 2], [3, 4]]),
+            ["d1", "d2"],
+            {"model": "test"},
+        )
         docs_v2 = [{"id": "d1", "text": "MODIFIED"}, {"id": "d2", "text": "other"}]
         assert cache.get(docs_v2, "openai", {"model": "test"}) is None
 
@@ -1139,7 +1150,9 @@ class TestDiskEmbeddingsCacheCorrectness:
     def test_document_hash_order_independent(self, cache):
         docs_a = [{"id": "d2", "text": "two"}, {"id": "d1", "text": "one"}]
         docs_b = [{"id": "d1", "text": "one"}, {"id": "d2", "text": "two"}]
-        assert cache._compute_document_hash(docs_a) == cache._compute_document_hash(docs_b)
+        assert cache._compute_document_hash(docs_a) == cache._compute_document_hash(
+            docs_b
+        )
 
     def test_embedder_hash_config_order_independent(self, cache):
         h1 = cache._compute_embedder_hash("openai", {"model": "m", "dim": 3})
@@ -1167,9 +1180,7 @@ class TestCachePipelineIntegration:
             ),
         ],
     )
-    def test_cached_pipeline_matches_fresh(
-        self, embedder_type, embedder_params, query
-    ):
+    def test_cached_pipeline_matches_fresh(self, embedder_type, embedder_params, query):
         from tau2.domains.banking_knowledge.retrieval import (
             create_embedding_retrieval_pipeline,
         )
