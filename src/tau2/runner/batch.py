@@ -277,9 +277,9 @@ class _TaskLogContext:
                 / f"task_{self.task.id}"
                 / f"sim_{self.simulation_id}"
             )
-            self.task_log_dir.mkdir(parents=True, exist_ok=True)
 
         if self.verbose_logs and self.task_log_dir:
+            self.task_log_dir.mkdir(parents=True, exist_ok=True)
             _current_simulation_id.set(self.simulation_id)
 
             def make_simulation_filter(sim_id: str):

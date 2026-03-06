@@ -6368,16 +6368,11 @@ def _generate_voice_quality_table_from_csv(
     import numpy as np
     import pandas as pd
 
-    from experiments.tau_voice.exp.plot_style import DOMAINS
-
-    # Provider display names and order
-    PROVIDER_DISPLAY = {
-        "gemini": "Google",
-        "openai": "OpenAI",
-        "xai": "xAI",
-        "amazon": "Amazon",
-    }
-    PROVIDER_ORDER = ["Google", "OpenAI", "xAI", "Amazon"]
+    from experiments.tau_voice.exp.plot_style import (
+        DOMAINS,
+        get_model_sort_key,
+        get_short_llm_name,
+    )
 
     # Filter to regular complexity only
     df_latency_reg = df_latency[df_latency["speech_complexity"] == "regular"].copy()
@@ -6389,17 +6384,8 @@ def _generate_voice_quality_table_from_csv(
         logger.warning("No regular complexity data for voice quality table.")
         return
 
-    # Map provider names to display names
-    def get_provider_display(provider: str) -> str:
-        return PROVIDER_DISPLAY.get(provider.lower(), provider.capitalize())
-
-    df_latency_reg["provider_display"] = df_latency_reg["provider"].apply(
-        get_provider_display
-    )
-    df_int_reg["provider_display"] = df_int_reg["provider"].apply(get_provider_display)
-
     # Merge the dataframes
-    merge_cols = ["llm", "domain", "speech_complexity", "provider", "provider_display"]
+    merge_cols = ["llm", "domain", "speech_complexity", "provider"]
     if not df_latency_reg.empty and not df_int_reg.empty:
         df = pd.merge(df_latency_reg, df_int_reg, on=merge_cols, how="outer")
     elif not df_latency_reg.empty:
@@ -6423,7 +6409,7 @@ def _generate_voice_quality_table_from_csv(
     lines.append(r"\begin{tabular}{llccccc}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \makecell{\textbf{Resp.}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Resp.}\\\textbf{Latency (s)}$\downarrow$} & \makecell{\textbf{Yield}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Yield}\\\textbf{Time (s)}$\downarrow$} & \makecell{\textbf{Backchannel}\\\textbf{Correct}$\uparrow$} \\"
+        r"\textbf{Domain} & \textbf{Model} & \makecell{\textbf{Resp.}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Resp.}\\\textbf{Latency (s)}$\downarrow$} & \makecell{\textbf{Yield}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Yield}\\\textbf{Time (s)}$\downarrow$} & \makecell{\textbf{Backchannel}\\\textbf{Correct}$\uparrow$} \\"
     )
     lines.append(r"\midrule")
 
@@ -6458,27 +6444,19 @@ def _generate_voice_quality_table_from_csv(
             else None
         )
 
-        # Get unique providers and sort by order
-        domain_providers = domain_data["provider_display"].unique().tolist()
-        domain_providers = sorted(
-            domain_providers,
-            key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+        domain_llms = sorted(
+            domain_data["llm"].unique().tolist(), key=get_model_sort_key
         )
 
-        for i, provider_display in enumerate(domain_providers):
-            row = (
-                domain_data[domain_data["provider_display"] == provider_display].iloc[0]
-                if len(domain_data[domain_data["provider_display"] == provider_display])
-                > 0
-                else None
-            )
-
-            if row is None:
-                continue
+        for i, llm in enumerate(domain_llms):
+            row = domain_data[domain_data["llm"] == llm].iloc[0]
+            model_name = get_short_llm_name(llm, max_len=25)
 
             # Domain label (only on first row)
             if i == 0:
-                domain_label = rf"\multirow{{{len(domain_providers)}}}{{*}}{{{domain.capitalize()}}}"
+                domain_label = (
+                    rf"\multirow{{{len(domain_llms)}}}{{*}}{{{domain.capitalize()}}}"
+                )
             else:
                 domain_label = ""
 
@@ -6510,7 +6488,7 @@ def _generate_voice_quality_table_from_csv(
             backchannel_str = fmt_pct(backchannel, best_backchannel)
 
             lines.append(
-                f"{domain_label} & {provider_display} & {resp_rate_str} & {resp_latency_str} & "
+                f"{domain_label} & {model_name} & {resp_rate_str} & {resp_latency_str} & "
                 f"{yield_rate_str} & {yield_time_str} & {backchannel_str} \\\\"
             )
 

@@ -99,6 +99,7 @@ class ReferenceType(str, Enum):
     MODEL_CARD = "model_card"
     GITHUB = "github"
     HUGGINGFACE = "huggingface"
+    TECHNICAL_REPORT = "technical_report"
     OTHER = "other"
 
 

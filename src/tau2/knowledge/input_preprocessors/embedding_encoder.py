@@ -93,9 +93,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
 
         cache_config = self._get_cache_config()
 
-        cached = get_cached_query_embedding(
-            text, self.embedder_type, cache_config
-        )
+        cached = get_cached_query_embedding(text, self.embedder_type, cache_config)
         if cached is not None:
             input_data[self.output_key] = cached
             return input_data
@@ -119,9 +117,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
         texts_to_embed: List[tuple[int, str]] = []
 
         for i, text in enumerate(texts):
-            cached = get_cached_query_embedding(
-                text, self.embedder_type, cache_config
-            )
+            cached = get_cached_query_embedding(text, self.embedder_type, cache_config)
             if cached is not None:
                 cached_embeddings[i] = cached
             else:
@@ -133,9 +129,7 @@ class EmbeddingEncoder(BaseInputPreprocessor):
             new_embeddings = embedder.embed(uncached_texts)
 
             for (i, text), embedding in zip(texts_to_embed, new_embeddings):
-                cache_query_embedding(
-                    text, embedding, self.embedder_type, cache_config
-                )
+                cache_query_embedding(text, embedding, self.embedder_type, cache_config)
                 cached_embeddings[i] = embedding
 
         for i, input_data in enumerate(input_data_list):

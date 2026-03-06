@@ -200,7 +200,7 @@ class StatusMonitor:
                     retry_str = f" R{retries}" if retries > 0 else ""
                     task_statuses.append(f"{task_id}({elapsed:.0f}s{retry_str})")
 
-                reward_str = ""
+                reward_str = "Avg reward: N/A."
                 if self.completed_count > 0 and self._simulation_results:
                     rewards = [
                         sim.reward_info.reward
@@ -209,10 +209,10 @@ class StatusMonitor:
                     ]
                     if rewards:
                         avg_reward = sum(rewards) / len(rewards)
-                        reward_str = f"Avg reward: {avg_reward:.2f} (N={len(rewards)})"
+                        reward_str = f"Avg reward: {avg_reward:.2f} (N={len(rewards)})."
 
                 status_text = Text(
-                    text=f"Status: {self.completed_count}/{self.total_count} complete. {reward_str}. "
+                    text=f"Status: {self.completed_count}/{self.total_count} complete. {reward_str} "
                     f"{running_count} running: {', '.join(task_statuses[:10])}"
                     + (f" +{running_count - 10} more" if running_count > 10 else ""),
                     style="cyan",

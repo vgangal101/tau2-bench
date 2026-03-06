@@ -8,7 +8,12 @@ LLM colors are deterministic based on the LLM name hash, ensuring the same
 LLM always gets the same color regardless of load order.
 """
 
-from typing import Dict, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, Optional
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # =============================================================================
 # Configuration Constants
@@ -87,6 +92,93 @@ def get_complexity_display_name(complexity: str) -> str:
     """Get display name for a complexity level."""
     return SPEECH_COMPLEXITY_DISPLAY_NAMES.get(complexity, complexity.capitalize())
 
+
+# =============================================================================
+# Provider / Model Mapping
+# =============================================================================
+
+# Provider display names (canonical mapping from provider key to human-readable name)
+PROVIDER_DISPLAY = {
+    "gemini": "Google",
+    "openai": "OpenAI",
+    "xai": "xAI",
+    "amazon": "Amazon",
+}
+
+# Provider ordering for tables and plots (by provider key)
+PROVIDER_ORDER_KEYS = ["gemini", "openai", "xai", "amazon"]
+
+
+def get_provider_key(llm: str) -> str:
+    """Map an LLM identifier to its provider key.
+
+    Args:
+        llm: Full LLM identifier (e.g., "openai:gpt-realtime-2025-08-28")
+
+    Returns:
+        Provider key string (e.g., "openai")
+    """
+    llm_lower = llm.lower()
+    if "gpt" in llm_lower or "openai" in llm_lower:
+        return "openai"
+    elif "gemini" in llm_lower or "google" in llm_lower:
+        return "gemini"
+    elif "grok" in llm_lower or "xai" in llm_lower:
+        return "xai"
+    elif "nova" in llm_lower or "amazon" in llm_lower:
+        return "amazon"
+    else:
+        return llm.split(":")[-1][:10].lower()
+
+
+def get_provider_display(provider_key: str) -> str:
+    """Get the human-readable display name for a provider key.
+
+    Args:
+        provider_key: Provider key (e.g., "openai")
+
+    Returns:
+        Display name (e.g., "OpenAI")
+    """
+    return PROVIDER_DISPLAY.get(provider_key.lower(), provider_key.capitalize())
+
+
+def get_model_sort_key(llm: str) -> tuple:
+    """Get a sort key for an LLM that orders by provider first, then model name.
+
+    Args:
+        llm: Full LLM identifier (e.g., "openai:gpt-realtime-2025-08-28")
+
+    Returns:
+        Tuple of (provider_order_index, model_name) for sorting
+    """
+    pk = get_provider_key(llm)
+    idx = PROVIDER_ORDER_KEYS.index(pk) if pk in PROVIDER_ORDER_KEYS else 99
+    return (idx, llm)
+
+
+def add_model_columns(df: pd.DataFrame, llm_col: str = "llm") -> pd.DataFrame:
+    """Add provider and model display columns to a DataFrame.
+
+    Adds ``provider_key``, ``provider_display``, and ``model_display`` columns
+    derived from the LLM identifier column.
+
+    Args:
+        df: DataFrame with an LLM identifier column
+        llm_col: Name of the LLM column (default "llm")
+
+    Returns:
+        The DataFrame with new columns added (modified in place).
+    """
+    df["provider_key"] = df[llm_col].apply(get_provider_key)
+    df["provider_display"] = df["provider_key"].apply(get_provider_display)
+    df["model_display"] = df[llm_col].apply(lambda x: get_short_llm_name(x, max_len=25))
+    return df
+
+
+# =============================================================================
+# LLM Color Configuration
+# =============================================================================
 
 # General color palette for LLMs (8 distinct colors)
 COLOR_PALETTE = [
@@ -168,9 +260,32 @@ def get_llm_color(llm_name: str) -> str:
     return COLOR_PALETTE[color_index]
 
 
+def _adjust_brightness(hex_color: str, factor: float) -> str:
+    """Adjust color brightness. factor < 1 darkens, > 1 lightens."""
+    r = int(hex_color[1:3], 16)
+    g = int(hex_color[3:5], 16)
+    b = int(hex_color[5:7], 16)
+
+    if factor > 1:
+        t = min(factor - 1, 1.0)
+        r = min(255, int(r + (255 - r) * t))
+        g = min(255, int(g + (255 - g) * t))
+        b = min(255, int(b + (255 - b) * t))
+    else:
+        r = max(0, int(r * factor))
+        g = max(0, int(g * factor))
+        b = max(0, int(b * factor))
+
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
 def get_llm_colors(llms: list) -> list:
     """
-    Get colors for a list of LLMs.
+    Get colors for a list of LLMs with shade variation for same-provider models.
+
+    When multiple models share a provider, they get evenly spaced darker-to-lighter
+    variants of the provider's base color. Single models per provider use the
+    base color unchanged.
 
     Args:
         llms: List of LLM identifiers
@@ -178,7 +293,31 @@ def get_llm_colors(llms: list) -> list:
     Returns:
         List of hex color strings
     """
-    return [get_llm_color(llm) for llm in llms]
+    from collections import defaultdict
+
+    provider_groups: dict[str, list[str]] = defaultdict(list)
+    for llm in llms:
+        provider = llm.split(":")[0].lower() if ":" in llm else llm.lower()
+        # Also check pattern-based matching for LLMs without provider prefix
+        matched_provider = provider
+        for pattern in LLM_COLOR_MAP:
+            if pattern in llm.lower():
+                matched_provider = pattern
+                break
+        provider_groups[matched_provider].append(llm)
+
+    colors = {}
+    for provider, group_llms in provider_groups.items():
+        base_color = get_llm_color(group_llms[0])
+        if len(group_llms) == 1:
+            colors[group_llms[0]] = base_color
+        else:
+            for i, llm in enumerate(sorted(group_llms)):
+                # Range from 0.75 (darker) to 1.25 (lighter)
+                factor = 0.75 + (0.5 * i / (len(group_llms) - 1))
+                colors[llm] = _adjust_brightness(base_color, factor)
+
+    return [colors[llm] for llm in llms]
 
 
 # =============================================================================

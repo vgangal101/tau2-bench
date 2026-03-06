@@ -97,6 +97,11 @@ class HyperparamConfig:
     def __post_init__(self):
         if not self.timestamp:
             self.timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        # Normalize provider_models to always include the model
+        self.provider_models = [
+            f"{p}:{DEFAULT_AUDIO_NATIVE_MODELS[p]}" if ":" not in p else p
+            for p in self.provider_models
+        ]
 
     @property
     def total_combinations(self) -> int:
@@ -238,13 +243,9 @@ def parse_provider_model(provider_model: str) -> tuple[str, Optional[str]]:
     return provider_model, None
 
 
-def get_run_name(
-    domain: str, complexity: str, provider: str, model: Optional[str]
-) -> str:
+def get_run_name(domain: str, complexity: str, provider: str, model: str) -> str:
     """Generate run name for a combination."""
-    if model:
-        return f"{domain}_{complexity}_{provider}_{model}"
-    return f"{domain}_{complexity}_{provider}"
+    return f"{domain}_{complexity}_{provider}_{model}"
 
 
 def build_command(
@@ -379,6 +380,8 @@ def run_sweep(config: HyperparamConfig) -> int:
             for provider_model in config.provider_models:
                 current += 1
                 provider, model = parse_provider_model(provider_model)
+                if model is None:
+                    model = DEFAULT_AUDIO_NATIVE_MODELS[provider]
                 run_name = get_run_name(domain, complexity, provider, model)
 
                 # Save path - use absolute path from exp_dir
@@ -389,7 +392,7 @@ def run_sweep(config: HyperparamConfig) -> int:
                 print(f"  Domain: {domain}")
                 print(f"  Speech complexity: {complexity}")
                 print(f"  Provider: {provider}")
-                print(f"  Model: {model or 'None (use provider default)'}")
+                print(f"  Model: {model}")
                 print(f"  Save to: {config.exp_dir / run_name}")
                 if config.resume_mode:
                     print("  Auto-resume: enabled")

@@ -109,7 +109,8 @@ DEFAULT_SPEECH_COMPLEXITY = "regular"  # Options: "control", "regular"
 
 # OpenAI Realtime API configuration
 # DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2026-01-12" (alpha release)
-DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-2025-08-28"
+DEFAULT_OPENAI_REALTIME_MODEL = "gpt-realtime-1.5"
+LEGACY_OPENAI_REALTIME_MODEL = "gpt-realtime-2025-08-28"
 DEFAULT_OPENAI_REALTIME_BASE_URL = "wss://api.openai.com/v1/realtime"
 DEFAULT_OPENAI_VOICE = "alloy"
 DEFAULT_OPENAI_NOISE_REDUCTION = (

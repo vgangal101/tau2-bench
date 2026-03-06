@@ -21,50 +21,18 @@ from experiments.tau_voice.exp.plot_style import (
     SPEECH_COMPLEXITY_COLORS,
     get_complexity_display_name,
     get_domain_task_counts,
+    get_model_sort_key,
+    get_provider_display,
+    get_provider_key,
+    get_short_llm_name,
 )
 
 # =============================================================================
 # Constants
 # =============================================================================
 
-# Provider display names and order
-PROVIDER_DISPLAY = {
-    "gemini": "Google",
-    "openai": "OpenAI",
-    "xai": "xAI",
-    "amazon": "Amazon",
-}
-PROVIDER_ORDER = ["Google", "OpenAI", "xAI", "Amazon"]
-
-# Text baseline model for comparison (set to None to use top overall model)
-# Using GPT-4.1 as the best non-reasoning text baseline
-TEXT_BASELINE_SUBMISSION_ID = "gpt-4-1_openai_2024-06-20"
-
-# Top reasoning text baseline model (GPT-5)
-REASONING_BASELINE_SUBMISSION_ID = "gpt-5_sierra_2025-08-09"
-
 # Task counts per domain - loaded from registry
 DOMAIN_TASK_COUNTS = get_domain_task_counts()
-
-
-def get_provider_key(llm: str) -> str:
-    """Map LLM name to provider key."""
-    llm_lower = llm.lower()
-    if "gpt" in llm_lower or "openai" in llm_lower:
-        return "openai"
-    elif "gemini" in llm_lower or "google" in llm_lower:
-        return "gemini"
-    elif "grok" in llm_lower or "xai" in llm_lower:
-        return "xai"
-    elif "nova" in llm_lower or "amazon" in llm_lower:
-        return "amazon"
-    else:
-        return llm.split(":")[-1][:10].lower()
-
-
-def get_provider_display(provider: str) -> str:
-    """Get display name for a provider."""
-    return PROVIDER_DISPLAY.get(provider.lower(), provider.capitalize())
 
 
 # =============================================================================
@@ -215,37 +183,27 @@ def _generate_voice_paper_outputs(analysis_dir: Path, paper_dir: Path) -> None:
 
 def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> None:
     """Generate LaTeX table: Pass^1 by domain, provider, control vs regular with delta."""
-    # Add provider column
+    # Aggregate per model (by llm, not by provider)
     df_metrics = df_metrics.copy()
-    df_metrics["provider_key"] = df_metrics["llm"].apply(get_provider_key)
-
-    # Aggregate by domain, provider_key, complexity
     agg_df = (
-        df_metrics.groupby(["domain", "provider_key", "speech_complexity"])[
-            "pass_hat_1"
-        ]
+        df_metrics.groupby(["domain", "llm", "speech_complexity"])["pass_hat_1"]
         .mean()
         .reset_index()
     )
 
-    # Get unique values
     domains = [d for d in DOMAINS if d in df_metrics["domain"].unique()]
 
-    # Build data by provider
+    # Build one row per model per domain
     rows = []
     for domain in domains:
         domain_data = agg_df[agg_df["domain"] == domain]
         n_tasks = DOMAIN_TASK_COUNTS.get(domain, "?")
 
-        for provider_key in domain_data["provider_key"].unique():
-            provider_data = domain_data[domain_data["provider_key"] == provider_key]
+        for llm in sorted(domain_data["llm"].unique(), key=get_model_sort_key):
+            llm_data = domain_data[domain_data["llm"] == llm]
 
-            control_rows = provider_data[
-                provider_data["speech_complexity"] == "control"
-            ]
-            regular_rows = provider_data[
-                provider_data["speech_complexity"] == "regular"
-            ]
+            control_rows = llm_data[llm_data["speech_complexity"] == "control"]
+            regular_rows = llm_data[llm_data["speech_complexity"] == "regular"]
 
             control_val = (
                 control_rows["pass_hat_1"].values[0] if len(control_rows) > 0 else None
@@ -257,30 +215,28 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
             if control_val is None and regular_val is None:
                 continue
 
+            model_name = get_short_llm_name(llm, max_len=25)
+
             rows.append(
                 {
                     "domain": domain,
                     "n_tasks": n_tasks,
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "provider": get_provider_display(get_provider_key(llm)),
+                    "model": model_name,
                     "control": control_val,
                     "regular": regular_val,
                 }
             )
 
-    # Build "All" aggregate rows (average across domains per provider)
+    # Build "All" aggregate rows (average across domains per model)
     all_rows = []
     total_tasks = sum(DOMAIN_TASK_COUNTS.get(d, 0) for d in domains)
-    providers_in_data = sorted(
-        set(r["provider_key"] for r in rows),
-        key=lambda p: PROVIDER_ORDER.index(get_provider_display(p))
-        if get_provider_display(p) in PROVIDER_ORDER
-        else 99,
-    )
-    for provider_key in providers_in_data:
-        provider_rows = [r for r in rows if r["provider_key"] == provider_key]
-        control_vals = [r["control"] for r in provider_rows if r["control"] is not None]
-        regular_vals = [r["regular"] for r in provider_rows if r["regular"] is not None]
+    llms_in_data = sorted(set(r["llm"] for r in rows), key=get_model_sort_key)
+    for llm in llms_in_data:
+        llm_rows = [r for r in rows if r["llm"] == llm]
+        control_vals = [r["control"] for r in llm_rows if r["control"] is not None]
+        regular_vals = [r["regular"] for r in llm_rows if r["regular"] is not None]
 
         control_avg = sum(control_vals) / len(control_vals) if control_vals else None
         regular_avg = sum(regular_vals) / len(regular_vals) if regular_vals else None
@@ -290,8 +246,9 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
                 {
                     "domain": "all",
                     "n_tasks": total_tasks,
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "provider": get_provider_display(get_provider_key(llm)),
+                    "model": get_short_llm_name(llm, max_len=25),
                     "control": control_avg,
                     "regular": regular_avg,
                 }
@@ -301,45 +258,35 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
     lines = []
     lines.append(r"\begin{table}[h]")
     lines.append(
-        r"\caption{Task completion (pass@1) by provider, domain, and condition. \textbf{Bold} indicates best per domain/condition.}"
+        r"\caption{Task completion (pass@1) by model, domain, and condition. \textbf{Bold} indicates best per domain/condition.}"
     )
     lines.append(r"\label{tab:main-results}")
     lines.append(r"\centering")
     lines.append(r"\begin{small}")
-    lines.append(r"\begin{tabular}{llccc}")
+    lines.append(r"\begin{tabular}{llcccc}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \textbf{Control} & \textbf{Realistic} & \textbf{$\Delta$} \\"
+        r"\textbf{Domain} & \textbf{Model} & \textbf{Control} & \textbf{Realistic} & \textbf{$\Delta$} & \textbf{$\Delta_{\%}$} \\"
     )
     lines.append(r"\midrule")
 
-    # Helper function to format values
     def fmt_val(val, is_best):
         if val is None:
             return "--"
         pct = f"{int(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if is_best else pct
 
-    # Add "All" rows first
-    if all_rows:
-        all_rows_sorted = sorted(
-            all_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
-        )
-        control_vals = [
-            r["control"] for r in all_rows_sorted if r["control"] is not None
-        ]
-        regular_vals = [
-            r["regular"] for r in all_rows_sorted if r["regular"] is not None
-        ]
+    def _render_group(group_rows, domain_label_text):
+        control_vals = [r["control"] for r in group_rows if r["control"] is not None]
+        regular_vals = [r["regular"] for r in group_rows if r["regular"] is not None]
         best_control = max(control_vals) if control_vals else None
         best_regular = max(regular_vals) if regular_vals else None
 
-        for i, row in enumerate(all_rows_sorted):
+        for i, row in enumerate(group_rows):
             if i == 0:
-                domain_label = rf"\multirow{{{len(all_rows_sorted)}}}{{*}}{{All ({row['n_tasks']})}}"
+                domain_label = (
+                    rf"\multirow{{{len(group_rows)}}}{{*}}{{{domain_label_text}}}"
+                )
             else:
                 domain_label = ""
 
@@ -355,55 +302,36 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
             if row["control"] is not None and row["regular"] is not None:
                 delta = int((row["regular"] - row["control"]) * 100)
                 delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
+                if row["control"] != 0:
+                    delta_rel = (row["regular"] - row["control"]) / row["control"] * 100
+                    delta_rel_str = (
+                        f"+{delta_rel:.1f}\\%"
+                        if delta_rel >= 0
+                        else f"$-${abs(delta_rel):.1f}\\%"
+                    )
+                else:
+                    delta_rel_str = "--"
             else:
                 delta_str = "--"
+                delta_rel_str = "--"
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {control_str} & {regular_str} & {delta_str} \\\\"
+                f"{domain_label} & {row['model']} & {control_str} & {regular_str} & {delta_str} & {delta_rel_str} \\\\"
             )
 
+    # Add "All" rows first
+    if all_rows:
+        _render_group(all_rows, f"All ({total_tasks})")
         lines.append(r"\midrule")
 
     # Add domain-specific rows
     for domain in domains:
-        domain_rows = [r for r in rows if r["domain"] == domain]
         domain_rows = sorted(
-            domain_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
+            [r for r in rows if r["domain"] == domain],
+            key=lambda r: get_model_sort_key(r["llm"]),
         )
         n_tasks = domain_rows[0]["n_tasks"] if domain_rows else "?"
-
-        control_vals = [r["control"] for r in domain_rows if r["control"] is not None]
-        regular_vals = [r["regular"] for r in domain_rows if r["regular"] is not None]
-        best_control = max(control_vals) if control_vals else None
-        best_regular = max(regular_vals) if regular_vals else None
-
-        for i, row in enumerate(domain_rows):
-            if i == 0:
-                domain_label = rf"\multirow{{{len(domain_rows)}}}{{*}}{{{domain.capitalize()} ({n_tasks})}}"
-            else:
-                domain_label = ""
-
-            control_str = fmt_val(
-                row["control"],
-                row["control"] == best_control and row["control"] is not None,
-            )
-            regular_str = fmt_val(
-                row["regular"],
-                row["regular"] == best_regular and row["regular"] is not None,
-            )
-
-            if row["control"] is not None and row["regular"] is not None:
-                delta = int((row["regular"] - row["control"]) * 100)
-                delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
-            else:
-                delta_str = "--"
-
-            lines.append(
-                f"{domain_label} & {row['provider']} & {control_str} & {regular_str} & {delta_str} \\\\"
-            )
+        _render_group(domain_rows, f"{domain.capitalize()} ({n_tasks})")
 
         if domain != domains[-1]:
             lines.append(r"\midrule")
@@ -418,42 +346,171 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
         f.write("\n".join(lines))
     logger.info(f"Saved: {tex_path}")
 
-    # Also save as CSV (include "All" rows first, then domain rows)
+    # Also save as CSV
     csv_rows = []
-    # Add "All" rows first
-    for row in all_rows:
+    for row in all_rows + rows:
         delta = None
+        delta_rel = None
         if row["control"] is not None and row["regular"] is not None:
             delta = row["regular"] - row["control"]
+            if row["control"] != 0:
+                delta_rel = (row["regular"] - row["control"]) / row["control"]
         csv_rows.append(
             {
-                "domain": "All",
+                "domain": "All" if row["domain"] == "all" else row["domain"],
                 "n_tasks": row["n_tasks"],
                 "provider": row["provider"],
+                "model": row["model"],
                 "control": row["control"],
                 "regular": row["regular"],
                 "delta": delta,
-            }
-        )
-    # Add domain-specific rows
-    for row in rows:
-        delta = None
-        if row["control"] is not None and row["regular"] is not None:
-            delta = row["regular"] - row["control"]
-        csv_rows.append(
-            {
-                "domain": row["domain"],
-                "n_tasks": row["n_tasks"],
-                "provider": row["provider"],
-                "control": row["control"],
-                "regular": row["regular"],
-                "delta": delta,
+                "delta_relative": delta_rel,
             }
         )
     df_csv = pd.DataFrame(csv_rows)
     csv_path = output_dir / "main_results_table.csv"
     df_csv.to_csv(csv_path, index=False)
     logger.info(f"Saved: {csv_path}")
+
+
+def _render_ablation_table(
+    llms: list,
+    model_names: list,
+    data: dict,
+    complexities: list,
+    complexity_labels: dict,
+    caption: str,
+    label: str,
+) -> tuple:
+    """Shared renderer for ablation tables (full and single-factor).
+
+    Returns (lines, csv_rows) where lines is a list of LaTeX strings
+    and csv_rows is a list of dicts for CSV output.
+    """
+    lines = []
+    lines.append(r"\begin{table}[h]")
+    lines.append(rf"\caption{{{caption}}}")
+    lines.append(rf"\label{{{label}}}")
+    lines.append(r"\centering")
+    lines.append(r"\begin{small}")
+
+    header_cols = " & ".join([rf"\textbf{{{m}}}" for m in model_names])
+    lines.append(r"\resizebox{\columnwidth}{!}{%")
+    lines.append(r"\begin{tabular}{l" + "c" * len(llms) + "|c}")
+    lines.append(r"\toprule")
+    lines.append(rf"\textbf{{Condition}} & {header_cols} & \textbf{{All}} \\")
+    lines.append(r"\midrule")
+
+    csv_rows = []
+    for complexity in complexities:
+        lbl = complexity_labels.get(complexity, complexity)
+
+        row_values = []
+        for llm in llms:
+            val = data[llm].get(complexity)
+            control_val = data[llm].get("control")
+            row_values.append((llm, val, control_val))
+
+        model_vals = [v for _, v, _ in row_values if v is not None]
+        if model_vals:
+            avg_val = sum(model_vals) / len(model_vals)
+            control_vals_list = [
+                data[llm].get("control")
+                for llm in llms
+                if data[llm].get("control") is not None
+            ]
+            avg_control = (
+                sum(control_vals_list) / len(control_vals_list)
+                if control_vals_list
+                else None
+            )
+            row_values.append(("All", avg_val, avg_control))
+        else:
+            row_values.append(("All", None, None))
+
+        valid_vals = [v for _, v, _ in row_values if v is not None]
+        best_val = max(valid_vals) if valid_vals else None
+
+        vals = []
+        for name, val, control_val in row_values:
+            if val is not None:
+                pct = int(val * 100)
+                is_best = val == best_val
+
+                if complexity == "control":
+                    cell = f"{pct}\\%"
+                elif control_val is not None:
+                    delta = int((val - control_val) * 100)
+                    delta_str = f"+{delta}" if delta >= 0 else str(delta)
+                    if control_val != 0:
+                        delta_rel = (val - control_val) / control_val * 100
+                        delta_rel_str = (
+                            f"+{delta_rel:.1f}\\%"
+                            if delta_rel >= 0
+                            else f"{delta_rel:.1f}\\%"
+                        )
+                        cell = f"{pct}\\% ({delta_str}, {delta_rel_str})"
+                    else:
+                        cell = f"{pct}\\% ({delta_str})"
+                else:
+                    cell = f"{pct}\\%"
+
+                if is_best:
+                    vals.append(rf"\textbf{{{cell}}}")
+                else:
+                    vals.append(cell)
+            else:
+                vals.append("--")
+
+        vals_str = " & ".join(vals)
+        lines.append(f"{lbl} & {vals_str} \\\\")
+
+        # CSV row
+        row_data = {"condition": complexity}
+        control_vals_for_avg = []
+        model_vals_for_avg = []
+        for llm, mname in zip(llms, model_names):
+            val = data[llm].get(complexity)
+            control_val = data[llm].get("control")
+            row_data[f"{mname}_value"] = val
+            if val is not None:
+                model_vals_for_avg.append(val)
+            if complexity != "control" and control_val is not None and val is not None:
+                row_data[f"{mname}_delta"] = val - control_val
+                row_data[f"{mname}_delta_rel"] = (
+                    (val - control_val) / control_val if control_val != 0 else None
+                )
+            else:
+                row_data[f"{mname}_delta"] = None
+                row_data[f"{mname}_delta_rel"] = None
+            if control_val is not None:
+                control_vals_for_avg.append(control_val)
+
+        if model_vals_for_avg:
+            avg_val = sum(model_vals_for_avg) / len(model_vals_for_avg)
+            row_data["all_value"] = avg_val
+            if complexity != "control" and control_vals_for_avg:
+                avg_control = sum(control_vals_for_avg) / len(control_vals_for_avg)
+                row_data["all_delta"] = avg_val - avg_control
+                row_data["all_delta_rel"] = (
+                    (avg_val - avg_control) / avg_control if avg_control != 0 else None
+                )
+            else:
+                row_data["all_delta"] = None
+                row_data["all_delta_rel"] = None
+        else:
+            row_data["all_value"] = None
+            row_data["all_delta"] = None
+            row_data["all_delta_rel"] = None
+        csv_rows.append(row_data)
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}%")
+    lines.append(r"}")
+    lines.append(r"\end{small}")
+    lines.append(r"\end{table}")
+
+    return lines, csv_rows
 
 
 def _generate_ablation_table(output_dir: Path, df_metrics: pd.DataFrame) -> None:
@@ -466,168 +523,56 @@ def _generate_ablation_table(output_dir: Path, df_metrics: pd.DataFrame) -> None
     realtime_llms = [
         llm
         for llm in all_llms
-        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok"])
+        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok", "xai"])
     ]
 
     if not realtime_llms:
         logger.warning("No realtime LLMs found for ablation table.")
         return
 
-    # Complexity display names (matching conditions_ablation_table terminology)
     complexity_labels = {
         "control": "Clean",
-        # Single-feature ablations
         "control_audio": "+ Noise",
         "control_accents": "+ Accents",
         "control_behavior": "+ Interrupts",
-        # Pairwise ablations
         "control_audio_accents": "+ Noise + Accents",
         "control_audio_behavior": "+ Noise + Interrupts",
         "control_accents_behavior": "+ Accents + Interrupts",
-        # Realistic
         "regular": "Realistic",
     }
 
     tested_complexities = retail_data["speech_complexity"].unique()
     complexities = [c for c in SPEECH_COMPLEXITIES if c in tested_complexities]
 
-    # Build data matrix
+    realtime_llms = sorted(realtime_llms, key=get_model_sort_key)
+
+    # Build data matrix keyed by llm
     data = {}
     for llm in realtime_llms:
-        provider = get_provider_display(get_provider_key(llm))
-        data[provider] = {}
+        data[llm] = {}
         llm_data = retail_data[retail_data["llm"] == llm]
         for complexity in complexities:
             c_data = llm_data[llm_data["speech_complexity"] == complexity]
-            data[provider][complexity] = (
+            data[llm][complexity] = (
                 c_data["pass_hat_1"].mean() if len(c_data) > 0 else None
             )
 
-    providers = sorted(
-        data.keys(),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+    model_names = [get_short_llm_name(llm, max_len=20) for llm in realtime_llms]
+
+    lines, csv_rows = _render_ablation_table(
+        realtime_llms,
+        model_names,
+        data,
+        complexities,
+        complexity_labels,
+        caption=r"Ablation: impact of acoustic factors on pass@1 (Retail domain).",
+        label="tab:ablation",
     )
-
-    # Generate LaTeX
-    lines = []
-    lines.append(r"\begin{table}[h]")
-    lines.append(
-        r"\caption{Ablation: impact of acoustic factors on pass@1 (Retail domain).}"
-    )
-    lines.append(r"\label{tab:ablation}")
-    lines.append(r"\centering")
-    lines.append(r"\begin{small}")
-
-    header_cols = " & ".join([rf"\textbf{{{p}}}" for p in providers])
-    lines.append(r"\resizebox{\columnwidth}{!}{%")
-    lines.append(r"\begin{tabular}{l" + "c" * len(providers) + "|c}")
-    lines.append(r"\toprule")
-    lines.append(rf"\textbf{{Condition}} & {header_cols} & \textbf{{All}} \\")
-    lines.append(r"\midrule")
-
-    for complexity in complexities:
-        label = complexity_labels.get(complexity, complexity)
-
-        # First pass: collect all raw values to find the best
-        row_values = []  # (provider_or_all, raw_val, control_val)
-        for provider in providers:
-            val = data[provider].get(complexity)
-            control_val = data[provider].get("control")
-            row_values.append((provider, val, control_val))
-
-        # Calculate "All" column value
-        provider_vals = [v for _, v, _ in row_values if v is not None]
-        if provider_vals:
-            avg_val = sum(provider_vals) / len(provider_vals)
-            control_vals_list = [
-                data[p].get("control")
-                for p in providers
-                if data[p].get("control") is not None
-            ]
-            avg_control = (
-                sum(control_vals_list) / len(control_vals_list)
-                if control_vals_list
-                else None
-            )
-            row_values.append(("All", avg_val, avg_control))
-        else:
-            row_values.append(("All", None, None))
-
-        # Find best value in row (highest is best for pass^1)
-        valid_vals = [v for _, v, _ in row_values if v is not None]
-        best_val = max(valid_vals) if valid_vals else None
-
-        # Second pass: format cells with bolding for best
-        vals = []
-        for name, val, control_val in row_values:
-            if val is not None:
-                pct = int(val * 100)
-                is_best = val == best_val
-
-                if complexity == "control":
-                    cell = f"{pct}\\%"
-                elif control_val is not None:
-                    delta = int((val - control_val) * 100)
-                    delta_str = f"+{delta}" if delta >= 0 else str(delta)
-                    cell = f"{pct}\\% ({delta_str})"
-                else:
-                    cell = f"{pct}\\%"
-
-                if is_best:
-                    vals.append(rf"\textbf{{{cell}}}")
-                else:
-                    vals.append(cell)
-            else:
-                vals.append("--")
-
-        vals_str = " & ".join(vals)
-        lines.append(f"{label} & {vals_str} \\\\")
-
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}%")
-    lines.append(r"}")
-    lines.append(r"\end{small}")
-    lines.append(r"\end{table}")
 
     tex_path = output_dir / "ablation_table.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
     logger.info(f"Saved: {tex_path}")
-
-    # Also save as CSV
-    csv_rows = []
-    for complexity in complexities:
-        row_data = {"condition": complexity}
-        control_vals_for_avg = []
-        provider_vals_for_avg = []
-
-        for provider in providers:
-            val = data[provider].get(complexity)
-            control_val = data[provider].get("control")
-            row_data[f"{provider}_value"] = val
-            if val is not None:
-                provider_vals_for_avg.append(val)
-            if complexity != "control" and control_val is not None and val is not None:
-                row_data[f"{provider}_delta"] = val - control_val
-            else:
-                row_data[f"{provider}_delta"] = None
-            if control_val is not None:
-                control_vals_for_avg.append(control_val)
-
-        # "All" column
-        if provider_vals_for_avg:
-            avg_val = sum(provider_vals_for_avg) / len(provider_vals_for_avg)
-            row_data["all_value"] = avg_val
-            if complexity != "control" and control_vals_for_avg:
-                avg_control = sum(control_vals_for_avg) / len(control_vals_for_avg)
-                row_data["all_delta"] = avg_val - avg_control
-            else:
-                row_data["all_delta"] = None
-        else:
-            row_data["all_value"] = None
-            row_data["all_delta"] = None
-
-        csv_rows.append(row_data)
 
     df_csv = pd.DataFrame(csv_rows)
     csv_path = output_dir / "ablation_table.csv"
@@ -645,14 +590,13 @@ def _generate_ablation_table_single(output_dir: Path, df_metrics: pd.DataFrame) 
     realtime_llms = [
         llm
         for llm in all_llms
-        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok"])
+        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok", "xai"])
     ]
 
     if not realtime_llms:
         logger.warning("No realtime LLMs found for single ablation table.")
         return
 
-    # Only single-feature ablations (no pairwise)
     single_complexities = [
         "control",
         "control_audio",
@@ -672,143 +616,35 @@ def _generate_ablation_table_single(output_dir: Path, df_metrics: pd.DataFrame) 
     tested_complexities = retail_data["speech_complexity"].unique()
     complexities = [c for c in single_complexities if c in tested_complexities]
 
-    # Build data matrix
+    realtime_llms = sorted(realtime_llms, key=get_model_sort_key)
+
+    # Build data matrix keyed by llm
     data = {}
     for llm in realtime_llms:
-        provider = get_provider_display(get_provider_key(llm))
-        data[provider] = {}
+        data[llm] = {}
         llm_data = retail_data[retail_data["llm"] == llm]
         for complexity in complexities:
             c_data = llm_data[llm_data["speech_complexity"] == complexity]
-            data[provider][complexity] = (
+            data[llm][complexity] = (
                 c_data["pass_hat_1"].mean() if len(c_data) > 0 else None
             )
 
-    providers = sorted(
-        data.keys(),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+    model_names = [get_short_llm_name(llm, max_len=20) for llm in realtime_llms]
+
+    lines, csv_rows = _render_ablation_table(
+        realtime_llms,
+        model_names,
+        data,
+        complexities,
+        complexity_labels,
+        caption=r"Ablation: impact of individual acoustic factors on pass@1 (Retail domain).",
+        label="tab:ablation-single",
     )
-
-    # Generate LaTeX
-    lines = []
-    lines.append(r"\begin{table}[h]")
-    lines.append(
-        r"\caption{Ablation: impact of individual acoustic factors on pass@1 (Retail domain).}"
-    )
-    lines.append(r"\label{tab:ablation-single}")
-    lines.append(r"\centering")
-    lines.append(r"\begin{small}")
-
-    header_cols = " & ".join([rf"\textbf{{{p}}}" for p in providers])
-    lines.append(r"\resizebox{\columnwidth}{!}{%")
-    lines.append(r"\begin{tabular}{l" + "c" * len(providers) + "|c}")
-    lines.append(r"\toprule")
-    lines.append(rf"\textbf{{Condition}} & {header_cols} & \textbf{{All}} \\")
-    lines.append(r"\midrule")
-
-    for complexity in complexities:
-        label = complexity_labels.get(complexity, complexity)
-
-        # First pass: collect all raw values to find the best
-        row_values = []  # (provider_or_all, raw_val, control_val)
-        for provider in providers:
-            val = data[provider].get(complexity)
-            control_val = data[provider].get("control")
-            row_values.append((provider, val, control_val))
-
-        # Calculate "All" column value
-        provider_vals = [v for _, v, _ in row_values if v is not None]
-        if provider_vals:
-            avg_val = sum(provider_vals) / len(provider_vals)
-            control_vals_list = [
-                data[p].get("control")
-                for p in providers
-                if data[p].get("control") is not None
-            ]
-            avg_control = (
-                sum(control_vals_list) / len(control_vals_list)
-                if control_vals_list
-                else None
-            )
-            row_values.append(("All", avg_val, avg_control))
-        else:
-            row_values.append(("All", None, None))
-
-        # Find best value in row (highest is best for pass^1)
-        valid_vals = [v for _, v, _ in row_values if v is not None]
-        best_val = max(valid_vals) if valid_vals else None
-
-        # Second pass: format cells with bolding for best
-        vals = []
-        for name, val, control_val in row_values:
-            if val is not None:
-                pct = int(val * 100)
-                is_best = val == best_val
-
-                if complexity == "control":
-                    cell = f"{pct}\\%"
-                elif control_val is not None:
-                    delta = int((val - control_val) * 100)
-                    delta_str = f"+{delta}" if delta >= 0 else str(delta)
-                    cell = f"{pct}\\% ({delta_str})"
-                else:
-                    cell = f"{pct}\\%"
-
-                if is_best:
-                    vals.append(rf"\textbf{{{cell}}}")
-                else:
-                    vals.append(cell)
-            else:
-                vals.append("--")
-
-        vals_str = " & ".join(vals)
-        lines.append(f"{label} & {vals_str} \\\\")
-
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}%")
-    lines.append(r"}")
-    lines.append(r"\end{small}")
-    lines.append(r"\end{table}")
 
     tex_path = output_dir / "ablation_table_single.tex"
     with open(tex_path, "w") as f:
         f.write("\n".join(lines))
     logger.info(f"Saved: {tex_path}")
-
-    # Also save as CSV
-    csv_rows = []
-    for complexity in complexities:
-        row_data = {"condition": complexity}
-        control_vals_for_avg = []
-        provider_vals_for_avg = []
-
-        for provider in providers:
-            val = data[provider].get(complexity)
-            control_val = data[provider].get("control")
-            row_data[f"{provider}_value"] = val
-            if val is not None:
-                provider_vals_for_avg.append(val)
-            if complexity != "control" and control_val is not None and val is not None:
-                row_data[f"{provider}_delta"] = val - control_val
-            else:
-                row_data[f"{provider}_delta"] = None
-            if control_val is not None:
-                control_vals_for_avg.append(control_val)
-
-        # "All" column
-        if provider_vals_for_avg:
-            avg_val = sum(provider_vals_for_avg) / len(provider_vals_for_avg)
-            row_data["all_value"] = avg_val
-            if complexity != "control" and control_vals_for_avg:
-                avg_control = sum(control_vals_for_avg) / len(control_vals_for_avg)
-                row_data["all_delta"] = avg_val - avg_control
-            else:
-                row_data["all_delta"] = None
-        else:
-            row_data["all_value"] = None
-            row_data["all_delta"] = None
-
-        csv_rows.append(row_data)
 
     df_csv = pd.DataFrame(csv_rows)
     csv_path = output_dir / "ablation_table_single.csv"
@@ -1201,9 +1037,7 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
     Shows voice results (regular condition) alongside text-based results
     to highlight the gap between text and voice modalities.
     """
-    # Add provider column
     df_metrics = df_metrics.copy()
-    df_metrics["provider_key"] = df_metrics["llm"].apply(get_provider_key)
 
     # Filter to regular complexity (the main voice condition)
     regular_data = df_metrics[df_metrics["speech_complexity"] == "regular"]
@@ -1214,67 +1048,27 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
     # Get unique values
     domains = [d for d in DOMAINS if d in df_metrics["domain"].unique()]
 
-    # Load text baseline from leaderboard
-    text_scores = {}
-    text_model_name = None
-    try:
-        from tau2.scripts.leaderboard.leaderboard import Leaderboard
+    # Load text baseline (hardcoded reference scores)
+    from experiments.tau_voice.exp.text_baselines import TEXT_SOTA
 
-        lb = Leaderboard.load()
-        # Use specific text baseline model if configured, otherwise use top overall
-        if TEXT_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(TEXT_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_model_name = submission.model_name
-                # Calculate overall score as average across domains
-                domain_scores = []
-                for domain in domains:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_scores[domain] = domain_results.pass_1 / 100.0
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_scores["all"] = sum(domain_scores) / len(domain_scores)
-        else:
-            top_entries = lb.get_top_models_overall(metric="pass_1", limit=1)
-            if top_entries:
-                entry = top_entries[0]
-                text_model_name = entry.submission.model_name
-                text_scores["all"] = entry.score / 100.0
-                for domain in domains:
-                    domain_results = entry.submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_scores[domain] = domain_results.pass_1 / 100.0
-        if text_model_name:
-            logger.info(f"Text baseline for voice vs text table: {text_model_name}")
-    except Exception as e:
-        logger.warning(f"Could not load leaderboard baselines: {e}")
-        return
+    text_model_name = TEXT_SOTA.model_name
+    text_scores = TEXT_SOTA.get_scores_dict(domains, capitalize=False)
+    logger.info(f"Text baseline for voice vs text table: {text_model_name}")
 
-    if not text_scores:
-        logger.warning("No text baseline available for voice vs text table.")
-        return
+    # Aggregate voice data by domain and llm
+    agg_df = regular_data.groupby(["domain", "llm"])["pass_hat_1"].mean().reset_index()
 
-    # Aggregate voice data by domain and provider
-    agg_df = (
-        regular_data.groupby(["domain", "provider_key"])["pass_hat_1"]
-        .mean()
-        .reset_index()
-    )
-
-    # Build rows by provider
+    # Build rows by model
     rows = []
     for domain in domains:
         domain_data = agg_df[agg_df["domain"] == domain]
         n_tasks = DOMAIN_TASK_COUNTS.get(domain, "?")
         text_val = text_scores.get(domain)
 
-        for provider_key in domain_data["provider_key"].unique():
-            provider_data = domain_data[domain_data["provider_key"] == provider_key]
+        for llm in domain_data["llm"].unique():
+            model_data = domain_data[domain_data["llm"] == llm]
             voice_val = (
-                provider_data["pass_hat_1"].values[0]
-                if len(provider_data) > 0
-                else None
+                model_data["pass_hat_1"].values[0] if len(model_data) > 0 else None
             )
 
             if voice_val is None:
@@ -1284,27 +1078,26 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
                 {
                     "domain": domain,
                     "n_tasks": n_tasks,
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "model": get_short_llm_name(llm),
+                    "provider": get_provider_display(get_provider_key(llm)),
                     "text": text_val,
                     "voice": voice_val,
                 }
             )
 
-    # Build "All" aggregate rows (average across domains per provider)
+    # Build "All" aggregate rows (average across domains per model)
     all_rows = []
     total_tasks = sum(DOMAIN_TASK_COUNTS.get(d, 0) for d in domains)
     text_all = text_scores.get("all")
 
-    providers_in_data = sorted(
-        set(r["provider_key"] for r in rows),
-        key=lambda p: PROVIDER_ORDER.index(get_provider_display(p))
-        if get_provider_display(p) in PROVIDER_ORDER
-        else 99,
+    models_in_data = sorted(
+        set(r["llm"] for r in rows),
+        key=lambda m: get_model_sort_key(m),
     )
-    for provider_key in providers_in_data:
-        provider_rows = [r for r in rows if r["provider_key"] == provider_key]
-        voice_vals = [r["voice"] for r in provider_rows if r["voice"] is not None]
+    for llm in models_in_data:
+        model_rows = [r for r in rows if r["llm"] == llm]
+        voice_vals = [r["voice"] for r in model_rows if r["voice"] is not None]
         voice_avg = sum(voice_vals) / len(voice_vals) if voice_vals else None
 
         if voice_avg is not None:
@@ -1312,8 +1105,9 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
                 {
                     "domain": "all",
                     "n_tasks": total_tasks,
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "model": get_short_llm_name(llm),
+                    "provider": get_provider_display(get_provider_key(llm)),
                     "text": text_all,
                     "voice": voice_avg,
                 }
@@ -1328,10 +1122,10 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
     lines.append(r"\label{tab:voice-vs-text}")
     lines.append(r"\centering")
     lines.append(r"\begin{small}")
-    lines.append(r"\begin{tabular}{@{}llccc@{}}")
+    lines.append(r"\begin{tabular}{@{}llcccc@{}}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \textbf{Text} & \textbf{Voice} & \textbf{$\Delta$} \\"
+        r"\textbf{Domain} & \textbf{Model} & \textbf{Text} & \textbf{Voice} & \textbf{$\Delta$} & \textbf{$\Delta_{\%}$} \\"
     )
     lines.append(r"\midrule")
 
@@ -1344,42 +1138,46 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
 
     def fmt_delta(text_val, voice_val):
         if text_val is None or voice_val is None:
-            return "--"
+            return "--", "--"
         delta = int((voice_val - text_val) * 100)
-        if delta >= 0:
-            return f"+{delta}\\%"
+        delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
+        if text_val != 0:
+            delta_rel = (voice_val - text_val) / text_val * 100
+            delta_rel_str = (
+                f"+{delta_rel:.1f}\\%"
+                if delta_rel >= 0
+                else f"$-${abs(delta_rel):.1f}\\%"
+            )
         else:
-            return f"$-${abs(delta)}\\%"
+            delta_rel_str = "--"
+        return delta_str, delta_rel_str
 
     # Add "All" rows first
     if all_rows:
         all_rows_sorted = sorted(
             all_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
+            key=lambda r: get_model_sort_key(r["llm"]),
         )
         voice_vals = [r["voice"] for r in all_rows_sorted if r["voice"] is not None]
         best_voice = max(voice_vals) if voice_vals else None
-        n_providers = len(all_rows_sorted)
+        n_models = len(all_rows_sorted)
 
         for i, row in enumerate(all_rows_sorted):
             if i == 0:
-                domain_label = rf"\multirow{{{n_providers}}}{{*}}{{All}}"
-                # Text value is the same for all providers, so use multirow
-                text_str = rf"\multirow{{{n_providers}}}{{*}}{{{fmt_val(row['text'])}}}"
+                domain_label = rf"\multirow{{{n_models}}}{{*}}{{All}}"
+                text_str = rf"\multirow{{{n_models}}}{{*}}{{{fmt_val(row['text'])}}}"
             else:
                 domain_label = ""
-                text_str = ""  # Empty for subsequent rows
+                text_str = ""
 
             voice_str = fmt_val(
                 row["voice"],
                 row["voice"] == best_voice and row["voice"] is not None,
             )
-            delta_str = fmt_delta(row["text"], row["voice"])
+            delta_str, delta_rel_str = fmt_delta(row["text"], row["voice"])
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {text_str} & {voice_str} & {delta_str} \\\\"
+                f"{domain_label} & {row['model']} & {text_str} & {voice_str} & {delta_str} & {delta_rel_str} \\\\"
             )
 
         lines.append(r"\midrule")
@@ -1389,34 +1187,29 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
         domain_rows = [r for r in rows if r["domain"] == domain]
         domain_rows = sorted(
             domain_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
+            key=lambda r: get_model_sort_key(r["llm"]),
         )
-        n_providers = len(domain_rows)
+        n_models = len(domain_rows)
 
         voice_vals = [r["voice"] for r in domain_rows if r["voice"] is not None]
         best_voice = max(voice_vals) if voice_vals else None
 
         for i, row in enumerate(domain_rows):
             if i == 0:
-                domain_label = (
-                    rf"\multirow{{{n_providers}}}{{*}}{{{domain.capitalize()}}}"
-                )
-                # Text value is the same for all providers, so use multirow
-                text_str = rf"\multirow{{{n_providers}}}{{*}}{{{fmt_val(row['text'])}}}"
+                domain_label = rf"\multirow{{{n_models}}}{{*}}{{{domain.capitalize()}}}"
+                text_str = rf"\multirow{{{n_models}}}{{*}}{{{fmt_val(row['text'])}}}"
             else:
                 domain_label = ""
-                text_str = ""  # Empty for subsequent rows
+                text_str = ""
 
             voice_str = fmt_val(
                 row["voice"],
                 row["voice"] == best_voice and row["voice"] is not None,
             )
-            delta_str = fmt_delta(row["text"], row["voice"])
+            delta_str, delta_rel_str = fmt_delta(row["text"], row["voice"])
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {text_str} & {voice_str} & {delta_str} \\\\"
+                f"{domain_label} & {row['model']} & {text_str} & {voice_str} & {delta_str} & {delta_rel_str} \\\\"
             )
 
         if domain != domains[-1]:
@@ -1434,34 +1227,23 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
 
     # Also save as CSV
     csv_rows = []
-    # Add "All" rows first
-    for row in all_rows:
+    for row in all_rows + rows:
         delta = None
+        delta_rel = None
         if row["text"] is not None and row["voice"] is not None:
             delta = row["voice"] - row["text"]
+            if row["text"] != 0:
+                delta_rel = (row["voice"] - row["text"]) / row["text"]
         csv_rows.append(
             {
-                "domain": "All",
+                "domain": "All" if row["domain"] == "all" else row["domain"],
                 "n_tasks": row["n_tasks"],
                 "provider": row["provider"],
+                "model": row["model"],
                 "text_sota": row["text"],
                 "voice": row["voice"],
                 "delta": delta,
-            }
-        )
-    # Add domain-specific rows
-    for row in rows:
-        delta = None
-        if row["text"] is not None and row["voice"] is not None:
-            delta = row["voice"] - row["text"]
-        csv_rows.append(
-            {
-                "domain": row["domain"],
-                "n_tasks": row["n_tasks"],
-                "provider": row["provider"],
-                "text_sota": row["text"],
-                "voice": row["voice"],
-                "delta": delta,
+                "delta_relative": delta_rel,
             }
         )
     df_csv = pd.DataFrame(csv_rows)
@@ -1478,91 +1260,46 @@ def _generate_combined_comparison_table(
     Format: Text (GPT-5, reasoning) | Text (GPT-4.1) | Clean x% (-y) | Realistic x% (-y)
     where (-y) is the difference from the non-thinking text baseline.
     """
-    # Add provider column
     df_metrics = df_metrics.copy()
-    df_metrics["provider_key"] = df_metrics["llm"].apply(get_provider_key)
 
     # Get unique values
     domains = [d for d in DOMAINS if d in df_metrics["domain"].unique()]
 
-    # Load BOTH text baselines from leaderboard
-    text_sota_scores = {}  # Reasoning model (GPT-5)
-    text_sota_name = None
-    text_nonthinking_scores = {}  # Non-reasoning model (GPT-4.1)
-    text_nonthinking_name = None
+    # Load both text baselines (hardcoded reference scores)
+    from experiments.tau_voice.exp.text_baselines import (
+        TEXT_SOTA,
+        TEXT_SOTA_NONTHINKING,
+    )
 
-    try:
-        from tau2.scripts.leaderboard.leaderboard import Leaderboard
+    text_sota_name = TEXT_SOTA.model_name
+    text_sota_scores = TEXT_SOTA.get_scores_dict(domains, capitalize=False)
+    logger.info(f"Text reasoning for combined table: {text_sota_name}")
 
-        lb = Leaderboard.load()
+    text_nonthinking_name = TEXT_SOTA_NONTHINKING.model_name
+    text_nonthinking_scores = TEXT_SOTA_NONTHINKING.get_scores_dict(
+        domains, capitalize=False
+    )
+    logger.info(f"Text non-thinking for combined table: {text_nonthinking_name}")
 
-        # 1. Load reasoning model (GPT-5)
-        if REASONING_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(REASONING_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_sota_name = submission.model_name
-                domain_scores = []
-                for domain in domains:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_sota_scores[domain] = domain_results.pass_1 / 100.0
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_sota_scores["all"] = sum(domain_scores) / len(domain_scores)
-                logger.info(f"Text reasoning for combined table: {text_sota_name}")
-
-        # 2. Load non-reasoning model (GPT-4.1)
-        if TEXT_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(TEXT_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_nonthinking_name = submission.model_name
-                domain_scores = []
-                for domain in domains:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_nonthinking_scores[domain] = domain_results.pass_1 / 100.0
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_nonthinking_scores["all"] = sum(domain_scores) / len(
-                        domain_scores
-                    )
-                logger.info(
-                    f"Text non-thinking for combined table: {text_nonthinking_name}"
-                )
-
-    except Exception as e:
-        logger.warning(f"Could not load leaderboard baselines: {e}")
-        return
-
-    if not text_sota_scores and not text_nonthinking_scores:
-        logger.warning("No text baseline available for combined comparison table.")
-        return
-
-    # Aggregate voice data by domain, provider, and complexity
+    # Aggregate voice data by domain, llm, and complexity
     agg_df = (
-        df_metrics.groupby(["domain", "provider_key", "speech_complexity"])[
-            "pass_hat_1"
-        ]
+        df_metrics.groupby(["domain", "llm", "speech_complexity"])["pass_hat_1"]
         .mean()
         .reset_index()
     )
 
-    # Build rows by provider
+    # Build rows by model (llm)
     rows = []
     for domain in domains:
         domain_data = agg_df[agg_df["domain"] == domain]
         text_sota_val = text_sota_scores.get(domain)
         text_nonthinking_val = text_nonthinking_scores.get(domain)
 
-        for provider_key in domain_data["provider_key"].unique():
-            provider_data = domain_data[domain_data["provider_key"] == provider_key]
+        for llm in domain_data["llm"].unique():
+            llm_data = domain_data[domain_data["llm"] == llm]
 
-            control_rows = provider_data[
-                provider_data["speech_complexity"] == "control"
-            ]
-            regular_rows = provider_data[
-                provider_data["speech_complexity"] == "regular"
-            ]
+            control_rows = llm_data[llm_data["speech_complexity"] == "control"]
+            regular_rows = llm_data[llm_data["speech_complexity"] == "regular"]
 
             control_val = (
                 control_rows["pass_hat_1"].values[0] if len(control_rows) > 0 else None
@@ -1577,8 +1314,9 @@ def _generate_combined_comparison_table(
             rows.append(
                 {
                     "domain": domain,
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "model": get_short_llm_name(llm),
+                    "provider": get_provider_display(get_provider_key(llm)),
                     "text_sota": text_sota_val,
                     "text_nonthinking": text_nonthinking_val,
                     "control": control_val,
@@ -1586,21 +1324,19 @@ def _generate_combined_comparison_table(
                 }
             )
 
-    # Build "All" aggregate rows (average across domains per provider)
+    # Build "All" aggregate rows (average across domains per model)
     all_rows = []
     text_sota_all = text_sota_scores.get("all")
     text_nonthinking_all = text_nonthinking_scores.get("all")
 
-    providers_in_data = sorted(
-        set(r["provider_key"] for r in rows),
-        key=lambda p: PROVIDER_ORDER.index(get_provider_display(p))
-        if get_provider_display(p) in PROVIDER_ORDER
-        else 99,
+    models_in_data = sorted(
+        set(r["llm"] for r in rows),
+        key=get_model_sort_key,
     )
-    for provider_key in providers_in_data:
-        provider_rows = [r for r in rows if r["provider_key"] == provider_key]
-        control_vals = [r["control"] for r in provider_rows if r["control"] is not None]
-        regular_vals = [r["regular"] for r in provider_rows if r["regular"] is not None]
+    for llm in models_in_data:
+        model_rows = [r for r in rows if r["llm"] == llm]
+        control_vals = [r["control"] for r in model_rows if r["control"] is not None]
+        regular_vals = [r["regular"] for r in model_rows if r["regular"] is not None]
 
         control_avg = sum(control_vals) / len(control_vals) if control_vals else None
         regular_avg = sum(regular_vals) / len(regular_vals) if regular_vals else None
@@ -1609,8 +1345,9 @@ def _generate_combined_comparison_table(
             all_rows.append(
                 {
                     "domain": "all",
-                    "provider_key": provider_key,
-                    "provider": get_provider_display(provider_key),
+                    "llm": llm,
+                    "model": get_short_llm_name(llm),
+                    "provider": get_provider_display(get_provider_key(llm)),
                     "text_sota": text_sota_all,
                     "text_nonthinking": text_nonthinking_all,
                     "control": control_avg,
@@ -1625,18 +1362,21 @@ def _generate_combined_comparison_table(
     lines.append(r" &  &  & \multicolumn{2}{c}{\textbf{Voice}} \\")
     lines.append(r"\cmidrule(l){4-5}")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \textbf{Text} & \textbf{Clean} & \textbf{Realistic} \\"
+        r"\textbf{Domain} & \textbf{Model} & \textbf{Text} & \textbf{Clean} & \textbf{Realistic} \\"
     )
     lines.append(r"\midrule")
 
-    # Helper function to format values with delta
     def fmt_val_with_delta(val, text_val, is_best=False):
         if val is None:
             return "--"
         pct = int(val * 100)
         if text_val is not None:
             delta = int((val - text_val) * 100)
-            cell = f"{pct}\\% ({delta:+d})"
+            if text_val != 0:
+                delta_rel = (val - text_val) / text_val * 100
+                cell = f"{pct}\\% ({delta:+d}, {delta_rel:+.1f}\\%)"
+            else:
+                cell = f"{pct}\\% ({delta:+d})"
         else:
             cell = f"{pct}\\%"
         return rf"\textbf{{{cell}}}" if is_best else cell
@@ -1653,12 +1393,7 @@ def _generate_combined_comparison_table(
 
     # Add "All" rows first
     if all_rows:
-        all_rows_sorted = sorted(
-            all_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
-        )
+        all_rows_sorted = sorted(all_rows, key=lambda r: get_model_sort_key(r["llm"]))
         control_vals = [
             r["control"] for r in all_rows_sorted if r["control"] is not None
         ]
@@ -1690,7 +1425,7 @@ def _generate_combined_comparison_table(
             )
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {text_str} & {control_str} & {regular_str} \\\\"
+                f"{domain_label} & {row['model']} & {text_str} & {control_str} & {regular_str} \\\\"
             )
 
         lines.append(r"\midrule")
@@ -1698,12 +1433,7 @@ def _generate_combined_comparison_table(
     # Add domain-specific rows
     for domain in domains:
         domain_rows = [r for r in rows if r["domain"] == domain]
-        domain_rows = sorted(
-            domain_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
-        )
+        domain_rows = sorted(domain_rows, key=lambda r: get_model_sort_key(r["llm"]))
         n_providers = len(domain_rows)
 
         control_vals = [r["control"] for r in domain_rows if r["control"] is not None]
@@ -1734,7 +1464,7 @@ def _generate_combined_comparison_table(
             )
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {text_str} & {control_str} & {regular_str} \\\\"
+                f"{domain_label} & {row['model']} & {text_str} & {control_str} & {regular_str} \\\\"
             )
 
         if domain != domains[-1]:
@@ -1752,41 +1482,41 @@ def _generate_combined_comparison_table(
     logger.info(f"Saved: {tex_path}")
 
     # Also save as CSV
+    def _csv_row(row, domain_label):
+        ctrl = row["control"]
+        reg = row["regular"]
+        sota = row["text_sota"]
+        ctrl_delta = ctrl - sota if ctrl is not None and sota is not None else None
+        reg_delta = reg - sota if reg is not None and sota is not None else None
+        ctrl_delta_rel = (
+            (ctrl - sota) / sota
+            if ctrl is not None and sota is not None and sota != 0
+            else None
+        )
+        reg_delta_rel = (
+            (reg - sota) / sota
+            if reg is not None and sota is not None and sota != 0
+            else None
+        )
+        return {
+            "domain": domain_label,
+            "provider": row["provider"],
+            "model": row["model"],
+            "text_sota": sota,
+            "text_nonthinking": row["text_nonthinking"],
+            "control": ctrl,
+            "control_delta": ctrl_delta,
+            "control_delta_rel": ctrl_delta_rel,
+            "regular": reg,
+            "regular_delta": reg_delta,
+            "regular_delta_rel": reg_delta_rel,
+        }
+
     csv_rows = []
     for row in all_rows:
-        csv_rows.append(
-            {
-                "domain": "All",
-                "provider": row["provider"],
-                "text_sota": row["text_sota"],
-                "text_nonthinking": row["text_nonthinking"],
-                "control": row["control"],
-                "control_delta": row["control"] - row["text_sota"]
-                if row["control"] and row["text_sota"]
-                else None,
-                "regular": row["regular"],
-                "regular_delta": row["regular"] - row["text_sota"]
-                if row["regular"] and row["text_sota"]
-                else None,
-            }
-        )
+        csv_rows.append(_csv_row(row, "All"))
     for row in rows:
-        csv_rows.append(
-            {
-                "domain": row["domain"],
-                "provider": row["provider"],
-                "text_sota": row["text_sota"],
-                "text_nonthinking": row["text_nonthinking"],
-                "control": row["control"],
-                "control_delta": row["control"] - row["text_sota"]
-                if row["control"] and row["text_sota"]
-                else None,
-                "regular": row["regular"],
-                "regular_delta": row["regular"] - row["text_sota"]
-                if row["regular"] and row["text_sota"]
-                else None,
-            }
-        )
+        csv_rows.append(_csv_row(row, row["domain"]))
     df_csv = pd.DataFrame(csv_rows)
     csv_path = output_dir / "combined_comparison_table.csv"
     df_csv.to_csv(csv_path, index=False)
@@ -1836,50 +1566,19 @@ def _plot_pass_1_headline(output_dir: Path, df_metrics: pd.DataFrame) -> None:
     categories = ["All"] + [d.capitalize() for d in domains_to_plot]
     n_categories = len(categories)
 
-    # Load text baseline from leaderboard
-    text_scores = {}
-    text_model_name = None
-    try:
-        from tau2.scripts.leaderboard.leaderboard import Leaderboard
+    # Load text baselines (hardcoded reference scores)
+    from experiments.tau_voice.exp.text_baselines import DEFAULT_TEXT_BASELINES
 
-        lb = Leaderboard.load()
-        # Use specific text baseline model if configured, otherwise use top overall
-        if TEXT_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(TEXT_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_model_name = submission.model_name
-                # Calculate overall score as average across domains
-                domain_scores = []
-                for domain in domains_to_plot:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_scores[domain.capitalize()] = domain_results.pass_1 / 100.0
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_scores["All"] = sum(domain_scores) / len(domain_scores)
-        else:
-            top_entries = lb.get_top_models_overall(metric="pass_1", limit=1)
-            if top_entries:
-                entry = top_entries[0]
-                text_model_name = entry.submission.model_name
-                text_scores["All"] = entry.score / 100.0
-                for domain in domains_to_plot:
-                    domain_results = entry.submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_scores[domain.capitalize()] = domain_results.pass_1 / 100.0
-        if text_model_name:
-            logger.info(f"Text baseline: {text_model_name}")
-    except Exception as e:
-        logger.warning(f"Could not load leaderboard baselines: {e}")
+    text_baselines_data = []
+    for baseline in DEFAULT_TEXT_BASELINES:
+        scores = baseline.get_scores_dict(domains_to_plot)
+        text_baselines_data.append((baseline.display_name, scores))
+        logger.info(f"Text baseline: {baseline.model_name}")
 
     models_to_plot = []
-
-    # Add text baseline first if available
-    if text_scores:
-        text_short = text_model_name
-        if text_short and len(text_short) > 12:
-            text_short = text_short[:12]
-        models_to_plot.append((f"Text\n({text_short})", text_scores))
+    n_text_baselines = len(text_baselines_data)
+    for name, scores in text_baselines_data:
+        models_to_plot.append((f"Text\n({name})", scores))
 
     for llm in llms:
         llm_short = llm.split(":")[-1] if ":" in llm else llm
@@ -1933,9 +1632,11 @@ def _plot_pass_1_headline(output_dir: Path, df_metrics: pd.DataFrame) -> None:
                 fontweight="medium",
             )
 
-    # Add vertical separator after text baseline
-    if text_scores and n_models > 1:
-        sep_x = (model_positions[0] + model_positions[1]) / 2
+    # Add vertical separator after text baselines
+    if n_text_baselines > 0 and n_models > n_text_baselines:
+        sep_x = (
+            model_positions[n_text_baselines - 1] + model_positions[n_text_baselines]
+        ) / 2
         ax.axvline(x=sep_x, color="#cccccc", linestyle="-", linewidth=1, zorder=0)
 
     ax.set_ylabel("pass@1", fontsize=11, fontweight="medium")
@@ -1981,7 +1682,7 @@ def _plot_pass_1_headline(output_dir: Path, df_metrics: pd.DataFrame) -> None:
 def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> None:
     """
     Generate simplified headline figure showing only 'All' aggregate
-    with Text on the left and Voice (Control/Realistic) grouped by provider on the right.
+    with Text on the left and Voice (Control/Realistic) per model on the right.
     """
     import matplotlib.pyplot as plt
     import numpy as np
@@ -1998,16 +1699,14 @@ def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> 
         logger.warning("No control/regular data. Skipping simple headline plot.")
         return
 
-    # Get providers from either dataset
+    # Get models from either dataset
     all_data = df_metrics[df_metrics["speech_complexity"].isin(["control", "regular"])]
     llms = sorted(all_data["llm"].unique())
 
-    # Compute "All" scores for each provider and condition
-    provider_scores = {}
+    # Compute "All" scores for each model and condition (key by llm to avoid
+    # overwriting when multiple models share a provider)
+    model_scores = {}
     for llm in llms:
-        provider_key = get_provider_key(llm)
-        provider_display = get_provider_display(provider_key)
-
         control_llm = control_data[control_data["llm"] == llm]
         regular_llm = regular_data[regular_data["llm"] == llm]
 
@@ -2018,62 +1717,33 @@ def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> 
             regular_llm["pass_hat_1"].mean() if not regular_llm.empty else np.nan
         )
 
-        provider_scores[provider_display] = {
+        model_scores[llm] = {
             "Clean": control_all,  # "Clean" is display name for control condition
             "Realistic": regular_all,
         }
 
-    # Load BOTH text baselines
-    text_sota_score = None
-    text_sota_name = None
-    text_nonthinking_score = None
-    text_nonthinking_name = None
-    try:
-        from tau2.scripts.leaderboard.leaderboard import Leaderboard
-
-        lb = Leaderboard.load()
-
-        # 1. Load reasoning model (GPT-5)
-        if REASONING_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(REASONING_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_sota_name = submission.model_name
-                domain_scores = []
-                for domain in DOMAINS:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_sota_score = sum(domain_scores) / len(domain_scores)
-                logger.info(f"Text reasoning: {text_sota_name} = {text_sota_score:.1%}")
-
-        # 2. Load non-reasoning model (GPT-4.1)
-        if TEXT_BASELINE_SUBMISSION_ID:
-            submission = lb.get_submission(TEXT_BASELINE_SUBMISSION_ID)
-            if submission:
-                text_nonthinking_name = submission.model_name
-                domain_scores = []
-                for domain in DOMAINS:
-                    domain_results = submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        domain_scores.append(domain_results.pass_1 / 100.0)
-                if domain_scores:
-                    text_nonthinking_score = sum(domain_scores) / len(domain_scores)
-                logger.info(
-                    f"Text non-thinking: {text_nonthinking_name} = {text_nonthinking_score:.1%}"
-                )
-    except Exception as e:
-        logger.warning(f"Could not load leaderboard baselines: {e}")
-
-    # Sort providers by PROVIDER_ORDER
-    providers_sorted = sorted(
-        provider_scores.keys(),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+    # Load both text baselines (hardcoded reference scores)
+    from experiments.tau_voice.exp.text_baselines import (
+        TEXT_SOTA,
+        TEXT_SOTA_NONTHINKING,
     )
 
+    text_sota_name = TEXT_SOTA.model_name
+    text_sota_score = TEXT_SOTA.overall
+    logger.info(f"Text reasoning: {text_sota_name} = {text_sota_score:.1%}")
+
+    text_nonthinking_name = TEXT_SOTA_NONTHINKING.model_name
+    text_nonthinking_score = TEXT_SOTA_NONTHINKING.overall
+    logger.info(
+        f"Text non-thinking: {text_nonthinking_name} = {text_nonthinking_score:.1%}"
+    )
+
+    # Sort models by get_model_sort_key
+    llms_sorted = sorted(model_scores.keys(), key=get_model_sort_key)
+
     # Create figure
-    n_providers = len(providers_sorted)
-    fig_width = max(6, 1.5 + 1.2 * n_providers)  # Extra space for two text bars
+    n_models = len(llms_sorted)
+    fig_width = max(6, 1.5 + 1.2 * n_models)  # Extra space for two text bars
     fig, ax = plt.subplots(figsize=(fig_width, 4))
 
     # Colors (using "Clean" label for control condition in display)
@@ -2139,18 +1809,18 @@ def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> 
             fontweight="medium",
         )
 
-    # Positions for voice providers start after a gap
+    # Positions for voice models start after a gap
     voice_start_x = 1.3
-    provider_positions = voice_start_x + np.arange(n_providers) * (group_width + 0.3)
+    model_positions = voice_start_x + np.arange(n_models) * (group_width + 0.3)
 
     # Add vertical separator between text and voice (midway between last text bar and first voice bar)
     sep_x = (text_nonthinking_x + voice_start_x) / 2
     ax.axvline(x=sep_x, color="#cccccc", linestyle="-", linewidth=1, zorder=0)
 
-    # Plot voice bars grouped by provider
-    for p_idx, provider in enumerate(providers_sorted):
-        scores = provider_scores[provider]
-        base_x = provider_positions[p_idx]
+    # Plot voice bars (one per model)
+    for p_idx, llm in enumerate(llms_sorted):
+        scores = model_scores[llm]
+        base_x = model_positions[p_idx]
 
         # Clean (control) bar
         clean_val = scores.get("Clean", np.nan)
@@ -2196,8 +1866,8 @@ def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> 
                 fontweight="medium",
             )
 
-    # X-axis labels - include both text models
-    all_xticks = [text_sota_x, text_nonthinking_x] + list(provider_positions)
+    # X-axis labels - include both text models and voice model short names
+    all_xticks = [text_sota_x, text_nonthinking_x] + list(model_positions)
     sota_label = (
         f"Text\n({sota_short})" if text_sota_score and sota_short else "Text\n(GPT-5)"
     )
@@ -2206,14 +1876,16 @@ def _plot_pass_1_headline_simple(output_dir: Path, df_metrics: pd.DataFrame) -> 
         if text_nonthinking_score and nonthinking_short
         else "Text\n(GPT-4.1)"
     )
-    all_xlabels = [sota_label, nonthinking_label] + providers_sorted
+    all_xlabels = [sota_label, nonthinking_label] + [
+        get_short_llm_name(llm) for llm in llms_sorted
+    ]
     ax.set_xticks(all_xticks)
     ax.set_xticklabels(all_xlabels, fontsize=9, fontweight="medium")
 
     # Styling
     ax.set_ylabel("pass@1", fontsize=11, fontweight="medium")
     ax.set_ylim(0, 1.1)
-    ax.set_xlim(-0.4, provider_positions[-1] + 0.6)
+    ax.set_xlim(-0.4, model_positions[-1] + 0.6)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.yaxis.grid(True, linestyle="--", alpha=0.3, zorder=0)
@@ -2275,7 +1947,7 @@ def _plot_ablation_figure(output_dir: Path, df_metrics: pd.DataFrame) -> None:
     llms = [
         llm
         for llm in all_llms
-        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok"])
+        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok", "xai"])
     ]
 
     if not llms:
@@ -2411,57 +2083,59 @@ def _generate_voice_quality_table(
     # Use all domains, not just those with data
     domains = DOMAINS
 
-    # Get all providers that appear in any domain
-    all_providers_in_data = set()
+    # Get all models (llm) that appear in any domain
+    all_llms_in_data = set()
     if not df.empty:
-        all_providers_in_data = set(df["provider_display"].unique())
-    # Fall back to standard providers if no data
-    if not all_providers_in_data:
-        all_providers_in_data = set(PROVIDER_ORDER[:3])  # Google, OpenAI, xAI
-
-    # Build "All" aggregate data by provider (average across domains)
-    all_agg_data = {}
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+        all_llms_in_data = set(df["llm"].unique())
+    # Fall back to empty if no data - will skip "All" section
+    llms_sorted = (
+        sorted(
+            list(all_llms_in_data),
+            key=get_model_sort_key,
+        )
+        if all_llms_in_data
+        else []
     )
-    for provider_display in providers_sorted:
-        provider_data = df[df["provider_display"] == provider_display]
-        if not provider_data.empty:
-            all_agg_data[provider_display] = {
-                "response_rate": provider_data["response_rate"].mean()
-                if "response_rate" in provider_data
+
+    # Build "All" aggregate data by model (average across domains)
+    all_agg_data = {}
+    for llm in llms_sorted:
+        model_data = df[df["llm"] == llm]
+        if not model_data.empty:
+            all_agg_data[llm] = {
+                "response_rate": model_data["response_rate"].mean()
+                if "response_rate" in model_data
                 else np.nan,
-                "latency_mean": provider_data["latency_mean"].mean()
-                if "latency_mean" in provider_data
+                "latency_mean": model_data["latency_mean"].mean()
+                if "latency_mean" in model_data
                 else np.nan,
-                "user_interrupts_yield_rate": provider_data[
+                "user_interrupts_yield_rate": model_data[
                     "user_interrupts_yield_rate"
                 ].mean()
-                if "user_interrupts_yield_rate" in provider_data
+                if "user_interrupts_yield_rate" in model_data
                 else np.nan,
-                "user_interrupts_yield_time_mean": provider_data[
+                "user_interrupts_yield_time_mean": model_data[
                     "user_interrupts_yield_time_mean"
                 ].mean()
-                if "user_interrupts_yield_time_mean" in provider_data
+                if "user_interrupts_yield_time_mean" in model_data
                 else np.nan,
-                "backchannel_correct_rate": provider_data[
+                "backchannel_correct_rate": model_data[
                     "backchannel_correct_rate"
                 ].mean()
-                if "backchannel_correct_rate" in provider_data
+                if "backchannel_correct_rate" in model_data
                 else np.nan,
-                "vocal_tic_correct_rate": provider_data["vocal_tic_correct_rate"].mean()
-                if "vocal_tic_correct_rate" in provider_data
+                "vocal_tic_correct_rate": model_data["vocal_tic_correct_rate"].mean()
+                if "vocal_tic_correct_rate" in model_data
                 else np.nan,
-                "vocal_tic_silent_correct_rate": provider_data[
+                "vocal_tic_silent_correct_rate": model_data[
                     "vocal_tic_silent_correct_rate"
                 ].mean()
-                if "vocal_tic_silent_correct_rate" in provider_data
+                if "vocal_tic_silent_correct_rate" in model_data
                 else np.nan,
-                "non_directed_silent_correct_rate": provider_data[
+                "non_directed_silent_correct_rate": model_data[
                     "non_directed_silent_correct_rate"
                 ].mean()
-                if "non_directed_silent_correct_rate" in provider_data
+                if "non_directed_silent_correct_rate" in model_data
                 else np.nan,
             }
 
@@ -2470,7 +2144,7 @@ def _generate_voice_quality_table(
     lines.append(r"\begin{tabular}{llcccccccc}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \makecell{\textbf{Resp.}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Resp.}\\\textbf{Latency (s)}$\downarrow$} & \makecell{\textbf{Yield}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Yield}\\\textbf{Time (s)}$\downarrow$} & \makecell{\textbf{Backchannel}\\\textbf{Correct}$\uparrow$} & \makecell{\textbf{Vocal Tic}\\\textbf{Correct}$\uparrow$} & \makecell{\textbf{Tic Ignore}\\\textbf{(Silent)}$\uparrow$} & \makecell{\textbf{Non-Agent}\\\textbf{Ignore}$\uparrow$} \\"
+        r"\textbf{Domain} & \textbf{Model} & \makecell{\textbf{Resp.}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Resp.}\\\textbf{Latency (s)}$\downarrow$} & \makecell{\textbf{Yield}\\\textbf{Rate}$\uparrow$} & \makecell{\textbf{Yield}\\\textbf{Time (s)}$\downarrow$} & \makecell{\textbf{Backchannel}\\\textbf{Correct}$\uparrow$} & \makecell{\textbf{Vocal Tic}\\\textbf{Correct}$\uparrow$} & \makecell{\textbf{Tic Ignore}\\\textbf{(Silent)}$\uparrow$} & \makecell{\textbf{Non-Agent}\\\textbf{Ignore}$\uparrow$} \\"
     )
     lines.append(r"\midrule")
 
@@ -2488,7 +2162,7 @@ def _generate_voice_quality_table(
 
     # Add "All" rows first
     if all_agg_data:
-        all_providers = list(all_agg_data.keys())
+        all_llms = sorted(all_agg_data.keys(), key=get_model_sort_key)
         # Find best values for "All" (higher is better for rates, lower for latencies)
         valid_resp_rates = [
             d["response_rate"]
@@ -2540,15 +2214,16 @@ def _generate_voice_quality_table(
         best_tic_silent = max(valid_tic_silent) if valid_tic_silent else None
         best_non_dir = max(valid_non_dir) if valid_non_dir else None
 
-        for i, provider_display in enumerate(all_providers):
-            agg = all_agg_data[provider_display]
+        for i, llm in enumerate(all_llms):
+            agg = all_agg_data[llm]
+            model_name = get_short_llm_name(llm, max_len=25)
             if i == 0:
-                domain_label = rf"\multirow{{{len(all_providers)}}}{{*}}{{All}}"
+                domain_label = rf"\multirow{{{len(all_llms)}}}{{*}}{{All}}"
             else:
                 domain_label = ""
 
             lines.append(
-                f"{domain_label} & {provider_display} & {fmt_pct(agg['response_rate'], best_resp_rate)} & "
+                f"{domain_label} & {model_name} & {fmt_pct(agg['response_rate'], best_resp_rate)} & "
                 f"{fmt_sec(agg['latency_mean'], best_resp_latency)} & {fmt_pct(agg['user_interrupts_yield_rate'], best_yield_rate)} & "
                 f"{fmt_sec(agg['user_interrupts_yield_time_mean'], best_yield_time)} & {fmt_pct(agg['backchannel_correct_rate'], best_backchannel)} & "
                 f"{fmt_pct(agg['vocal_tic_correct_rate'], best_vocal_tic)} & {fmt_pct(agg['vocal_tic_silent_correct_rate'], best_tic_silent)} & "
@@ -2561,11 +2236,11 @@ def _generate_voice_quality_table(
     for domain in domains:
         domain_data = df[df["domain"] == domain] if not df.empty else pd.DataFrame()
 
-        # Determine providers for this domain
+        # Determine models for this domain
         if not domain_data.empty:
-            domain_providers = sorted(
-                domain_data["provider_display"].unique().tolist(),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+            domain_llms = sorted(
+                domain_data["llm"].unique().tolist(),
+                key=get_model_sort_key,
             )
             best_resp_rate = (
                 domain_data["response_rate"].max()
@@ -2608,11 +2283,8 @@ def _generate_voice_quality_table(
                 else None
             )
         else:
-            # No data for this domain - use providers from other domains
-            domain_providers = sorted(
-                list(all_providers_in_data),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-            )
+            # No data for this domain - use models from other domains
+            domain_llms = llms_sorted
             best_resp_rate = None
             best_resp_latency = None
             best_yield_rate = None
@@ -2622,13 +2294,12 @@ def _generate_voice_quality_table(
             best_tic_silent = None
             best_non_dir = None
 
-        for i, provider_display in enumerate(domain_providers):
+        for i, llm in enumerate(domain_llms):
+            model_name = get_short_llm_name(llm, max_len=25)
             if not domain_data.empty:
-                provider_rows = domain_data[
-                    domain_data["provider_display"] == provider_display
-                ]
-                if len(provider_rows) > 0:
-                    row = provider_rows.iloc[0]
+                model_rows = domain_data[domain_data["llm"] == llm]
+                if len(model_rows) > 0:
+                    row = model_rows.iloc[0]
                     resp_rate = row.get("response_rate", np.nan)
                     resp_latency = row.get("latency_mean", np.nan)
                     yield_rate = row.get("user_interrupts_yield_rate", np.nan)
@@ -2649,12 +2320,14 @@ def _generate_voice_quality_table(
                 vocal_tic = tic_silent = non_dir = np.nan
 
             if i == 0:
-                domain_label = rf"\multirow{{{len(domain_providers)}}}{{*}}{{{domain.capitalize()}}}"
+                domain_label = (
+                    rf"\multirow{{{len(domain_llms)}}}{{*}}{{{domain.capitalize()}}}"
+                )
             else:
                 domain_label = ""
 
             lines.append(
-                f"{domain_label} & {provider_display} & {fmt_pct(resp_rate, best_resp_rate)} & "
+                f"{domain_label} & {model_name} & {fmt_pct(resp_rate, best_resp_rate)} & "
                 f"{fmt_sec(resp_latency, best_resp_latency)} & {fmt_pct(yield_rate, best_yield_rate)} & "
                 f"{fmt_sec(yield_time, best_yield_time)} & {fmt_pct(backchannel, best_backchannel)} & "
                 f"{fmt_pct(vocal_tic, best_vocal_tic)} & {fmt_pct(tic_silent, best_tic_silent)} & "
@@ -2676,11 +2349,14 @@ def _generate_voice_quality_table(
     csv_rows = []
 
     # Add "All" aggregate rows first
-    for provider_display, agg in all_agg_data.items():
+    for llm, agg in all_agg_data.items():
+        model_name = get_short_llm_name(llm, max_len=25)
+        provider_display = get_provider_display(get_provider_key(llm))
         csv_rows.append(
             {
                 "domain": "All",
                 "provider": provider_display,
+                "model": model_name,
                 "response_rate": agg["response_rate"],
                 "response_latency": agg["latency_mean"],
                 "yield_rate": agg["user_interrupts_yield_rate"],
@@ -2697,27 +2373,25 @@ def _generate_voice_quality_table(
         domain_data = df[df["domain"] == domain] if not df.empty else pd.DataFrame()
 
         if not domain_data.empty:
-            domain_providers = sorted(
-                domain_data["provider_display"].unique().tolist(),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+            domain_llms = sorted(
+                domain_data["llm"].unique().tolist(),
+                key=get_model_sort_key,
             )
         else:
-            domain_providers = sorted(
-                list(all_providers_in_data),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-            )
+            domain_llms = llms_sorted
 
-        for provider_display in domain_providers:
+        for llm in domain_llms:
+            model_name = get_short_llm_name(llm, max_len=25)
+            provider_display = get_provider_display(get_provider_key(llm))
             if not domain_data.empty:
-                provider_rows = domain_data[
-                    domain_data["provider_display"] == provider_display
-                ]
-                if len(provider_rows) > 0:
-                    row = provider_rows.iloc[0]
+                model_rows = domain_data[domain_data["llm"] == llm]
+                if len(model_rows) > 0:
+                    row = model_rows.iloc[0]
                     csv_rows.append(
                         {
                             "domain": domain,
                             "provider": provider_display,
+                            "model": model_name,
                             "response_rate": row.get("response_rate"),
                             "response_latency": row.get("latency_mean"),
                             "yield_rate": row.get("user_interrupts_yield_rate"),
@@ -2737,6 +2411,7 @@ def _generate_voice_quality_table(
                         {
                             "domain": domain,
                             "provider": provider_display,
+                            "model": model_name,
                             "response_rate": None,
                             "response_latency": None,
                             "yield_rate": None,
@@ -2752,6 +2427,7 @@ def _generate_voice_quality_table(
                     {
                         "domain": domain,
                         "provider": provider_display,
+                        "model": model_name,
                         "response_rate": None,
                         "response_latency": None,
                         "yield_rate": None,
@@ -2827,37 +2503,28 @@ def _generate_voice_quality_table_unified(
     # Use all domains
     domains = DOMAINS
 
-    # Get all providers that appear in any domain
-    all_providers_in_data = (
-        set(df["provider_display"].unique()) if not df.empty else set()
+    # Get all models (llm) that appear in any domain
+    all_llms_in_data = set(df["llm"].unique()) if not df.empty else set()
+    llms_sorted = (
+        sorted(list(all_llms_in_data), key=get_model_sort_key)
+        if all_llms_in_data
+        else []
     )
-    if not all_providers_in_data:
-        all_providers_in_data = set(PROVIDER_ORDER[:3])
 
-    # Build "All" aggregate data by provider (average across domains)
+    # Build "All" aggregate data by model (average across domains)
     all_agg_data = {}
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-    )
-    for provider_display in providers_sorted:
-        provider_data = df[df["provider_display"] == provider_display]
-        if not provider_data.empty:
-            all_agg_data[provider_display] = {
-                "response_rate": provider_data["response_rate"].mean(),
-                "response_latency_mean": provider_data["response_latency_mean"].mean(),
-                "yield_rate": provider_data["yield_rate"].mean(),
-                "yield_latency_mean": provider_data["yield_latency_mean"].mean(),
-                "agent_interruption_rate": provider_data[
-                    "agent_interruption_rate"
-                ].mean(),
-                "backchannel_error_rate": provider_data[
-                    "backchannel_error_rate"
-                ].mean(),
-                "vocal_tic_error_rate": provider_data["vocal_tic_error_rate"].mean(),
-                "non_directed_error_rate": provider_data[
-                    "non_directed_error_rate"
-                ].mean(),
+    for llm in llms_sorted:
+        model_data = df[df["llm"] == llm]
+        if not model_data.empty:
+            all_agg_data[llm] = {
+                "response_rate": model_data["response_rate"].mean(),
+                "response_latency_mean": model_data["response_latency_mean"].mean(),
+                "yield_rate": model_data["yield_rate"].mean(),
+                "yield_latency_mean": model_data["yield_latency_mean"].mean(),
+                "agent_interruption_rate": model_data["agent_interruption_rate"].mean(),
+                "backchannel_error_rate": model_data["backchannel_error_rate"].mean(),
+                "vocal_tic_error_rate": model_data["vocal_tic_error_rate"].mean(),
+                "non_directed_error_rate": model_data["non_directed_error_rate"].mean(),
             }
 
     # Generate LaTeX (tabular content only - table wrapper added in paper)
@@ -2873,7 +2540,7 @@ def _generate_voice_quality_table_unified(
     )
     # Sub-header row with individual metrics
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & "
+        r"\textbf{Domain} & \textbf{Model} & "
         r"$L_R$ & $L_Y$ & $R_R$ & $R_Y$ & $I_A$ & $S_{BC}$ & $S_{VT}$ & $S_{ND}$ \\"
     )
     lines.append(r"\midrule")
@@ -2901,7 +2568,7 @@ def _generate_voice_quality_table_unified(
 
     # Add "All" rows first
     if all_agg_data:
-        all_providers = list(all_agg_data.keys())
+        all_llms = sorted(all_agg_data.keys(), key=get_model_sort_key)
         # Find best values for "All" (higher is better for rates, lower for latencies/errors)
         best_resp_rate = max(
             d["response_rate"]
@@ -2947,10 +2614,11 @@ def _generate_voice_quality_table_unified(
             if not pd.isna(d["non_directed_error_rate"])
         )
 
-        for i, provider_display in enumerate(all_providers):
-            agg = all_agg_data[provider_display]
+        for i, llm in enumerate(all_llms):
+            agg = all_agg_data[llm]
+            model_name = get_short_llm_name(llm, max_len=25)
             if i == 0:
-                domain_label = rf"\multirow{{{len(all_providers)}}}{{*}}{{All}}"
+                domain_label = rf"\multirow{{{len(all_llms)}}}{{*}}{{All}}"
             else:
                 domain_label = ""
 
@@ -2973,7 +2641,7 @@ def _generate_voice_quality_table_unified(
 
             # Order: Latency (L_R, L_Y), Responsiveness (R_R, R_Y), Turn (I_A), Selectivity (S_BC, S_VT, S_ND)
             lines.append(
-                f"{domain_label} & {provider_display} & "
+                f"{domain_label} & {model_name} & "
                 f"{fmt_sec(agg['response_latency_mean'], best_resp_latency)} & "
                 f"{fmt_sec(agg['yield_latency_mean'], best_yield_latency)} & "
                 f"{fmt_pct_higher_better(agg['response_rate'], best_resp_rate)} & "
@@ -2991,9 +2659,9 @@ def _generate_voice_quality_table_unified(
         domain_data = df[df["domain"] == domain] if not df.empty else pd.DataFrame()
 
         if not domain_data.empty:
-            domain_providers = sorted(
-                domain_data["provider_display"].unique().tolist(),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+            domain_llms = sorted(
+                domain_data["llm"].unique().tolist(),
+                key=get_model_sort_key,
             )
             # Find best values (lower is better for latencies, higher for rates and correct rates)
             best_resp_latency = domain_data["response_latency_mean"].min()
@@ -3007,10 +2675,7 @@ def _generate_voice_quality_table_unified(
             best_vocal_tic_correct = (1 - domain_data["vocal_tic_error_rate"]).max()
             best_non_dir_correct = (1 - domain_data["non_directed_error_rate"]).max()
         else:
-            domain_providers = sorted(
-                list(all_providers_in_data),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-            )
+            domain_llms = llms_sorted
             best_resp_latency = None
             best_yield_latency = None
             best_resp_rate = None
@@ -3020,13 +2685,12 @@ def _generate_voice_quality_table_unified(
             best_vocal_tic_correct = None
             best_non_dir_correct = None
 
-        for i, provider_display in enumerate(domain_providers):
+        for i, llm in enumerate(domain_llms):
+            model_name = get_short_llm_name(llm, max_len=25)
             if not domain_data.empty:
-                provider_rows = domain_data[
-                    domain_data["provider_display"] == provider_display
-                ]
-                if len(provider_rows) > 0:
-                    row = provider_rows.iloc[0]
+                model_rows = domain_data[domain_data["llm"] == llm]
+                if len(model_rows) > 0:
+                    row = model_rows.iloc[0]
                     resp_latency = row.get("response_latency_mean", np.nan)
                     yield_latency = row.get("yield_latency_mean", np.nan)
                     resp_rate = row.get("response_rate", np.nan)
@@ -3050,13 +2714,15 @@ def _generate_voice_quality_table_unified(
             nd_correct = 1 - non_dir_err if not pd.isna(non_dir_err) else np.nan
 
             if i == 0:
-                domain_label = rf"\multirow{{{len(domain_providers)}}}{{*}}{{{domain.capitalize()}}}"
+                domain_label = (
+                    rf"\multirow{{{len(domain_llms)}}}{{*}}{{{domain.capitalize()}}}"
+                )
             else:
                 domain_label = ""
 
             # Order: Latency (L_R, L_Y), Responsiveness (R_R, R_Y), Turn (I_A), Selectivity (S_BC, S_VT, S_ND)
             lines.append(
-                f"{domain_label} & {provider_display} & "
+                f"{domain_label} & {model_name} & "
                 f"{fmt_sec(resp_latency, best_resp_latency)} & "
                 f"{fmt_sec(yield_latency, best_yield_latency)} & "
                 f"{fmt_pct_higher_better(resp_rate, best_resp_rate)} & "
@@ -3082,11 +2748,14 @@ def _generate_voice_quality_table_unified(
     csv_rows = []
 
     # Add "All" aggregate rows first
-    for provider_display, agg in all_agg_data.items():
+    for llm, agg in all_agg_data.items():
+        model_name = get_short_llm_name(llm, max_len=25)
+        provider_display = get_provider_display(get_provider_key(llm))
         csv_rows.append(
             {
                 "domain": "All",
                 "provider": provider_display,
+                "model": model_name,
                 "response_rate": agg["response_rate"],
                 "response_latency": agg["response_latency_mean"],
                 "yield_rate": agg["yield_rate"],
@@ -3102,27 +2771,25 @@ def _generate_voice_quality_table_unified(
         domain_data = df[df["domain"] == domain] if not df.empty else pd.DataFrame()
 
         if not domain_data.empty:
-            domain_providers = sorted(
-                domain_data["provider_display"].unique().tolist(),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+            domain_llms = sorted(
+                domain_data["llm"].unique().tolist(),
+                key=get_model_sort_key,
             )
         else:
-            domain_providers = sorted(
-                list(all_providers_in_data),
-                key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-            )
+            domain_llms = llms_sorted
 
-        for provider_display in domain_providers:
+        for llm in domain_llms:
+            model_name = get_short_llm_name(llm, max_len=25)
+            provider_display = get_provider_display(get_provider_key(llm))
             if not domain_data.empty:
-                provider_rows = domain_data[
-                    domain_data["provider_display"] == provider_display
-                ]
-                if len(provider_rows) > 0:
-                    row = provider_rows.iloc[0]
+                model_rows = domain_data[domain_data["llm"] == llm]
+                if len(model_rows) > 0:
+                    row = model_rows.iloc[0]
                     csv_rows.append(
                         {
                             "domain": domain,
                             "provider": provider_display,
+                            "model": model_name,
                             "response_rate": row.get("response_rate"),
                             "response_latency": row.get("response_latency_mean"),
                             "yield_rate": row.get("yield_rate"),
@@ -3139,6 +2806,7 @@ def _generate_voice_quality_table_unified(
                         {
                             "domain": domain,
                             "provider": provider_display,
+                            "model": model_name,
                             "response_rate": None,
                             "response_latency": None,
                             "yield_rate": None,
@@ -3153,6 +2821,7 @@ def _generate_voice_quality_table_unified(
                     {
                         "domain": domain,
                         "provider": provider_display,
+                        "model": model_name,
                         "response_rate": None,
                         "response_latency": None,
                         "yield_rate": None,
@@ -3220,16 +2889,12 @@ def _generate_voice_quality_aggregated_table(
     # Use all domains
     domains = DOMAINS
 
-    # Get all providers
-    all_providers_in_data = (
-        set(df["provider_display"].unique()) if not df.empty else set()
-    )
-    if not all_providers_in_data:
-        all_providers_in_data = set(PROVIDER_ORDER[:3])
-
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
+    # Get all models (llm)
+    all_llms_in_data = set(df["llm"].unique()) if not df.empty else set()
+    llms_sorted = (
+        sorted(list(all_llms_in_data), key=get_model_sort_key)
+        if all_llms_in_data
+        else []
     )
 
     def compute_aggregates(row_or_agg):
@@ -3263,29 +2928,23 @@ def _generate_voice_quality_aggregated_table(
 
         return latency, responsiveness, interrupt, selectivity
 
-    # Build "All" aggregate data by provider
+    # Build "All" aggregate data by model
     all_agg_data = {}
-    for provider_display in providers_sorted:
-        provider_data = df[df["provider_display"] == provider_display]
-        if not provider_data.empty:
+    for llm in llms_sorted:
+        model_data = df[df["llm"] == llm]
+        if not model_data.empty:
             agg = {
-                "response_latency_mean": provider_data["response_latency_mean"].mean(),
-                "yield_latency_mean": provider_data["yield_latency_mean"].mean(),
-                "response_rate": provider_data["response_rate"].mean(),
-                "yield_rate": provider_data["yield_rate"].mean(),
-                "agent_interruption_rate": provider_data[
-                    "agent_interruption_rate"
-                ].mean(),
-                "backchannel_error_rate": provider_data[
-                    "backchannel_error_rate"
-                ].mean(),
-                "vocal_tic_error_rate": provider_data["vocal_tic_error_rate"].mean(),
-                "non_directed_error_rate": provider_data[
-                    "non_directed_error_rate"
-                ].mean(),
+                "response_latency_mean": model_data["response_latency_mean"].mean(),
+                "yield_latency_mean": model_data["yield_latency_mean"].mean(),
+                "response_rate": model_data["response_rate"].mean(),
+                "yield_rate": model_data["yield_rate"].mean(),
+                "agent_interruption_rate": model_data["agent_interruption_rate"].mean(),
+                "backchannel_error_rate": model_data["backchannel_error_rate"].mean(),
+                "vocal_tic_error_rate": model_data["vocal_tic_error_rate"].mean(),
+                "non_directed_error_rate": model_data["non_directed_error_rate"].mean(),
             }
             latency, responsiveness, interrupt, selectivity = compute_aggregates(agg)
-            all_agg_data[provider_display] = {
+            all_agg_data[llm] = {
                 "latency": latency,
                 "responsiveness": responsiveness,
                 "interrupt": interrupt,
@@ -3297,7 +2956,7 @@ def _generate_voice_quality_aggregated_table(
     lines.append(r"\begin{tabular}{@{}lcccc@{}}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Provider} & "
+        r"\textbf{Model} & "
         r"\textbf{Latency}$\downarrow$ & \textbf{Responsiveness}$\uparrow$ & "
         r"\textbf{Interrupt}$\downarrow$ & \textbf{Selectivity}$\uparrow$ \\"
     )
@@ -3317,7 +2976,7 @@ def _generate_voice_quality_aggregated_table(
 
     # Only show "All" rows (aggregated across domains)
     if all_agg_data:
-        all_providers = list(all_agg_data.keys())
+        all_llms = sorted(all_agg_data.keys(), key=get_model_sort_key)
         best_latency = min(
             d["latency"] for d in all_agg_data.values() if not pd.isna(d["latency"])
         )
@@ -3338,10 +2997,11 @@ def _generate_voice_quality_aggregated_table(
             if not pd.isna(d["selectivity"])
         )
 
-        for provider_display in all_providers:
-            agg = all_agg_data[provider_display]
+        for llm in all_llms:
+            agg = all_agg_data[llm]
+            model_name = get_short_llm_name(llm, max_len=25)
             lines.append(
-                f"{provider_display} & "
+                f"{model_name} & "
                 f"{fmt_sec(agg['latency'], best_latency)} & "
                 f"{fmt_pct(agg['responsiveness'], best_resp)} & "
                 f"{fmt_pct(agg['interrupt'], best_interrupt)} & "
@@ -3358,11 +3018,14 @@ def _generate_voice_quality_aggregated_table(
 
     # Also save as CSV
     csv_rows = []
-    for provider_display, agg in all_agg_data.items():
+    for llm, agg in all_agg_data.items():
+        model_name = get_short_llm_name(llm, max_len=25)
+        provider_display = get_provider_display(get_provider_key(llm))
         csv_rows.append(
             {
                 "domain": "All",
                 "provider": provider_display,
+                "model": model_name,
                 "latency": agg["latency"],
                 "responsiveness": agg["responsiveness"],
                 "interrupt": agg["interrupt"],
@@ -3372,19 +3035,20 @@ def _generate_voice_quality_aggregated_table(
     for domain in domains:
         domain_data = df[df["domain"] == domain] if not df.empty else pd.DataFrame()
         if not domain_data.empty:
-            for provider_display in domain_data["provider_display"].unique():
-                provider_rows = domain_data[
-                    domain_data["provider_display"] == provider_display
-                ]
-                if len(provider_rows) > 0:
-                    row = provider_rows.iloc[0]
+            for llm in domain_data["llm"].unique():
+                model_rows = domain_data[domain_data["llm"] == llm]
+                if len(model_rows) > 0:
+                    row = model_rows.iloc[0]
                     latency, responsiveness, interrupt, selectivity = (
                         compute_aggregates(row)
                     )
+                    model_name = get_short_llm_name(llm, max_len=25)
+                    provider_display = get_provider_display(get_provider_key(llm))
                     csv_rows.append(
                         {
                             "domain": domain,
                             "provider": provider_display,
+                            "model": model_name,
                             "latency": latency,
                             "responsiveness": responsiveness,
                             "interrupt": interrupt,
@@ -3418,17 +3082,11 @@ def _generate_vertical_voice_quality_table(
         logger.warning("No control/regular data for vertical voice quality table.")
         return
 
-    # Add provider display column
-    df["provider_key"] = df["llm"].apply(get_provider_key)
-    df["provider_display"] = df["provider_key"].apply(get_provider_display)
-
     # Merge interruption data if available
     if df_interruption is not None:
         df_int = df_interruption[
             df_interruption["speech_complexity"].isin(["control", "regular"])
         ].copy()
-        df_int["provider_key"] = df_int["llm"].apply(get_provider_key)
-        df_int["provider_display"] = df_int["provider_key"].apply(get_provider_display)
         df = df.merge(
             df_int[["llm", "domain", "speech_complexity", "agent_interrupts_count"]],
             on=["llm", "domain", "speech_complexity"],
@@ -3440,21 +3098,18 @@ def _generate_vertical_voice_quality_table(
     else:
         df["agent_interruption_rate"] = np.nan
 
-    # Get all providers
-    all_providers_in_data = set(df["provider_display"].unique())
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-    )
+    # Get all models (by llm, not provider)
+    all_llms_in_data = set(df["llm"].unique())
+    llms_sorted = sorted(list(all_llms_in_data), key=get_model_sort_key)
 
     def get_agg_data(condition):
         """Get aggregated data for a condition across all domains."""
         cond_df = df[df["speech_complexity"] == condition]
         result = {}
-        for provider in providers_sorted:
-            pdata = cond_df[cond_df["provider_display"] == provider]
+        for llm in llms_sorted:
+            pdata = cond_df[cond_df["llm"] == llm]
             if not pdata.empty:
-                result[provider] = {
+                result[llm] = {
                     "response_latency": pdata["response_latency_mean"].mean(),
                     "yield_latency": pdata["yield_latency_mean"].mean(),
                     "response_rate": pdata["response_rate"].mean(),
@@ -3517,17 +3172,18 @@ def _generate_vertical_voice_quality_table(
         return min(vals) if minimize else max(vals)
 
     # Build the table
-    num_providers = len(providers_sorted)
-    col_spec = "l" + "c" * num_providers
+    num_models = len(llms_sorted)
+    col_spec = "l" + "c" * num_models
 
     lines = []
     lines.append(rf"\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}")
     lines.append(r"\toprule")
 
-    # Header row with provider names
+    # Header row with model names
+    model_names = [get_short_llm_name(llm, max_len=25) for llm in llms_sorted]
     header = (
         r"\textbf{Metric} & "
-        + " & ".join([rf"\textbf{{{p}}}" for p in providers_sorted])
+        + " & ".join([rf"\textbf{{{m}}}" for m in model_names])
         + r" \\"
     )
     lines.append(header)
@@ -3554,21 +3210,21 @@ def _generate_vertical_voice_quality_table(
     ]
 
     # Add correct rates to reg_data
-    for provider in providers_sorted:
-        if provider in reg_data:
-            reg_data[provider]["backchannel_correct"] = (
-                1 - reg_data[provider].get("backchannel_error_rate", 1)
-                if not pd.isna(reg_data[provider].get("backchannel_error_rate"))
+    for llm in llms_sorted:
+        if llm in reg_data:
+            reg_data[llm]["backchannel_correct"] = (
+                1 - reg_data[llm].get("backchannel_error_rate", 1)
+                if not pd.isna(reg_data[llm].get("backchannel_error_rate"))
                 else np.nan
             )
-            reg_data[provider]["vocal_tic_correct"] = (
-                1 - reg_data[provider].get("vocal_tic_error_rate", 1)
-                if not pd.isna(reg_data[provider].get("vocal_tic_error_rate"))
+            reg_data[llm]["vocal_tic_correct"] = (
+                1 - reg_data[llm].get("vocal_tic_error_rate", 1)
+                if not pd.isna(reg_data[llm].get("vocal_tic_error_rate"))
                 else np.nan
             )
-            reg_data[provider]["non_directed_correct"] = (
-                1 - reg_data[provider].get("non_directed_error_rate", 1)
-                if not pd.isna(reg_data[provider].get("non_directed_error_rate"))
+            reg_data[llm]["non_directed_correct"] = (
+                1 - reg_data[llm].get("non_directed_error_rate", 1)
+                if not pd.isna(reg_data[llm].get("non_directed_error_rate"))
                 else np.nan
             )
 
@@ -3587,16 +3243,16 @@ def _generate_vertical_voice_quality_table(
                 lines.append(r"\midrule")
             # Add section header spanning all columns
             lines.append(
-                rf"\multicolumn{{{num_providers + 1}}}{{l}}{{\textit{{{section_starts[i]}}}}} \\"
+                rf"\multicolumn{{{num_models + 1}}}{{l}}{{\textit{{{section_starts[i]}}}}} \\"
             )
 
         data = ctrl_data if source == "ctrl" else reg_data
         best_val = get_best(data, key, minimize=minimize)
 
         row_vals = []
-        for provider in providers_sorted:
-            if provider in data:
-                val = data[provider].get(key)
+        for llm in llms_sorted:
+            if llm in data:
+                val = data[llm].get(key)
                 row_vals.append(fmt_func(val, best_val))
             else:
                 row_vals.append("--")
@@ -3637,17 +3293,11 @@ def _generate_core_metrics_table(
         logger.warning("No control/regular data for core metrics table.")
         return
 
-    # Add provider display column
-    df["provider_key"] = df["llm"].apply(get_provider_key)
-    df["provider_display"] = df["provider_key"].apply(get_provider_display)
-
     # Merge interruption data if available
     if df_interruption is not None:
         df_int = df_interruption[
             df_interruption["speech_complexity"].isin(["control", "regular"])
         ].copy()
-        df_int["provider_key"] = df_int["llm"].apply(get_provider_key)
-        df_int["provider_display"] = df_int["provider_key"].apply(get_provider_display)
         # Merge on llm, domain, speech_complexity
         df = df.merge(
             df_int[["llm", "domain", "speech_complexity", "agent_interrupts_count"]],
@@ -3662,12 +3312,9 @@ def _generate_core_metrics_table(
         df["agent_interrupts_count"] = np.nan
         df["agent_interruption_rate"] = np.nan
 
-    # Get all providers
-    all_providers_in_data = set(df["provider_display"].unique())
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-    )
+    # Get all models (by llm, not provider)
+    all_llms_in_data = set(df["llm"].unique())
+    llms_sorted = sorted(list(all_llms_in_data), key=get_model_sort_key)
 
     # Generate LaTeX table
     lines = []
@@ -3678,7 +3325,7 @@ def _generate_core_metrics_table(
         r"\multicolumn{3}{c}{\textbf{Regular}} \\"
     )
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & "
+        r"\textbf{Domain} & \textbf{Model} & "
         r"$L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ & "
         r"$L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ \\"
     )
@@ -3723,13 +3370,10 @@ def _generate_core_metrics_table(
     # Build "All" aggregate data
     all_agg = {"control": {}, "regular": {}}
     for complexity in ["control", "regular"]:
-        for provider in providers_sorted:
-            pdata = df[
-                (df["provider_display"] == provider)
-                & (df["speech_complexity"] == complexity)
-            ]
+        for llm in llms_sorted:
+            pdata = df[(df["llm"] == llm) & (df["speech_complexity"] == complexity)]
             if not pdata.empty:
-                all_agg[complexity][provider] = {
+                all_agg[complexity][llm] = {
                     "response_latency": pdata["response_latency_mean"].mean(),
                     "response_rate": pdata["response_rate"].mean(),
                     "agent_interruption_rate": pdata["agent_interruption_rate"].mean(),
@@ -3754,17 +3398,18 @@ def _generate_core_metrics_table(
     )
 
     # Add "All" rows
-    for i, provider in enumerate(providers_sorted):
+    for i, llm in enumerate(llms_sorted):
+        model_name = get_short_llm_name(llm, max_len=25)
         if i == 0:
-            domain_label = rf"\multirow{{{len(providers_sorted)}}}{{*}}{{All}}"
+            domain_label = rf"\multirow{{{len(llms_sorted)}}}{{*}}{{All}}"
         else:
             domain_label = ""
 
-        ctrl = all_agg["control"].get(provider, {})
-        reg = all_agg["regular"].get(provider, {})
+        ctrl = all_agg["control"].get(llm, {})
+        reg = all_agg["regular"].get(llm, {})
 
         lines.append(
-            f"{domain_label} & {provider} & "
+            f"{domain_label} & {model_name} & "
             f"{fmt_sec(ctrl.get('response_latency'), best_ctrl_latency)} & "
             f"{fmt_pct_higher(ctrl.get('response_rate'), best_ctrl_resp)} & "
             f"{fmt_pct_lower(ctrl.get('agent_interruption_rate'), best_ctrl_int)} & "
@@ -3781,14 +3426,14 @@ def _generate_core_metrics_table(
 
         domain_agg = {"control": {}, "regular": {}}
         for complexity in ["control", "regular"]:
-            for provider in providers_sorted:
+            for llm in llms_sorted:
                 pdata = domain_data[
-                    (domain_data["provider_display"] == provider)
+                    (domain_data["llm"] == llm)
                     & (domain_data["speech_complexity"] == complexity)
                 ]
                 if not pdata.empty:
                     row = pdata.iloc[0]
-                    domain_agg[complexity][provider] = {
+                    domain_agg[complexity][llm] = {
                         "response_latency": row.get("response_latency_mean"),
                         "response_rate": row.get("response_rate"),
                         "agent_interruption_rate": row.get("agent_interruption_rate"),
@@ -3812,23 +3457,26 @@ def _generate_core_metrics_table(
             domain_agg["regular"], "agent_interruption_rate", minimize=True
         )
 
-        domain_providers = [
-            p
-            for p in providers_sorted
-            if p in domain_agg["control"] or p in domain_agg["regular"]
+        domain_llms = [
+            llm
+            for llm in llms_sorted
+            if llm in domain_agg["control"] or llm in domain_agg["regular"]
         ]
 
-        for i, provider in enumerate(domain_providers):
+        for i, llm in enumerate(domain_llms):
+            model_name = get_short_llm_name(llm, max_len=25)
             if i == 0:
-                domain_label = rf"\multirow{{{len(domain_providers)}}}{{*}}{{{domain.capitalize()}}}"
+                domain_label = (
+                    rf"\multirow{{{len(domain_llms)}}}{{*}}{{{domain.capitalize()}}}"
+                )
             else:
                 domain_label = ""
 
-            ctrl = domain_agg["control"].get(provider, {})
-            reg = domain_agg["regular"].get(provider, {})
+            ctrl = domain_agg["control"].get(llm, {})
+            reg = domain_agg["regular"].get(llm, {})
 
             lines.append(
-                f"{domain_label} & {provider} & "
+                f"{domain_label} & {model_name} & "
                 f"{fmt_sec(ctrl.get('response_latency'), best_ctrl_latency)} & "
                 f"{fmt_pct_higher(ctrl.get('response_rate'), best_ctrl_resp)} & "
                 f"{fmt_pct_lower(ctrl.get('agent_interruption_rate'), best_ctrl_int)} & "
@@ -3851,17 +3499,19 @@ def _generate_core_metrics_table(
     # Also save as CSV
     csv_rows = []
     for domain in ["All"] + DOMAINS:
-        for provider in providers_sorted:
+        for llm in llms_sorted:
+            model_name = get_short_llm_name(llm, max_len=25)
+            provider = get_provider_display(get_provider_key(llm))
             for complexity in ["control", "regular"]:
                 if domain == "All":
                     pdata = df[
-                        (df["provider_display"] == provider)
-                        & (df["speech_complexity"] == complexity)
+                        (df["llm"] == llm) & (df["speech_complexity"] == complexity)
                     ]
                     if not pdata.empty:
                         csv_rows.append(
                             {
                                 "domain": domain,
+                                "model": model_name,
                                 "provider": provider,
                                 "complexity": complexity,
                                 "response_latency": pdata[
@@ -3876,7 +3526,7 @@ def _generate_core_metrics_table(
                 else:
                     pdata = df[
                         (df["domain"] == domain)
-                        & (df["provider_display"] == provider)
+                        & (df["llm"] == llm)
                         & (df["speech_complexity"] == complexity)
                     ]
                     if not pdata.empty:
@@ -3884,6 +3534,7 @@ def _generate_core_metrics_table(
                         csv_rows.append(
                             {
                                 "domain": domain,
+                                "model": model_name,
                                 "provider": provider,
                                 "complexity": complexity,
                                 "response_latency": row.get("response_latency_mean"),
@@ -3922,17 +3573,11 @@ def _generate_full_voice_quality_table(
         logger.warning("No control/regular data for full voice quality table.")
         return
 
-    # Add provider display column
-    df["provider_key"] = df["llm"].apply(get_provider_key)
-    df["provider_display"] = df["provider_key"].apply(get_provider_display)
-
     # Merge interruption data if available
     if df_interruption is not None:
         df_int = df_interruption[
             df_interruption["speech_complexity"].isin(["control", "regular"])
         ].copy()
-        df_int["provider_key"] = df_int["llm"].apply(get_provider_key)
-        df_int["provider_display"] = df_int["provider_key"].apply(get_provider_display)
         df = df.merge(
             df_int[["llm", "domain", "speech_complexity", "agent_interrupts_count"]],
             on=["llm", "domain", "speech_complexity"],
@@ -3944,12 +3589,9 @@ def _generate_full_voice_quality_table(
     else:
         df["agent_interruption_rate"] = np.nan
 
-    # Get all providers
-    all_providers_in_data = set(df["provider_display"].unique())
-    providers_sorted = sorted(
-        list(all_providers_in_data),
-        key=lambda p: PROVIDER_ORDER.index(p) if p in PROVIDER_ORDER else 99,
-    )
+    # Get all models (by llm, not provider)
+    all_llms_in_data = set(df["llm"].unique())
+    llms_sorted = sorted(list(all_llms_in_data), key=get_model_sort_key)
 
     # Helper functions
     def fmt_sec(val, best_val):
@@ -3999,7 +3641,7 @@ def _generate_full_voice_quality_table(
         return min(vals) if minimize else max(vals)
 
     # Generate LaTeX table with 3-row header
-    # Column structure: Domain, Provider, L_R(C), L_R(R), L_Y, R_R(C), R_R(R), R_Y, I_A(C), I_A(R), S_BC, S_VT, S_ND
+    # Column structure: Domain, Model, L_R(C), L_R(R), L_Y, R_R(C), R_R(R), R_Y, I_A(C), I_A(R), S_BC, S_VT, S_ND
     lines = []
     lines.append(r"\begin{tabular}{@{}ll|cc|c|cc|c|cc|ccc@{}}")
     lines.append(r"\toprule")
@@ -4019,7 +3661,7 @@ def _generate_full_voice_quality_table(
     )
     # Row 3: Condition labels
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & C & R & & C & R & & C & R & & & \\"
+        r"\textbf{Domain} & \textbf{Model} & C & R & & C & R & & C & R & & & \\"
     )
     lines.append(r"\midrule")
 
@@ -4062,20 +3704,20 @@ def _generate_full_voice_quality_table(
         if domain_df.empty:
             continue
 
-        # Collect data for all providers
+        # Collect data for all models
         ctrl_data = {}
         reg_data = {}
-        for provider in providers_sorted:
+        for llm in llms_sorted:
             ctrl_pdata = domain_df[
-                (domain_df["provider_display"] == provider)
+                (domain_df["llm"] == llm)
                 & (domain_df["speech_complexity"] == "control")
             ]
             reg_pdata = domain_df[
-                (domain_df["provider_display"] == provider)
+                (domain_df["llm"] == llm)
                 & (domain_df["speech_complexity"] == "regular")
             ]
-            ctrl_data[provider] = get_row_data(ctrl_pdata)
-            reg_data[provider] = get_row_data(reg_pdata)
+            ctrl_data[llm] = get_row_data(ctrl_pdata)
+            reg_data[llm] = get_row_data(reg_pdata)
 
         # Find best values for this domain
         ctrl_list = [v for v in ctrl_data.values() if v]
@@ -4123,18 +3765,19 @@ def _generate_full_voice_quality_table(
         best_ctrl_rr = get_best(ctrl_list, "response_rate", minimize=False)
         best_ctrl_ia = get_best(ctrl_list, "agent_interruption_rate", minimize=True)
 
-        domain_providers = [
-            p for p in providers_sorted if ctrl_data.get(p) or reg_data.get(p)
+        domain_llms = [
+            llm for llm in llms_sorted if ctrl_data.get(llm) or reg_data.get(llm)
         ]
 
-        for i, provider in enumerate(domain_providers):
+        for i, llm in enumerate(domain_llms):
+            model_name = get_short_llm_name(llm, max_len=25)
             if i == 0:
-                domain_label = rf"\multirow{{{len(domain_providers)}}}{{*}}{{{domain.capitalize() if domain != 'All' else 'All'}}}"
+                domain_label = rf"\multirow{{{len(domain_llms)}}}{{*}}{{{domain.capitalize() if domain != 'All' else 'All'}}}"
             else:
                 domain_label = ""
 
-            ctrl = ctrl_data.get(provider, {})
-            reg = reg_data.get(provider, {})
+            ctrl = ctrl_data.get(llm, {})
+            reg = reg_data.get(llm, {})
 
             # Compute selectivity correct rates
             bc_correct = (
@@ -4158,7 +3801,7 @@ def _generate_full_voice_quality_table(
 
             # Build row with separate C/R columns
             lines.append(
-                f"{domain_label} & {provider} & "
+                f"{domain_label} & {model_name} & "
                 # Latency: L_R(C), L_R(R), L_Y
                 f"{fmt_sec(ctrl.get('response_latency'), best_ctrl_lr)} & "
                 f"{fmt_sec(reg.get('response_latency'), best_reg_lr)} & "

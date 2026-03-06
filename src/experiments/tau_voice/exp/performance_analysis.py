@@ -522,29 +522,15 @@ def plot_pass_1_headline(
     categories = ["All"] + [d.capitalize() for d in domains_to_plot]
     n_categories = len(categories)
 
-    # Load text-based baseline from leaderboard
-    text_scores = {}
-    text_model_name = None
+    # Load text-based baselines (hardcoded reference scores)
+    text_baselines_data = []
     if include_text_baseline:
-        try:
-            from tau2.scripts.leaderboard.leaderboard import Leaderboard
+        from experiments.tau_voice.exp.text_baselines import DEFAULT_TEXT_BASELINES
 
-            lb = Leaderboard.load()
-            # Get overall top model
-            top_entries = lb.get_top_models_overall(metric="pass_1", limit=1)
-            if top_entries:
-                entry = top_entries[0]
-                text_model_name = entry.submission.model_name
-                # Overall score
-                text_scores["All"] = entry.score / 100.0
-                # Per-domain scores for this model
-                for domain in domains_to_plot:
-                    domain_results = entry.submission.results.get_domain(domain)
-                    if domain_results and domain_results.pass_1 is not None:
-                        text_scores[domain.capitalize()] = domain_results.pass_1 / 100.0
-                logger.info(f"Text baseline: {text_model_name}")
-        except Exception as e:
-            logger.warning(f"Could not load leaderboard baselines: {e}")
+        for baseline in DEFAULT_TEXT_BASELINES:
+            scores = baseline.get_scores_dict(domains_to_plot)
+            text_baselines_data.append((baseline.display_name, scores))
+            logger.info(f"Text baseline: {baseline.model_name}")
 
     # Compute scores for each voice LLM
     llm_scores = {}
@@ -563,17 +549,11 @@ def plot_pass_1_headline(
                 scores[domain.capitalize()] = np.nan
         llm_scores[llm] = scores
 
-    # Build list of models to plot (text baseline first if available)
+    # Build list of models to plot (text baselines first if available)
     models_to_plot = []
-    if text_scores:
-        # Shorten the SOTA model name
-        sota_short = text_model_name
-        if sota_short:
-            # Common shortenings
-            sota_short = sota_short.replace("gpt-", "").replace("claude-", "cl-")
-            if len(sota_short) > 12:
-                sota_short = sota_short[:12]
-        models_to_plot.append((f"SOTA Text\n({sota_short})", text_scores, "#666666"))
+    n_text_baselines = len(text_baselines_data)
+    for name, scores in text_baselines_data:
+        models_to_plot.append((f"Text\n({name})", scores, "#666666"))
     for llm in llms:
         # Shorten LLM names
         llm_short = llm.split(":")[-1] if ":" in llm else llm
@@ -635,10 +615,11 @@ def plot_pass_1_headline(
                 fontweight="medium",
             )
 
-    # Add vertical separator after text baseline
-    if text_scores:
-        # Separator between first (SOTA) and second model
-        sep_x = (model_positions[0] + model_positions[1]) / 2 if n_models > 1 else 0.5
+    # Add vertical separator after text baselines
+    if n_text_baselines > 0 and n_models > n_text_baselines:
+        sep_x = (
+            model_positions[n_text_baselines - 1] + model_positions[n_text_baselines]
+        ) / 2
         ax.axvline(x=sep_x, color="#cccccc", linestyle="-", linewidth=1, zorder=0)
 
     # Styling
@@ -5816,7 +5797,7 @@ def generate_paper_outputs(
         paper_dir,
         df_metrics,
         domains_filter=["retail"],
-        llms_filter=["gemini", "gpt-realtime", "grok"],
+        llms_filter=["gemini", "gpt-realtime", "grok", "xai"],
         filename="ablation_retail.pdf",
     )
 
@@ -5832,69 +5813,36 @@ def _generate_main_results_table(
 
     Format matches results.tex Table 1 style.
     """
-    from experiments.tau_voice.exp.plot_style import get_domain_task_counts
+    from experiments.tau_voice.exp.plot_style import (
+        get_domain_task_counts,
+        get_model_sort_key,
+        get_provider_key,
+        get_short_llm_name,
+    )
 
-    # Provider display names and order
-    PROVIDER_DISPLAY = {
-        "gemini": "Google",
-        "openai": "OpenAI",
-        "xai": "xAI",
-        "amazon": "Amazon",
-    }
-    PROVIDER_ORDER = ["Google", "OpenAI", "xAI", "Amazon"]
-
-    # Task counts per domain - loaded from registry
     DOMAIN_TASK_COUNTS = get_domain_task_counts()
 
-    # Map LLM names to provider keys
-    def get_provider_key(llm: str) -> str:
-        llm_lower = llm.lower()
-        if "gpt" in llm_lower or "openai" in llm_lower:
-            return "openai"
-        elif "gemini" in llm_lower or "google" in llm_lower:
-            return "gemini"
-        elif "grok" in llm_lower or "xai" in llm_lower:
-            return "xai"
-        elif "nova" in llm_lower or "amazon" in llm_lower:
-            return "amazon"
-        else:
-            return llm.split(":")[-1][:10].lower()
-
-    # Get unique values
     domains = [d for d in DOMAINS if d in df_metrics["domain"].unique()]
 
-    # Add provider column to dataframe
-    df_metrics = df_metrics.copy()
-    df_metrics["provider_key"] = df_metrics["llm"].apply(get_provider_key)
-
-    # Aggregate by domain, provider_key, complexity
+    # Aggregate per model (by llm, not by provider)
     agg_df = (
-        df_metrics.groupby(["domain", "provider_key", "speech_complexity"])[
-            "pass_hat_1"
-        ]
+        df_metrics.groupby(["domain", "llm", "speech_complexity"])["pass_hat_1"]
         .mean()
         .reset_index()
     )
+    agg_df["provider_key"] = agg_df["llm"].apply(get_provider_key)
 
-    # Build data by provider (not LLM) to avoid duplicates
     rows = []
     for domain in domains:
         domain_data = agg_df[agg_df["domain"] == domain]
         n_tasks = DOMAIN_TASK_COUNTS.get(domain, "?")
 
-        # Get unique providers for this domain
-        domain_providers = domain_data["provider_key"].unique()
+        for llm in sorted(domain_data["llm"].unique()):
+            llm_data = domain_data[domain_data["llm"] == llm]
+            provider_key = llm_data["provider_key"].iloc[0]
 
-        for provider_key in domain_providers:
-            provider_data = domain_data[domain_data["provider_key"] == provider_key]
-
-            # Get control and regular pass^1
-            control_rows = provider_data[
-                provider_data["speech_complexity"] == "control"
-            ]
-            regular_rows = provider_data[
-                provider_data["speech_complexity"] == "regular"
-            ]
+            control_rows = llm_data[llm_data["speech_complexity"] == "control"]
+            regular_rows = llm_data[llm_data["speech_complexity"] == "regular"]
 
             control_val = (
                 control_rows["pass_hat_1"].values[0] if len(control_rows) > 0 else None
@@ -5903,20 +5851,18 @@ def _generate_main_results_table(
                 regular_rows["pass_hat_1"].values[0] if len(regular_rows) > 0 else None
             )
 
-            # Skip if no data at all
             if control_val is None and regular_val is None:
                 continue
 
-            provider_name = PROVIDER_DISPLAY.get(
-                provider_key, provider_key.capitalize()
-            )
+            model_name = get_short_llm_name(llm, max_len=25)
 
             rows.append(
                 {
                     "domain": domain,
                     "n_tasks": n_tasks,
+                    "llm": llm,
                     "provider_key": provider_key,
-                    "provider": provider_name,
+                    "model": model_name,
                     "control": control_val,
                     "regular": regular_val,
                 }
@@ -5926,7 +5872,7 @@ def _generate_main_results_table(
     lines = []
     lines.append(r"\begin{table}[h]")
     lines.append(
-        r"\caption{Task completion (pass\^{}1) by provider, domain, and condition. \textbf{Bold} indicates best per domain/condition.}"
+        r"\caption{Task completion (pass\^{}1) by model, domain, and condition. \textbf{Bold} indicates best per domain/condition.}"
     )
     lines.append(r"\label{tab:main-results}")
     lines.append(r"\centering")
@@ -5934,18 +5880,15 @@ def _generate_main_results_table(
     lines.append(r"\begin{tabular}{llccc}")
     lines.append(r"\toprule")
     lines.append(
-        r"\textbf{Domain} & \textbf{Provider} & \textbf{Control} & \textbf{Regular} & \textbf{$\Delta$} \\"
+        r"\textbf{Domain} & \textbf{Model} & \textbf{Control} & \textbf{Regular} & \textbf{$\Delta$} \\"
     )
     lines.append(r"\midrule")
 
     for domain in domains:
         domain_rows = [r for r in rows if r["domain"] == domain]
-        # Sort by provider order
         domain_rows = sorted(
             domain_rows,
-            key=lambda r: PROVIDER_ORDER.index(r["provider"])
-            if r["provider"] in PROVIDER_ORDER
-            else 99,
+            key=lambda r: get_model_sort_key(r["llm"]),
         )
         n_tasks = domain_rows[0]["n_tasks"] if domain_rows else "?"
 
@@ -5986,7 +5929,7 @@ def _generate_main_results_table(
                 delta_str = "--"
 
             lines.append(
-                f"{domain_label} & {row['provider']} & {control_str} & {regular_str} & {delta_str} \\\\"
+                f"{domain_label} & {row['model']} & {control_str} & {regular_str} & {delta_str} \\\\"
             )
 
         # Add midrule between domains (except after last)
@@ -6022,24 +5965,17 @@ def _generate_ablation_table(
     realtime_llms = [
         llm
         for llm in all_llms
-        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok"])
+        if any(p in llm.lower() for p in ["gemini", "gpt-realtime", "grok", "xai"])
     ]
 
     if not realtime_llms:
         logger.warning("No realtime LLMs found for ablation table.")
         return
 
-    # Map LLM to provider name
-    def get_provider(llm: str) -> str:
-        llm_lower = llm.lower()
-        if "gpt" in llm_lower:
-            return "OpenAI"
-        elif "gemini" in llm_lower:
-            return "Google"
-        elif "grok" in llm_lower:
-            return "xAI"
-        else:
-            return llm.split(":")[-1][:10]
+    from experiments.tau_voice.exp.plot_style import (
+        get_model_sort_key,
+        get_short_llm_name,
+    )
 
     # Complexity display names for ablation
     complexity_labels = {
@@ -6054,19 +5990,21 @@ def _generate_ablation_table(
     tested_complexities = retail_data["speech_complexity"].unique()
     complexities = [c for c in SPEECH_COMPLEXITIES if c in tested_complexities]
 
-    # Build data matrix
+    # Sort models by provider order, then model name
+    realtime_llms = sorted(realtime_llms, key=get_model_sort_key)
+
+    # Build data matrix keyed by llm
     data = {}
     for llm in realtime_llms:
-        provider = get_provider(llm)
-        data[provider] = {}
+        data[llm] = {}
         llm_data = retail_data[retail_data["llm"] == llm]
         for complexity in complexities:
             c_data = llm_data[llm_data["speech_complexity"] == complexity]
-            data[provider][complexity] = (
+            data[llm][complexity] = (
                 c_data["pass_hat_1"].mean() if len(c_data) > 0 else None
             )
 
-    providers = [get_provider(llm) for llm in realtime_llms]
+    model_names = [get_short_llm_name(llm, max_len=20) for llm in realtime_llms]
 
     # Generate LaTeX
     lines = []
@@ -6079,8 +6017,8 @@ def _generate_ablation_table(
     lines.append(r"\begin{small}")
 
     # Header with "All" column
-    header_cols = " & ".join([rf"\textbf{{{p}}}" for p in providers])
-    lines.append(r"\begin{tabular}{l" + "c" * len(providers) + "c}")
+    header_cols = " & ".join([rf"\textbf{{{m}}}" for m in model_names])
+    lines.append(r"\begin{tabular}{l" + "c" * len(realtime_llms) + "c}")
     lines.append(r"\toprule")
     lines.append(rf"\textbf{{Condition}} & {header_cols} & \textbf{{All}} \\")
     lines.append(r"\midrule")
@@ -6089,18 +6027,16 @@ def _generate_ablation_table(
     for complexity in complexities:
         label = complexity_labels.get(complexity, complexity)
         vals = []
-        provider_vals = []  # For computing average
-        for provider in providers:
-            val = data[provider].get(complexity)
-            control_val = data[provider].get("control")
+        model_vals = []
+        for llm in realtime_llms:
+            val = data[llm].get(complexity)
+            control_val = data[llm].get("control")
             if val is not None:
-                provider_vals.append(val)
+                model_vals.append(val)
                 pct = int(val * 100)
                 if complexity == "control":
-                    # No delta for control itself
                     vals.append(f"{pct}\\%")
                 elif control_val is not None:
-                    # Show value with delta from control
                     delta = int((val - control_val) * 100)
                     delta_str = f"+{delta}" if delta >= 0 else str(delta)
                     vals.append(f"{pct}\\% ({delta_str})")
@@ -6109,18 +6045,17 @@ def _generate_ablation_table(
             else:
                 vals.append("--")
 
-        # Compute "All" column (average across providers)
-        if provider_vals:
-            avg_val = sum(provider_vals) / len(provider_vals)
+        # Compute "All" column (average across models)
+        if model_vals:
+            avg_val = sum(model_vals) / len(model_vals)
             avg_pct = int(avg_val * 100)
             if complexity == "control":
                 vals.append(f"{avg_pct}\\%")
             else:
-                # Compute average control for delta
                 control_vals = [
-                    data[p].get("control")
-                    for p in providers
-                    if data[p].get("control") is not None
+                    data[llm].get("control")
+                    for llm in realtime_llms
+                    if data[llm].get("control") is not None
                 ]
                 if control_vals:
                     avg_control = sum(control_vals) / len(control_vals)
@@ -6212,7 +6147,7 @@ def analyze_results(
             domain_dir,
             df_metrics,
             domains_filter=["retail"],
-            llms_filter=["gemini", "gpt-realtime", "grok"],
+            llms_filter=["gemini", "gpt-realtime", "grok", "xai"],
             filename="pass_1_retail_realtime.pdf",
         )
         save_pass_1_complexity_table(domain_dir, df_metrics)
@@ -6407,7 +6342,7 @@ def regenerate_plots_from_csv(output_dir: Path) -> None:
                 domain_dir,
                 df_metrics,
                 domains_filter=["retail"],
-                llms_filter=["gemini", "gpt-realtime", "grok"],
+                llms_filter=["gemini", "gpt-realtime", "grok", "xai"],
                 filename="pass_1_retail_realtime.pdf",
             )
             save_pass_1_complexity_table(domain_dir, df_metrics)
