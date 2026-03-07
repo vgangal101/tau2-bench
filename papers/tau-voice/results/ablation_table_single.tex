@@ -6,13 +6,13 @@
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{lccc|c}
 \toprule
-\textbf{Condition} & \textbf{Google} & \textbf{OpenAI} & \textbf{xAI} & \textbf{All} \\
+\textbf{Condition} & \textbf{gemini-live-2.5-flas} & \textbf{gpt-realtime-1.5} & \textbf{xai-realtime} & \textbf{All} \\
 \midrule
-Clean & 39\% & 39\% & \textbf{42\%} & 40\% \\
-+ Noise & \textbf{37\% (-1)} & 26\% (-13) & 29\% (-12) & 31\% (-9) \\
-+ Accents & \textbf{36\% (-2)} & 21\% (-18) & 23\% (-18) & 27\% (-13) \\
-+ Interrupts & \textbf{38\% (+0)} & 30\% (-8) & 36\% (-5) & 35\% (-4) \\
-Realistic & \textbf{28\% (-11)} & 15\% (-23) & 20\% (-21) & 21\% (-19) \\
+Clean & 38\% & \textbf{69\%} & 48\% & 52\% \\
++ Noise & 35\% (-3, -9.1\%) & \textbf{64\% (-4, -6.3\%)} & 44\% (-3, -7.3\%) & 48\% (-3, -7.3\%) \\
++ Accents & 45\% (+7, +18.2\%) & \textbf{58\% (-10, -15.2\%)} & 28\% (-19, -40.0\%) & 44\% (-7, -14.6\%) \\
++ Interrupts & 41\% (+2, +6.8\%) & \textbf{56\% (-13, -19.0\%)} & 50\% (+2, +5.5\%) & 49\% (-2, -5.1\%) \\
+Realistic & 28\% (-10, -27.3\%) & \textbf{43\% (-25, -36.7\%)} & 36\% (-11, -23.6\%) & 36\% (-15, -30.3\%) \\
 \bottomrule
 \end{tabular}%
 }

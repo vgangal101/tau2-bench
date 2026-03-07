@@ -32,9 +32,9 @@ We present \textbf{\tauvoice{}}, extending \tautwobench{} to full-duplex voice i
     
     \item \textbf{Empirical findings.} We benchmark Google, OpenAI, and xAI, ablating acoustic factors (noise, accents, user behaviors). Figure~\ref{fig:headline} summarizes our headline result:
     \begin{itemize}[nosep,leftmargin=1em]
-        \item \textit{A large voice-text gap remains}: Even under Clean conditions (clean audio, no interruptions), voice agents achieve only 29--42\% vs 80\% GPT-5 (reasoning)---a 38--51pp gap.
-        \item \textit{Realistic audio exacerbates the gap}: Under Realistic conditions (noise, accents, user behaviors), performance falls further to 19--30\%. Among factors, accents hurt most ($-$13pp), with potential accessibility implications.
-        \item \textit{Provider trade-offs}: Google handles individual factors well ($-$5pp combined) but compounds under full Realistic conditions ($-$11pp). For turn-taking, xAI achieves best latency (0.99s) and responsiveness (85\%) but interrupts users on average once per turn; OpenAI has best selectivity (74\%) but worst latency (2.22s). No provider masters both task completion and conversational dynamics.
+        \item \textit{A large voice-text gap remains}: Even under Clean conditions (clean audio, no interruptions), voice agents achieve only 29--51\% vs 85\% GPT-5 (reasoning)---a 34--56pp gap.\revised{Gap narrowed from 38--51pp due to stronger OpenAI model and updated tasks. Relative framing added.}
+        \item \textit{Realistic audio exacerbates the gap}: Under Realistic conditions (noise, accents, user behaviors), performance falls further to 25--38\%, retaining only 29--45\% of text SOTA capability. Among factors, accents are most damaging on average ($-$8pp), but the effect is provider-specific: xAI is highly vulnerable ($-$19pp, $-$40\% relative) while Google actually improves (+7pp), with potential accessibility implications.\revised{Was $-$13pp universal. Accents now provider-specific: xAI worst ($-$19pp), Google benefits (+7pp). Relative delta framing added.}
+        \item \textit{Provider trade-offs}: Google is most robust to degradation ($-$4pp) but has the lowest absolute scores (29\% Clean). OpenAI achieves fastest latency (0.90s) and near-perfect responsiveness (99\%) but worst selectivity (5\%); xAI leads in task completion (51\% Clean, 38\% Realistic) but has the highest interrupt rate (84\%). No provider masters both task completion and conversational dynamics.\revised{OpenAI characterization fully inverted: was slowest (2.22s), most selective (74\%). Now fastest (0.90s), least selective (5\%). Reflects model change from gpt-realtime-2025-08 to gpt-realtime-1.5.}
         \item \textit{Failures are primarily agent errors}: Qualitative analysis of 40 failed tasks confirms that 75--90\% of failures stem from agent behavior, suggesting that observed failures primarily reflect agent behavior under our evaluation setup.
     \end{itemize}
 \end{enumerate}
@@ -42,6 +42,6 @@ We present \textbf{\tauvoice{}}, extending \tautwobench{} to full-duplex voice i
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\columnwidth]{results/pass_1_headline_simple.pdf}
-\caption{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 80\%. Voice agents show two levels of degradation: under \textbf{Clean} conditions (clean audio, no interruptions), performance drops to 29--42\% ($-$38 to $-$51pp); under \textbf{Realistic} conditions (realistic audio, interruptions), it falls further to 19--30\% ($-$50 to $-$61pp from text).}
+\caption{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 85\%. Voice agents show two levels of degradation: under \textbf{Clean} conditions (clean audio, no interruptions), performance drops to 29--51\% ($-$34 to $-$56pp); under \textbf{Realistic} conditions (realistic audio, interruptions), it falls further to 25--38\% ($-$47 to $-$60pp from text).\revised{Was 80\%, 29--42\% ($-$38 to $-$51pp), 19--30\% ($-$50 to $-$61pp).}}
 \label{fig:headline}
 \end{figure}

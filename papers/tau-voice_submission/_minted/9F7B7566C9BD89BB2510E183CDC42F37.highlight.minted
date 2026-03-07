@@ -1,0 +1,55 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+You simulate a natural listener who occasionally says \PYGZdq{}uh\PYGZhy{}huh\PYGZdq{} or \PYGZdq{}mm\PYGZhy{}hmm\PYGZdq{} to show they\PYGZsq{}re following along.
+
+\PYGZlt{}conversation\PYGZus{}history\PYGZgt{}
+\PYGZob{}conversation\PYGZus{}history\PYGZcb{}
+\PYGZlt{}/conversation\PYGZus{}history\PYGZgt{}
+
+The agent is still speaking [CURRENTLY SPEAKING, INCOMPLETE]. Ignore the trailing incomplete word/phrase\PYGZhy{}\PYGZhy{}\PYGZhy{}focus only on the COMPLETE sentences delivered so far in the agent\PYGZsq{}s current turn.
+
+Continuers (\PYGZdq{}uh\PYGZhy{}huh\PYGZdq{}, \PYGZdq{}mm\PYGZhy{}hmm\PYGZdq{}, \PYGZdq{}yeah\PYGZdq{}) are brief sounds that mean \PYGZdq{}I\PYGZsq{}m listening, keep going.\PYGZdq{} They:
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Happen naturally during extended speech
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Show engagement without interrupting
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Are NOT responses to specific content\PYGZhy{}\PYGZhy{}\PYGZhy{}just signals of attention
+
+Say YES if:
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The agent has completed at least 2 full, substantive sentences in their current turn (Short phrases like \PYGZdq{}Thanks for your patience\PYGZdq{} or \PYGZdq{}Let me check on that\PYGZdq{} don\PYGZsq{}t count as substantive)
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The user hasn\PYGZsq{}t spoken or backchanneled recently (check the last 3 exchanges for ANY user sound including \PYGZdq{}mm\PYGZhy{}hmm\PYGZdq{}, \PYGZdq{}uh\PYGZhy{}huh\PYGZdq{}, \PYGZdq{}okay\PYGZdq{})
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }It would feel natural to briefly signal \PYGZdq{}I\PYGZsq{}m still here\PYGZdq{}
+
+Say NO if:
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The agent just started speaking (fewer than 2 substantive sentences)
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The user spoke OR backchanneled within the last 2\PYGZhy{}\PYGZhy{}3 exchanges
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The agent\PYGZsq{}s current turn contains or ends with a question
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }The agent is wrapping up or about to finish their thought
+
+Frequency guidance:
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Continuers are occasional, not constant
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Even when conditions seem right, real listeners only backchannel sometimes
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Aim for roughly 1 continuer per 4\PYGZhy{}\PYGZhy{}6 sentences of extended agent speech
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }When in doubt, say NO\PYGZhy{}\PYGZhy{}\PYGZhy{}silence is also natural
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Too few continuers is better than too many
+
+Examples:
+
+AGENT: \PYGZdq{}Hi there! How can I hel [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} NO (just started)
+
+AGENT: \PYGZdq{}Thanks for your patience. [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} NO (only 1 short sentence, not substantive enough)
+
+AGENT: \PYGZdq{}Sure, I can help with that. First I\PYGZsq{}ll need to verify your account. Could you provide your email or your name and zi [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} NO (agent is asking a question)
+
+AGENT: \PYGZdq{}No problem. We can use your name and zip code instead. Let me look that up for you. I\PYGZsq{}ll check our system now and see if I can fin [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} YES (3 substantive sentences, agent explaining process)
+
+AGENT: \PYGZdq{}I found your order. It includes a keyboard, thermostat, and headphones. The order was delivered last Tuesday. Now for the exchange, we have a few opti [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} YES (extended explanation with specific details)
+
+[If user said \PYGZdq{}mm\PYGZhy{}hmm\PYGZdq{} 2 exchanges ago]
+AGENT: \PYGZdq{}...and those are the available options. Now I\PYGZsq{}ll need your input on which [CURRENTLY SPEAKING, INCOMPLETE]\PYGZdq{}
+\PYGZhy{}\PYGZgt{} NO (user backchanneled recently, don\PYGZsq{}t do it again so soon)
+
+Respond with ONLY \PYGZdq{}YES\PYGZdq{} or \PYGZdq{}NO\PYGZdq{}.
+\end{MintedVerbatim}

@@ -1,22 +1,22 @@
 \begin{tabular}{@{}ll|ccc|ccc@{}}
 \toprule
  & & \multicolumn{3}{c|}{\textbf{Control}} & \multicolumn{3}{c}{\textbf{Regular}} \\
-\textbf{Domain} & \textbf{Provider} & $L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ & $L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ \\
+\textbf{Domain} & \textbf{Model} & $L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ & $L_R\downarrow$ & $R_R\uparrow$ & $I_A\downarrow$ \\
 \midrule
-\multirow{3}{*}{All} & Google & 1.36s & \textbf{98\%} & \textbf{9\%} & 1.44s & 86\% & \textbf{24\%} \\
- & OpenAI & 3.65s & 89\% & 40\% & 3.24s & 77\% & 34\% \\
- & xAI & \textbf{0.90s} & 95\% & 49\% & \textbf{0.99s} & \textbf{90\%} & 104\% \\
+\multirow{3}{*}{All} & gemini-live-2.5-flash-nat & 1.37s & 95\% & 7\% & 1.42s & 78\% & 21\% \\
+ & gpt-realtime-1.5 & 1.69s & \textbf{99\%} & \textbf{1\%} & 1.39s & \textbf{99\%} & \textbf{13\%} \\
+ & xai-realtime & \textbf{1.05s} & 92\% & 43\% & \textbf{1.15s} & 91\% & 84\% \\
 \midrule
-\multirow{3}{*}{Retail} & Google & 1.43s & \textbf{97\%} & \textbf{9\%} & 1.52s & 85\% & \textbf{28\%} \\
- & OpenAI & 3.69s & 83\% & 36\% & 2.94s & 78\% & 30\% \\
- & xAI & \textbf{0.93s} & 91\% & 72\% & \textbf{0.93s} & \textbf{89\%} & 118\% \\
+\multirow{3}{*}{Retail} & gemini-live-2.5-flash-nat & 1.49s & 97\% & 7\% & 1.56s & 75\% & 19\% \\
+ & gpt-realtime-1.5 & 1.81s & \textbf{99\%} & \textbf{0\%} & 1.39s & \textbf{99\%} & \textbf{14\%} \\
+ & xai-realtime & \textbf{1.09s} & 83\% & 29\% & \textbf{1.12s} & 90\% & 77\% \\
 \midrule
-\multirow{3}{*}{Airline} & Google & 1.38s & \textbf{98\%} & \textbf{8\%} & 1.43s & 87\% & \textbf{21\%} \\
- & OpenAI & 3.64s & 88\% & 48\% & 3.39s & 77\% & 39\% \\
- & xAI & \textbf{0.90s} & 95\% & 39\% & \textbf{1.07s} & \textbf{88\%} & 110\% \\
+\multirow{3}{*}{Airline} & gemini-live-2.5-flash-nat & 1.40s & 95\% & 5\% & 1.46s & 80\% & 19\% \\
+ & gpt-realtime-1.5 & 1.79s & \textbf{98\%} & \textbf{1\%} & 1.43s & \textbf{99\%} & \textbf{14\%} \\
+ & xai-realtime & \textbf{1.08s} & 93\% & 62\% & \textbf{1.18s} & 90\% & 82\% \\
 \midrule
-\multirow{3}{*}{Telecom} & Google & 1.28s & \textbf{99\%} & \textbf{10\%} & 1.36s & 86\% & \textbf{23\%} \\
- & OpenAI & 3.62s & 95\% & 37\% & 3.38s & 77\% & 32\% \\
- & xAI & \textbf{0.86s} & 99\% & 34\% & \textbf{0.97s} & \textbf{93\%} & 85\% \\
+\multirow{3}{*}{Telecom} & gemini-live-2.5-flash-nat & 1.20s & 95\% & 10\% & 1.24s & 80\% & 26\% \\
+ & gpt-realtime-1.5 & 1.48s & \textbf{99\%} & \textbf{1\%} & 1.35s & \textbf{100\%} & \textbf{11\%} \\
+ & xai-realtime & \textbf{0.98s} & 99\% & 39\% & \textbf{1.16s} & 92\% & 92\% \\
 \bottomrule
 \end{tabular}

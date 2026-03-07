@@ -25,6 +25,17 @@
 \shownotesfalse
 \newcommand{\authornote}[2]{\ifshownotes\todo[color=orange!40,inline]{\textbf{#1:} #2}\fi}
 
+% Sections needing update: renders inline red marker. Usage: \needsupdate{description}
+\usepackage{xcolor}
+\newcommand{\needsupdate}[1]{\textcolor{red}{\textbf{[NEEDS UPDATE:} #1\textbf{]}}}
+
+% Revision annotations: explains what changed vs previous version.
+% Usage: \revised{Explanation of what changed and why}
+% Set \showrevisedfalse to hide all revision notes (for camera-ready).
+\newif\ifshowrevised
+\showrevisedtrue
+\newcommand{\revised}[1]{\ifshowrevised\textcolor{blue}{\textsuperscript{$\star$}\,\footnotesize[#1]}\fi}
+
 % hyperref makes hyperlinks in the resulting PDF.
 % If your build breaks (sometimes temporarily if a hyperlink spans a page)
 % please comment out the following usepackage line and replace

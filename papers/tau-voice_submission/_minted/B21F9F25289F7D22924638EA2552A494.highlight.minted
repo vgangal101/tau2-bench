@@ -1,0 +1,15 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYGZlt{}scenario\PYGZgt{}
+
+Task Instructions: You are brief and your memory is not too good sometimes, but you are polite.
+
+Domain: retail
+
+Reason for Call: You just created your user id mei\PYGZus{}patel\PYGZus{}7272 and ordered some things, but you have two problems: first, the 1000\PYGZhy{}piece intermediate jigsaw might be too hard for your little kid, you wonder if you can change it to the easiest one with fewest pieces; second, you might have typed your address wrong. You want to check it, and potentially correct all order addresses and your user address. Make sure you mention these two problems at the same time in the same order.
+
+Known Info: Your name is Mei Patel, and you live in 445 Maple Drive, Suite 394, Fort Worth, Texas, 76165.
+
+Unknown Info: You do not remember your email address
+
+\PYGZlt{}/scenario\PYGZgt{}
+\end{MintedVerbatim}

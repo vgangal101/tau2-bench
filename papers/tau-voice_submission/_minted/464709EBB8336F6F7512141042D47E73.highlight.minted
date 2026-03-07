@@ -1,0 +1,21 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+You are analyzing a conversation to decide if the user should interrupt the agent.
+
+Conversation history (most recent at bottom):
+
+\PYGZlt{}conversation\PYGZus{}history\PYGZgt{}
+\PYGZob{}conversation\PYGZus{}history\PYGZcb{}
+\PYGZlt{}/conversation\PYGZus{}history\PYGZgt{}
+
+The agent is CURRENTLY speaking (you can see their ongoing speech in the conversation above).
+
+Based on the conversation so far, should the user interrupt the agent NOW?
+
+Consider:
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Has the user heard enough to understand what the agent is asking or saying?
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Has the user heard enough to have a response, question, or correction ready?
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Did the agent just complete the sentence which has all the pertinent information the user was looking for?
+\PYG{k}{\PYGZhy{}}\PYG{+w}{ }Do NOT repeatedly interrupt the agent if it has spoken only a few words (say less than 5 words).
+
+Respond with ONLY \PYGZdq{}YES\PYGZdq{} if the user should interrupt now, or \PYGZdq{}NO\PYGZdq{} if they should keep listening.
+\end{MintedVerbatim}

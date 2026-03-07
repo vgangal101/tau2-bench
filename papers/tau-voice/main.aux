@@ -6,12 +6,13 @@
 \citation{yao_-bench_2024,barres_2-bench_2025}
 \citation{lin_full-duplex-bench_2025,lin_full-duplex-bench-v2_2025}
 \@LN@col{1}
+\@LN@col{2}
 \newlabel{sec:intro}{{1}{1}{}{section.1}{}}
 \newlabel{sec:intro@cref}{{[section][1][]1}{[1][1][]1}{}{}{}}
-\@LN@col{2}
 \citation{yao_-bench_2024}
 \citation{barres_2-bench_2025}
-\citation{lin_full-duplex-bench_2025,lin_full-duplex-bench-v2_2025}
+\citation{lin_full-duplex-bench_2025}
+\citation{lin_full-duplex-bench-v2_2025}
 \citation{arora_talking_2025}
 \citation{chen_voicebench_2024}
 \citation{liu_vocalbench_2026}
@@ -21,12 +22,10 @@
 \@LN@col{1}
 \@LN@col{2}
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:headline}{{1}{2}{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 80\%. Voice agents show two levels of degradation: under \textbf {Clean} conditions (clean audio, no interruptions), performance drops to 29--42\% ($-$38 to $-$51pp); under \textbf {Realistic} conditions (realistic audio, interruptions), it falls further to 19--30\% ($-$50 to $-$61pp from text)}{figure.caption.1}{}}
+\newlabel{fig:headline}{{1}{2}{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 85\%. Voice agents show two levels of degradation: under \textbf {Clean} conditions (clean audio, no interruptions), performance drops to 29--51\% ($-$34 to $-$56pp); under \textbf {Realistic} conditions (realistic audio, interruptions), it falls further to 25--38\% ($-$47 to $-$60pp from text)}{figure.caption.1}{}}
 \newlabel{fig:headline@cref}{{[figure][1][]1}{[1][2][]2}{}{}{}}
 \newlabel{sec:related}{{2}{2}{}{section.2}{}}
 \newlabel{sec:related@cref}{{[section][2][]2}{[1][2][]2}{}{}{}}
-\newlabel{tab:related-comparison}{{1}{2}{Comparison of evaluation dimensions across benchmarks. Prior work advances individual dimensions; \tauvoice {} combines all three}{table.caption.2}{}}
-\newlabel{tab:related-comparison@cref}{{[table][1][]1}{[1][2][]2}{}{}{}}
 \citation{lin_full-duplex-bench_2025}
 \citation{lin_full-duplex-bench-v2_2025}
 \citation{arora_talking_2025}
@@ -39,59 +38,63 @@
 \citation{vertex_ai_gemini_2025}
 \citation{xai_grok_voice_2025}
 \@LN@col{1}
+\newlabel{tab:related-comparison}{{1}{3}{Comparison of evaluation dimensions across benchmarks. Prior work advances individual dimensions; \tauvoice {} combines all three}{table.caption.2}{}}
+\newlabel{tab:related-comparison@cref}{{[table][1][]1}{[1][2][]3}{}{}{}}
+\@LN@col{2}
 \newlabel{sec:methods}{{3}{3}{}{section.3}{}}
 \newlabel{sec:methods@cref}{{[section][3][]3}{[1][3][]3}{}{}{}}
-\@LN@col{2}
 \newlabel{fig:architecture}{{2}{3}{\tauvoice {} extends \tautwobench {} (gray) with voice-specific components (green): a voice user simulator with configurable personas, audio environment, and turn-taking policy; a full-duplex audio streaming channel discretized into simulation ticks; and a provider adapter for adding new voice APIs. Task infrastructure (instructions, tools, databases, domain policies) is inherited}{figure.caption.3}{}}
 \newlabel{fig:architecture@cref}{{[figure][2][]2}{[1][3][]3}{}{}{}}
 \@LN@col{1}
 \newlabel{sec:voice-user-simulator}{{3.2}{4}{}{subsection.3.2}{}}
 \newlabel{sec:voice-user-simulator@cref}{{[subsection][2][3]3.2}{[1][4][]4}{}{}{}}
+\@LN@col{2}
 \newlabel{fig:audio-pipeline}{{3}{4}{Voice user simulator pipeline. Each tick, the simulator generates text, synthesizes speech with a persona, mixes in environmental audio, and applies telephony degradation to produce realistic caller audio}{figure.caption.4}{}}
 \newlabel{fig:audio-pipeline@cref}{{[figure][3][]3}{[1][4][]4}{}{}{}}
-\@LN@col{2}
-\newlabel{tab:tick-example}{{2}{4}{Key moments from the Task 41 trajectory (Figure~\ref {fig:speech-timeline}). At 8s, the agent interrupts; at 68s the user interrupts and the agent yields but fails to respond for 5 seconds; at 82s the agent incorrectly responds to non-agent-directed speech [in brackets]; at 113s the user interrupts but the agent does not yield; at 121s the agent correctly continues through a backchannel}{table.caption.5}{}}
-\newlabel{tab:tick-example@cref}{{[table][2][]2}{[1][4][]4}{}{}{}}
 \citation{li_cb-whisper_2024,si_spokenwoz_2025}
 \newlabel{fig:speech-timeline}{{4}{5}{Speech activity timeline from a Retail domain simulation with Gemini Live. A customer calls about exchanging a jigsaw puzzle and correcting their address. The legend distinguishes \textit {observations} (User Int.\ = user interruption, Non-Agent Dir.\ = speech to someone other than the agent, Burst = environmental burst noise) from \textit {evaluation markers} (Agent Int.\ = agent interruption, BC Issue = incorrect backchannel handling, Voc.\ Tic Error / Non-Agent Dir.\ Error = agent incorrectly yielding or responding to these stimuli)}{figure.caption.6}{}}
 \newlabel{fig:speech-timeline@cref}{{[figure][4][]4}{[1][4][]5}{}{}{}}
 \@LN@col{1}
+\newlabel{tab:tick-example}{{2}{5}{Key moments from the Task 41 trajectory (Figure~\ref {fig:speech-timeline}). At 8s, the agent interrupts; at 68s the user interrupts and the agent yields but fails to respond for 5 seconds; at 82s the agent incorrectly responds to non-agent-directed speech [in brackets]; at 113s the user interrupts but the agent does not yield; at 121s the agent correctly continues through a backchannel}{table.caption.5}{}}
+\newlabel{tab:tick-example@cref}{{[table][2][]2}{[1][4][]5}{}{}{}}
+\@LN@col{2}
 \newlabel{sec:experiments}{{4}{5}{}{section.4}{}}
 \newlabel{sec:experiments@cref}{{[section][4][]4}{[1][5][]5}{}{}{}}
-\@LN@col{2}
 \newlabel{tab:models}{{3}{5}{Audio-native models evaluated}{table.caption.7}{}}
 \newlabel{tab:models@cref}{{[table][3][]3}{[1][5][]5}{}{}{}}
-\newlabel{tab:conditions}{{4}{5}{Speech complexity conditions: Clean vs Realistic}{table.caption.8}{}}
-\newlabel{tab:conditions@cref}{{[table][4][]4}{[1][5][]5}{}{}{}}
 \@LN@col{1}
+\newlabel{tab:conditions}{{4}{6}{Speech complexity conditions: Clean vs Realistic}{table.caption.8}{}}
+\newlabel{tab:conditions@cref}{{[table][4][]4}{[1][5][]6}{}{}{}}
 \newlabel{tab:conditions-ablation-single}{{5}{6}{Speech complexity conditions by ablation (single factors). Columns: Cln=Clean, +N=Noise, +A=Accents, +I=Interrupts, Real=Realistic (all effects)}{table.caption.9}{}}
 \newlabel{tab:conditions-ablation-single@cref}{{[table][5][]5}{[1][6][]6}{}{}{}}
 \@LN@col{2}
 \newlabel{sec:results}{{5}{6}{}{section.5}{}}
 \newlabel{sec:results@cref}{{[section][5][]5}{[1][6][]6}{}{}{}}
-\newlabel{tab:text-control-regular}{{6}{6}{Text vs Voice comparison (pass@1). Text shows GPT-5 (reasoning) and GPT-4.1 (non-reasoning). Voice evaluated under Clean and Realistic conditions. Deltas show gap from GPT-5}{table.caption.10}{}}
-\newlabel{tab:text-control-regular@cref}{{[table][6][]6}{[1][6][]6}{}{}{}}
 \@LN@col{1}
+\newlabel{tab:text-control-regular}{{6}{7}{Text vs Voice comparison (pass@1). Text shows GPT-5 (reasoning) and GPT-4.1 (non-reasoning). Voice evaluated under Clean and Realistic conditions. Deltas show gap from GPT-5}{table.caption.10}{}}
+\newlabel{tab:text-control-regular@cref}{{[table][6][]6}{[1][6][]7}{}{}{}}
+\@LN@col{2}
 \newlabel{tab:ablation-single}{{7}{7}{Ablation: impact of individual acoustic factors on pass@1 (Retail domain)}{table.caption.11}{}}
 \newlabel{tab:ablation-single@cref}{{[table][7][]7}{[1][7][]7}{}{}{}}
-\@LN@col{2}
-\newlabel{tab:voice-quality}{{8}{7}{Voice interaction quality (Realistic condition, aggregated across domains). \textbf {Bold} indicates best. Full breakdown in Appendix~\ref {app:voice-metrics-detail}}{table.caption.12}{}}
-\newlabel{tab:voice-quality@cref}{{[table][8][]8}{[1][7][]7}{}{}{}}
-\newlabel{sec:analysis}{{5.2}{7}{}{subsection.5.2}{}}
-\newlabel{sec:analysis@cref}{{[subsection][2][5]5.2}{[1][7][]7}{}{}{}}
-\bibdata{tau-voice}
-\bibcite{ao_sd-eval_2025}{{1}{2025}{{Ao et~al.}}{{Ao, Wang, Tian, Chen, Zhang, Lu, Wang, Li, and Wu}}}
 \@LN@col{1}
+\newlabel{tab:voice-quality}{{8}{8}{Voice interaction quality (Realistic condition, aggregated across domains). \textbf {Bold} indicates best. Full breakdown in Appendix~\ref {app:voice-metrics-detail}}{table.caption.12}{}}
+\newlabel{tab:voice-quality@cref}{{[table][8][]8}{[1][7][]8}{}{}{}}
+\newlabel{sec:analysis}{{5.2}{8}{}{subsection.5.2}{}}
+\newlabel{sec:analysis@cref}{{[subsection][2][5]5.2}{[1][8][]8}{}{}{}}
+\@LN@col{2}
 \newlabel{tab:combined-error-analysis}{{9}{8}{Error analysis: distribution of error types by source. Agent errors dominate in both cohorts (75\% and 90\%)}{table.caption.13}{}}
 \newlabel{tab:combined-error-analysis@cref}{{[table][9][]9}{[1][8][]8}{}{}{}}
-\newlabel{sec:conclusion}{{6}{8}{}{section.6}{}}
-\newlabel{sec:conclusion@cref}{{[section][6][]6}{[1][8][]8}{}{}{}}
-\@LN@col{2}
+\bibdata{tau-voice}
+\bibcite{ao_sd-eval_2025}{{1}{2025}{{Ao et~al.}}{{Ao, Wang, Tian, Chen, Zhang, Lu, Wang, Li, and Wu}}}
 \bibcite{arora_talking_2025}{{2}{2025}{{Arora et~al.}}{{Arora, Lu, Chiu, Pang, and Watanabe}}}
 \bibcite{barres_2-bench_2025}{{3}{2025}{{Barres et~al.}}{{Barres, Dong, Ray, Si, and Narasimhan}}}
 \bibcite{chen_voicebench_2024}{{4}{2024}{{Chen et~al.}}{{Chen, Yue, Zhang, Gao, Tan, and Li}}}
 \bibcite{gartner_conversational_ai_2024}{{5}{2024}{{Gartner}}{{}}}
 \bibcite{gartner_agentic_ai_2025}{{6}{2025}{{Gartner}}{{}}}
+\@LN@col{1}
+\newlabel{sec:conclusion}{{6}{9}{}{section.6}{}}
+\newlabel{sec:conclusion@cref}{{[section][6][]6}{[1][8][]9}{}{}{}}
+\@LN@col{2}
 \bibcite{gosai_audio_2025}{{7}{2025}{{Gosai et~al.}}{{Gosai, Vuong, Tyagi, Li, You, Bavare, Uçar, Fang, Jang, Liu, and He}}}
 \bibcite{jiang_s2s-arena_2025}{{8}{2025}{{Jiang et~al.}}{{Jiang, Lin, Bu, Du, Wang, and Li}}}
 \bibcite{li_cb-whisper_2024}{{9}{2024}{{Li et~al.}}{{Li, Li, Zhang, Su, Yu, Piao, Qiao, Ma, Zhao, and Yang}}}
@@ -104,8 +107,6 @@
 \bibcite{vertex_ai_gemini_2025}{{16}{2025}{{Vertex~AI}}{{}}}
 \bibcite{wang_audiobench_2025}{{17}{2025}{{Wang et~al.}}{{Wang, Zou, Lin, Sun, Liu, Zhang, Liu, Aw, and Chen}}}
 \bibcite{xai_grok_voice_2025}{{18}{2025}{{xAI}}{{}}}
-\@LN@col{1}
-\@LN@col{2}
 \bibcite{yang_paras2s_2025}{{19}{2025}{{Yang et~al.}}{{Yang, Tu, Liu, Qu, Lee, Lu, Wang, and Wu}}}
 \bibcite{yao_-bench_2024}{{20}{2024}{{Yao et~al.}}{{Yao, Shinn, Razavi, and Narasimhan}}}
 \bibcite{zhang_wildspeech-bench_2025}{{21}{2025}{{Zhang et~al.}}{{Zhang, Zhang, Lei, Wu, Liu, Jia, and Zhou}}}
@@ -158,12 +159,12 @@
 \newlabel{app:qualitative-analysis@cref}{{[subsection][2][8]H.2}{[1][22][]22}{}{}{}}
 \newlabel{tab:voice-quality-detail}{{15}{23}{Voice interaction quality metrics---full breakdown (Realistic condition). \textbf {Bold} indicates best per domain. $\uparrow $ = higher is better, $\downarrow $ = lower is better}{table.caption.22}{}}
 \newlabel{tab:voice-quality-detail@cref}{{[table][15][]15}{[1][22][]23}{}{}{}}
-\newlabel{app:stat-sig}{{H.3}{23}{Appendix Overview}{subsection.H.3}{}}
-\newlabel{app:stat-sig@cref}{{[subsection][3][8]H.3}{[1][23][]23}{}{}{}}
-\newlabel{tab:full-notes-both}{{16}{24}{Qualitative error annotations for sampled task completion failures. Left: Voice-Fragile cohort (failures from Clean audio setting, 20 tasks). Right: Noise-Fragile cohort (failures from Realistic audio setting, 20 tasks)}{table.caption.23}{}}
-\newlabel{tab:full-notes-both@cref}{{[table][16][]16}{[1][22][]24}{}{}{}}
+\newlabel{tab:full-notes-both}{{16}{23}{Qualitative error annotations for sampled task completion failures. Left: Voice-Fragile cohort (failures from Clean audio setting, 20 tasks). Right: Noise-Fragile cohort (failures from Realistic audio setting, 20 tasks)}{table.caption.23}{}}
+\newlabel{tab:full-notes-both@cref}{{[table][16][]16}{[1][22][]23}{}{}{}}
+\newlabel{app:stat-sig}{{H.3}{24}{Appendix Overview}{subsection.H.3}{}}
+\newlabel{app:stat-sig@cref}{{[subsection][3][8]H.3}{[1][24][]24}{}{}{}}
 \newlabel{tab:stat-sig}{{17}{24}{Statistical reliability analysis for Retail domain (3 runs, n=114 tasks each). All reported values are mean $\pm $ 95\% CI}{table.caption.24}{}}
-\newlabel{tab:stat-sig@cref}{{[table][17][]17}{[1][23][]24}{}{}{}}
+\newlabel{tab:stat-sig@cref}{{[table][17][]17}{[1][24][]24}{}{}{}}
 \newlabel{app:examples}{{I}{24}{Appendix Overview}{appendix.I}{}}
 \newlabel{app:examples@cref}{{[section][9][]I}{[1][24][]24}{}{}{}}
 \newlabel{app:example-task}{{I.1}{24}{Appendix Overview}{subsection.I.1}{}}

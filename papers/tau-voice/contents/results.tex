@@ -5,7 +5,7 @@
 
 \subsubsection{Task Completion}
 
-Figure~\ref{fig:headline} and Table~\ref{tab:text-control-regular} present our headline finding: \textbf{voice agents show substantial drops from text baselines}. Under \textbf{Clean} conditions (studio-quality audio, American accents), the best voice provider already drops 38pp from GPT-5 (42\% vs GPT-5 at 80\%). Under \textbf{Realistic} conditions (background noise, diverse accents, natural user behaviors), performance drops an additional 12pp to 30\%. This gap persists even against non-reasoning text models: compared to GPT-4.1 (54\%), voice still drops 12pp (Clean) to 24pp (Realistic).
+Figure~\ref{fig:headline} and Table~\ref{tab:text-control-regular} present our headline finding: \textbf{voice agents show substantial drops from text baselines}. Under \textbf{Clean} conditions (studio-quality audio, American accents), the best voice provider already drops 34pp from GPT-5 (51\% vs GPT-5 at 85\%).\revised{Was 38pp (42\% vs 80\%). Best Clean improved from 42\% to 51\% due to new OpenAI model; text baseline rose from 80\% to 85\% due to updated tasks.} Under \textbf{Realistic} conditions (background noise, diverse accents, natural user behaviors), performance drops an additional 13pp to 38\%---voice agents retain only 29--45\% of text SOTA capability.\revised{Was ``additional 12pp to 30\%''. Relative framing (``retains 29--45\%'') is new.} Against non-reasoning text models, the best voice provider nearly matches GPT-4.1 (54\%) under Clean conditions (51\%, just 3pp gap) but still drops 16pp under Realistic.\revised{Previously a 12pp Clean gap and 24pp Realistic gap vs GPT-4.1. The Clean gap has nearly closed (3pp).}
 
 \begin{table}[h]
 \caption{Text vs Voice comparison (pass@1). Text shows GPT-5 (reasoning) and GPT-4.1 (non-reasoning). Voice evaluated under Clean and Realistic conditions. Deltas show gap from GPT-5.}
@@ -18,10 +18,11 @@ Figure~\ref{fig:headline} and Table~\ref{tab:text-control-regular} present our h
 \end{small}
 \end{table}
 
-The 12pp drop from Clean to Realistic conditions accounts for roughly one-quarter of the total voice-text gap; the remaining three-quarters reflects the drop from text to Clean voice.
+The Clean-to-Realistic drop varies substantially across providers: just 4pp for Google (7\% of its total voice-text gap) versus 13pp for xAI and OpenAI (roughly one-quarter of their total gap). For most providers, the dominant source of the voice-text gap is the drop from text to Clean voice, not the additional Realistic degradation.\revised{Previously stated as a uniform ``roughly one-quarter'' for all providers. Now highlights provider variance (7\% for Google vs 25\% for others).}
 
-Across providers, \textbf{xAI achieves the highest scores} (42\% Clean, 30\% Realistic), while \textbf{Google shows the smallest degradation} under realistic conditions ($-$5pp vs $-$12--14pp for others). Domain-specific patterns emerge: xAI substantially outperforms others in Telecom (59\% Clean vs 20--24\% for others), while performance is more similar across providers in Retail and Airline.
+Across providers, \textbf{xAI achieves the highest scores} (51\% Clean, 38\% Realistic)\revised{Was 42\%/30\%. All providers improved; competitive gap tightened from 11pp to 3pp in Realistic.}, while \textbf{Google shows the smallest absolute degradation} under realistic conditions ($-$4pp vs $-$13--14pp for others). In relative terms, Google loses 15\% of its Clean performance compared to 26--28\% for others---a 2$\times$ robustness advantage, though partly explained by Google's lower baseline leaving less to lose.\revised{Relative delta analysis is new. Absolute-only framing overstated Google's advantage (3$\times$ gap vs 2$\times$).} Domain-specific patterns emerge: xAI substantially outperforms others in Telecom (58\% Clean vs 20--28\% for others), while in Retail OpenAI leads with 69\% Clean---the single best per-domain score in the benchmark---but also suffers the largest relative degradation ($-$37\%).\revised{OpenAI retail leadership is new (was 39\% Clean with old model). Relative degradation framing is new.}
 
+\needsupdate{Re-run statistical reliability analysis with gpt-realtime-1.5. Numbers below are from the original submission's model set (gpt-realtime-2025-08-28).}
 \paragraph{Statistical Reliability.} For Retail, where we conducted 3 independent runs per condition, both the text-to-Clean gap and the Clean-to-Realistic gap are statistically significant (non-overlapping 95\% CIs). Voice providers achieve 36--39\% $\pm$ 3--6pp (Clean) and 12--26\% $\pm$ 2--4pp (Realistic), compared to text baselines of 73\% $\pm$ 3pp (GPT-4.1) and 82\% $\pm$ 1pp (GPT-5). Full statistical breakdown in Appendix~\ref{app:stat-sig}.
 
 \subsubsection{Impact of Acoustic Realism}
@@ -30,9 +31,9 @@ To isolate which factors hurt performance most, we conduct ablations on the Reta
 
 \input{results/ablation_table_single}
 
-\textbf{Accents are the most damaging factor}, causing a 13pp average drop (vs 9pp for noise, 5pp for interrupts). This finding has accessibility implications: users with non-American accents may face systematically worse service. OpenAI and xAI are particularly vulnerable to accents ($-$18pp each), while Google shows greater robustness ($-$2pp). Because accents are implemented via TTS personas, these results should be interpreted as indicative rather than definitive.
+\textbf{Accents are the most damaging factor on average}, causing an 8pp average drop (vs 4pp for noise, 3pp for user behaviors).\revised{Was 13pp accents, 9pp noise, 5pp interrupts. All factors less damaging on average; accents halved.} However, the accent effect is highly provider-specific: xAI is the primary victim ($-$19pp, $-$40\% relative), while Google actually \textit{improves} with diverse accents (+7pp).\revised{Previously framed as universal (``OpenAI and xAI $-$18pp each, Google $-$2pp''). Now xAI-specific; Google flipped from $-$2pp to +7pp.} This finding has accessibility implications, particularly for xAI users with non-American accents. Because accents are implemented via TTS personas, these results should be interpreted as indicative rather than definitive.
 
-\textbf{Google is consistently the most robust provider} across individual ablation conditions, with minimal degradation from noise ($-$2pp) or interrupts ($-$1pp). However, Google's robustness to isolated factors does not fully transfer to compound stress: individual effects sum to just $-$5pp, yet the full Realistic condition causes $-$11pp---suggesting super-additive interactions when multiple factors combine. This 11pp drop still compares favorably to 22--24pp for competitors.
+\textbf{Interactions between factors are complex and provider-specific.}\revised{Previously: ``Google is consistently most robust; individual effects sum to $-$5pp, full Realistic $-$11pp.'' Now reframed around complex interactions and provider-specific patterns. Google's individual sum flipped from $-$5pp to +6pp.} For Google, individual factors sum to a net \textit{positive} effect (+6pp), yet the full Realistic condition causes $-$11pp---a striking super-additive interaction where factors that individually help combine catastrophically. For xAI, the opposite occurs: individual factors sum to $-$20pp, yet the full Realistic drop is only $-$11pp---accents alone devastate xAI ($-$19pp), but adding noise and user behaviors partially compensates. Notably, OpenAI has both the highest Clean score (69\%) and the largest relative Realistic degradation ($-$37\%), suggesting that higher baseline capability does not protect against---and may amplify---the impact of speech complexity.\revised{OpenAI vulnerability paradox and relative degradation framing are new.}
 
 \subsubsection{Voice Interaction Quality}
 
@@ -49,16 +50,18 @@ Beyond task completion, we evaluate conversational dynamics under Realistic cond
 \end{small}
 \end{table}
 
-\textbf{xAI achieves the best latency and responsiveness}: fastest reactions (0.99s average latency) and highest responsiveness (85\%). However, this speed comes at a severe cost: xAI has an interrupt rate of 104\%---interrupting users more than once per turn on average.
+\revised{Voice quality section fully rewritten. All three provider characterizations changed due to new OpenAI model (gpt-realtime-1.5). Previously: xAI fastest (0.99s), OpenAI slowest (2.22s) and most selective (74\%), Google most balanced. Now: OpenAI fastest (0.90s) and least selective (5\%), xAI highest interrupt, Google most balanced with best selectivity.}
 
-\textbf{OpenAI shows the opposite trade-off}: slowest latency (2.22s) and lowest responsiveness (68\%), but highest selectivity (74\%) and a moderate interrupt rate (34\%). OpenAI is more conservative, waiting longer to ensure genuine user intent before responding.
+\textbf{OpenAI achieves the best latency and responsiveness}: fastest reactions (0.90s) and near-perfect responsiveness (99\%). However, this comes at a severe cost to selectivity: OpenAI's selectivity is just 5\%---it responds to nearly all backchannels, vocal tics, and non-directed speech. Despite this, OpenAI achieves top-tier task completion, suggesting that a ``respond to everything'' strategy can be surprisingly effective for task success while being poor conversational behavior.
 
-\textbf{Google achieves the best balance}: lowest interrupt rate (24\%), reasonable latency (1.13s), and mid-range selectivity (51\%), though with lower responsiveness (71\%). No provider achieves both high responsiveness and low interruption, highlighting the fundamental challenge of real-time turn-taking.
+\textbf{xAI shows strong but uneven dynamics}: high responsiveness (83\%) and moderate latency (1.15s), but the highest interrupt rate (84\%)---interrupting users nearly once per turn. xAI pairs the best task completion with the worst interruption behavior. Its selectivity (57\%) is tied with Google for best.
+
+\textbf{Google achieves the best balance}: lowest interrupt rate (21\%), reasonable latency (1.09s), and highest selectivity (57\%), though with the lowest responsiveness (65\%). No provider achieves both high responsiveness and low interruption, highlighting the fundamental challenge of real-time turn-taking.
 
 \subsection{Qualitative Error Analysis}
 \label{sec:analysis}
 
-To characterize failure modes beyond aggregate pass rates---and to verify that observed failures stem from agent behavior rather than artifacts of the benchmark or user simulator---we perform a qualitative error analysis.
+To characterize failure modes beyond aggregate pass rates---and to verify that observed failures stem from agent behavior rather than artifacts of the benchmark or user simulator---we perform a qualitative error analysis.\footnote{This analysis was conducted on the original submission's model set (including \texttt{gpt-realtime-2025-08-28}). The qualitative findings on error sources and types are expected to generalize, though the specific distribution may differ with \texttt{gpt-realtime-1.5}.}
 
 \paragraph{Task Selection.} We define $\text{pass}_{\text{text}}$ as tasks where both GPT-4.1 and GPT-5.2 (medium reasoning) succeed in text mode, $\text{pass}_{\text{clean}}$ as tasks where a majority of audio providers succeed under Clean conditions, and $\text{pass}_{\text{realistic}}$ as tasks where a majority succeed under Realistic conditions. We construct two analysis cohorts:
 \begin{itemize}[nosep,leftmargin=*]

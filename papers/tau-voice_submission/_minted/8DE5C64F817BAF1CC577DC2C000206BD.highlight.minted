@@ -1,0 +1,10 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYGZlt{}conversation\PYGZus{}history\PYGZgt{}
+...
+USER: No, I don\PYGZsq{}t know the item ID.
+USER: I just remember it\PYGZsq{}s the 1000\PYGZhy{}piece intermediate jigsaw.
+AGENT: I found a 1000\PYGZhy{}piece \PYGZdq{}intermediate\PYGZdq{} jigsaw puzzle on order \PYG{n+ni}{\PYGZsh{}W4082615}. Is that the one? We can exchange it for a puzzle with fewer pieces. The puzzle you have is 1000 piec [CURRENTLY SPEAKING, INCOMPLETE]
+USER: Yeah, that\PYGZsq{}s it.
+AGENT: ...es. The available options with fewer pieces are 500\PYGZhy{}piece puzzles. Would you like to exchange it for one of tho [CURRENTLY SPEAKING, INCOMPLETE]
+\PYGZlt{}/conversation\PYGZus{}history\PYGZgt{}
+\end{MintedVerbatim}
