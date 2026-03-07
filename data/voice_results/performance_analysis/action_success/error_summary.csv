@@ -1,0 +1,533 @@
+error_message,count
+Error: User not found,1304
+Error: Tool 'set_network_mode_preference' not found.,103
+Error: Order not found,96
+Error: Tool 'toggle_airplane_mode' not found.,96
+Error: Tool 'reset_apn_settings' not found.,80
+Error: Tool 'toggle_data' not found.,71
+Error: Tool 'run_speed_test' not found.,69
+Error: Payment method should be the original payment method,63
+Error: Tool 'check_network_status' not found.,58
+Error: Tool 'check_sim_status' not found.,47
+Error: Tool 'can_send_mms' not found.,45
+Error: Tool 'check_apn_settings' not found.,42
+Error: Tool 'reseat_sim_card' not found.,41
+Error: Non-delivered order cannot be exchanged,40
+Error: Non-delivered order cannot be returned,32
+Error: Item not found,30
+Error: Tool 'check_status_bar' not found.,30
+Error: Variant not found,24
+Error: Tool 'toggle_data_saver_mode' not found.,24
+Error: Non-pending order cannot be modified,23
+Error: Customer with phone number 555-123 not found,22
+Error: Tool 'reboot_device' not found.,20
+Error: Customer with phone number +1-555-123-2002 not found,20
+Error: Tool 'check_app_permissions' not found.,19
+Error: The new item id should be different from the old item id,19
+Error: Customer with phone number 5551232002 not found,19
+Error: The number of items to be exchanged should match,18
+Error: Non-pending order cannot be cancelled,16
+Error: User Sophia_Silva_7557 not found,15
+Error: Customer with phone number 555-123-0002 not found,15
+Error: Customer with phone number unknown not found,14
+Error: Product not found,13
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""date""': '2024-05-13', ...ight_number""': 'HAT030'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-13', ...ight_number""': 'HAT030'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",11
+Error: Insufficient gift card balance to pay for the price difference,11
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""date""': '2024-05-24', ...ight_number""': 'HAT190'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-24', ...ight_number""': 'HAT190'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",10
+Error: Customer with phone number 555-123-002 not found,10
+Error: User Amelia_Davis_8890 not found,10
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-25', ...light_number': 'HAT056'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",10
+Error: New item 3111466194 not found or available,10
+Error: Customer with phone number +15551232002 not found,10
+Error: 1355937109 not found,9
+Error: Tool 'check_data_restriction_status' not found.,9
+Error: Customer with phone number 5555-123-2002 not found,9
+Error: New item 3788616824 not found or available,9
+Error: User arav_garcia_1177 not found,9
+Error: User arav_ahmed_6699 not found,8
+Error: User Anya_Garcia_5901 not found,8
+Error: Tool 'toggle_wifi_calling' not found.,8
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-27', ...light_number': 'HAT078'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",8
+Error: Customer with phone number 555-123-4567 not found,7
+Error: User Noah_Muller_9847 not found,7
+Error: User Sofia_Kim_7287 not found,7
+Error: Payment method not found,6
+Error: Tool 'disconnect_vpn' not found.,6
+Error: Some item not found,6
+Error: User Omar_Rossi_1241 not found,6
+Error: Insufficient gift card balance to pay for the order,6
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-19', ...light_number': 'HAT072'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",6
+Error: Number of 2216662955 not found.,5
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-26', ...light_number': 'HAT069'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",5
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""date""': '2024-05-19', ...ight_number""': 'HAT072'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-19', ...ight_number""': 'HAT072'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",5
+Error: User Yara_Garcia_1905 not found,5
+Error: Reservation IFOYVZ not found,5
+Error: Tool 'grant_app_permission' not found.,5
+Error: Tool 'check_wifi_calling_status' not found.,5
+Error: Number of 5996159312 not found.,5
+Error: Tool 'check_network_mode_preference' not found.,5
+Error: Customer with phone number 555-1234 not found,4
+Error: New item 6341716129 not found or available,4
+Error: User anaya_garcia_5901 not found,4
+Error: Reservation HHQ05L not found,4
+Error: Number of 3478699712 not found.,4
+Error: Reservation N2NU5R not found,4
+Error: Tool 'make_payment' not found.,4
+Error: User Omar_Davis_3817 not found,4
+Error: Reservation NQN5UR not found,4
+Error: User OLIVIA_GONZALEZ_2305 not found,4
+Error: User Amelia_Sanchez_4739 not found,4
+Error: User Ethan_Martin_2396 not found,4
+Error: User sofia_silva_7557 not found,4
+Error: Customer with phone number 555-123-200 not found,4
+Error: Customer with phone number (555) 123-2002 not found,3
+Error: Customer with phone number 5551230002 not found,3
+Error: User mohammad_hernandez_5188 not found,3
+Error: User Amelia_Sanchez_ not found,3
+Error: Tool 'check_vpn_status' not found.,3
+Error: User sophia_kim_7287 not found,3
+Error: User yare_garcia_1905 not found,3
+Error: Reservation YAX4ZR not found,3
+Error: Reservation EHG5LP3 not found,3
+Error: Reservation HXDWVJ not found,3
+"Error: RetailTools.find_user_id_by_name_zip() missing 3 required positional arguments: 'first_name', 'last_name', and 'zip'",3
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-17', ...light_number': 'HAT169'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",3
+Error: User sara_cia_1905 not found,3
+Error: Reservation NKNV5R not found,3
+Error: Customer with phone number  not found,3
+Error: New item 4624254797 not found or available,3
+Error: Customer with phone number 55551232002 not found,3
+Error: User AARAV_GARCIA_1177 not found,3
+Error: Customer with phone number 555-123-2022 not found,3
+Error: User may_brown_7075 not found,3
+Error: Reservation EEP4E0 not found,2
+Error: Reservation TEP4E0 not found,2
+Error: Reservation VA5SDQ not found,2
+Error: User emma_m not found,2
+Error: User chem_lee_6825 not found,2
+Error: User Mohamed_Hernandez_5188 not found,2
+Error: User ANYA_GARCIA_5901 not found,2
+Error: User Sophia_Martin_4574 not found,2
+Error: User Sophia_Kim_7287 not found,2
+Error: Flight AT8045 not found,2
+Error: Reservation EHGPLP3 not found,2
+Error: Reservation XCHM4V not found,2
+Error: User noah_miller_9847 not found,2
+Error: Reservation 3RK not found,2
+Error: User sara_doe_496 not found,2
+Error: User MAR_Rossi_1241 not found,2
+Error: User sia_cim_7287 not found,2
+Error: User Lucas_Brown_4047 not found,2
+Error: Not enough balance in payment method gift_card_7359776,2
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-21', ...light_number': 'HAT202'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",2
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""date""': '2024-05-17', ...ight_number""': 'HAT169'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-17', ...ight_number""': 'HAT169'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",2
+Error: User mohammad_silva_9265 not found,2
+Error: User arav_garcia not found,2
+Error: AirlineTools.cancel_reservation() got an unexpected keyword argument 'error',2
+Error: Customer with phone number 555-123-02 not found,2
+Error: Customer with phone number 555-1232 not found,2
+Error: Customer with phone number 555 not found,2
+Error: Customer with phone number 551-123-2002 not found,2
+Error: 3 not found,2
+Error: Customer with phone number 123-456-7890 not found,2
+Error: Customer with phone number 212-555-01235 not found,2
+Error: Customer with phone number 555-123- not found,2
+Error: User BTHAN_MARTIN_2396 not found,2
+Error: 3076708684 not found,2
+Error: New item 3778566150 not found or available,2
+Error: User rj_sanchez_7340 not found,2
+Error: User mohamed_fernandes_5188 not found,2
+Error: User Ivan_Rossi_855 not found,2
+Error: User Alia_Cavis_8890 not found,2
+Error: User Alla_Davis_8890 not found,2
+Error: Reservation HXDUJ not found,2
+Error: User _garcia_1177 not found,2
+Error: User James_Patel_828 not found,2
+Error: User mia_kim_4 not found,2
+Error: Reservation EUJJUY6 not found,2
+Error: User mohammad_hernandez not found,2
+Error: User sosa_kim_7287 not found,2
+Error: Number of passengers does not match,2
+Error: User Olivia_Gonzalez_2305 not found,2
+Error: Reservation IFOYZ not found,2
+Error: User James_Patel_9828 not found,2
+Error: User James_Patel not found,2
+Error: Customer with phone number 555-123-2345 not found,2
+Error: 1656367028 not found,2
+Error: User Mohamed_Silva_9265 not found,2
+Error: Number of 6245746168 not found.,2
+Error: User aarav_ahmad_6699 not found,2
+Error: User AARAZ_AHMED_6699 not found,2
+Error: Reservation IFOYS not found,2
+Error: Reservation 3RK239 not found,2
+Error: Reservation PEP4EZ not found,2
+Error: User James_Lee_6136 not found,2
+Error: User YARA_GARCIA_1905 not found,2
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'flight_number': 'HAT072... '""date""': '2024-05-19'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",2
+Error: User RAJ_BROWN_5782 not found,2
+Error: Reservation JMO not found,2
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'flight_number': 'HAT268... '""date""': '2024-05-22'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",2
+Error: User sophia_martin not found,2
+Error: Number of 1008292230 not found.,1
+Error: Customer with phone number 555-123-0022 not found,1
+Error: Customer with phone number 55-123 not found,1
+Error: TelecomTools.get_customer_by_phone() missing 1 required positional argument: 'phone_number',1
+Error: Customer with phone number 555-1200 not found,1
+Error: User arcia_1177 not found,1
+Error: TelecomTools.get_details_by_id() missing 1 required positional argument: 'id',1
+Error: Customer with phone number 55123002 not found,1
+Error: User araf_garcia_1177 not found,1
+Error: Number of 5753502325 not found.,1
+Error: Customer with phone number +1234567890 not found,1
+Error: Reservation PUP4EZ not found,1
+Error: New item 1434748144 not found or available,1
+Error: Customer with phone number +1555123002 not found,1
+Error: Customer with phone number +155512002 not found,1
+Error: Customer with phone number 002-555-123-4567 not found,1
+Error: Number of 1615379700 not found.,1
+Error: Line must be suspended to resume,1
+Error: Customer with phone number 20 not found,1
+Error: New item 2343503231 not found or available,1
+Error: New item 3478699712 not found or available,1
+Error: Customer with phone number 555-123-0 not found,1
+Error: New item 3609437808 not found or available,1
+Error: New item 5484530610 not found or available,1
+"Error: RetailTools.return_delivered_order_items() missing 3 required positional arguments: 'order_id', 'item_ids', and 'payment_method_id'",1
+Error: User THAN_MARTIN_2396 not found,1
+Error: Invalid reason,1
+Error: Tool 'toggle_roaming' not found.,1
+Error: RetailTools.get_item_details() got an unexpected keyword argument 'output',1
+Error: Reservation JM01MG not found,1
+Error: User ANYA_GARCIA not found,1
+Error: Number of 7758198585 not found.,1
+Error: User Anya_Garcia not found,1
+Error: Reservation JMOG not found,1
+Error: RetailTools.get_product_details() got an unexpected keyword argument 'output',1
+Error: User taylor_906 not found,1
+"Error: RetailTools.modify_pending_order_items() missing 4 required positional arguments: 'order_id', 'item_ids', 'new_item_ids', and 'payment_method_id'",1
+Error: User OPBIA_AY not found,1
+Error: User aarav_ahmev_6699 not found,1
+Error: User aaraz_ahmez_6699 not found,1
+Error: User araf_ahmed_6699 not found,1
+Error: User Sophia_Martin_456 not found,1
+Error: User ANYA_GAR not found,1
+Error: User Sophia_Taylor_9065 not found,1
+Error: User Emma_Kim_9957 not found,1
+Error: Certificate cannot be used to update reservation,1
+Error: User a_a_r_a_z_g_a_r_c_i_a_1177 not found,1
+Error: User mohameda_silva_9265 not found,1
+Error: Gift card balance is not enough,1
+Error: User ivan_rossi_855 not found,1
+Error: User arif_ahmed_6699 not found,1
+Error: User sofia_silva_557 not found,1
+Error: RetailTools.find_user_id_by_email() missing 1 required positional argument: 'email',1
+Error: Customer with phone number 555-123-2345-002 not found,1
+Error: RetailTools.cancel_pending_order() missing 2 required positional arguments: 'order_id' and 'reason',1
+Error: RetailTools.get_order_details() missing 1 required positional argument: 'order_id',1
+Error: Invalid characters in expression,1
+Error: Customer with phone number 555-4567 not found,1
+Error: New item 8030558068 not found or available,1
+Error: RetailTools.get_product_details() missing 1 required positional argument: 'product_id',1
+Error: Unknown ID format or type: customer_id,1
+Error: Customer with phone number 5235232023 not found,1
+Error: Tool 'check_installed_apps' not found.,1
+Error: Customer with phone number 1232002 not found,1
+Error: User KIM_7287 not found,1
+Error: User SOFIA_kim_7287 not found,1
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""date""': '2024-05-19', ...ight_number""': 'HAT266'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-19', ...ight_number""': 'HAT266'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",1
+Error: Reservation YFOYYZ not found,1
+Error: User sophia_silva_757 not found,1
+Error: Customer with phone number 555232002 not found,1
+Error: Customer with phone number 512-555-123 not found,1
+"Error: 2 validation errors for FlightInfo
+flight_number
+  Field required [type=missing, input_value={'""flight_number""': 'HAT0... '""date""': '2024-05-13'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+date
+  Field required [type=missing, input_value={'""flight_number""': 'HAT0... '""date""': '2024-05-13'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",1
+Error: Customer with phone number 51232002 not found,1
+Error: Customer with phone number 550051232002 not found,1
+Error: Customer with phone number 555-123-2320 not found,1
+Error: Customer with phone number 555-123-1234 not found,1
+Error: Customer with phone number 555-123-2055 not found,1
+Error: Customer with phone number 555-123-2000 not found,1
+Error: Reservation XEQRD9 not found,1
+Error: Flight HAT039 not found on date 2026-03-03,1
+Error: Customer with phone number 512-320-02 not found,1
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'flight_number': 'HAT235... '""date""': '2024-05-18'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",1
+Error: User kaiki_muller_1116 not found,1
+Error: User Lucas_Brown_Brown not found,1
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date""': '2024-05-18', ...light_number': 'HAT235'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",1
+Error: Reservation M20IVO not found,1
+"Error: 3 validation errors for Passenger
+first_name
+  Field required [type=missing, input_value={'""dob""': '1992-11-12', '... '""first_name""': 'Anya'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+last_name
+  Field required [type=missing, input_value={'""dob""': '1992-11-12', '... '""first_name""': 'Anya'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+dob
+  Field required [type=missing, input_value={'""dob",1
+"Error: 3 validation errors for Passenger
+first_name
+  Field required [type=missing, input_value={'""dob""': '1992-11-12', '...'""last_name""': 'Garcia'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+last_name
+  Field required [type=missing, input_value={'""dob""': '1992-11-12', '...'""last_name""': 'Garcia'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+dob
+  Field required [type=missing, input_value={'""dob",1
+Error: Reservation K9URD9 not found,1
+Error: User kim_7287 not found,1
+Error: Reservation XEWURD9 not found,1
+Error: Not enough balance in payment method certificate_3765853,1
+"Error: 1 validation error for FlightInfo
+date
+  Field required [type=missing, input_value={'""date': '2024-05-17', 'flight_number': 'HAT169'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing",1
+"Error: Payment amount does not add up, total price is 2613, but paid 1643",1
+"Error: Payment amount does not add up, total price is 375, but paid 500",1
+"Error: Payment amount does not add up, total price is 375, but paid 299",1
+Error: Customer with phone number 555-1230055 not found,1
+Error: Customer with phone number 5551234567 not found,1
+Error: RetailTools.get_order_details() got an unexpected keyword argument 'output',1
+Error: Customer with phone number 555123001 not found,1
+Error: Customer with phone number 555-230-002 not found,1
+Error: Customer with phone number 555-123-555 not found,1
+Error: Customer with phone number 5552355555 not found,1
+Error: Customer with phone number 5550123 not found,1
+Error: Customer with phone number 555-5123 not found,1
+Error: Customer with phone number 12002202 not found,1
+Error: Customer with phone number 5551230 not found,1
+Error: Customer with phone number 1223255550 not found,1
+Error: Customer with phone number 555-1230 not found,1
+Error: Customer with phone number 512-320 not found,1
+Error: Customer with phone number 555-123-23 not found,1
+Error: User mohamed_ernandez_5188 not found,1
+Error: Customer with phone number 655-123-2002 not found,1
+Error: 5753502325 not found,1
+Error: Customer with phone number 555-123-0010 not found,1
+Error: Customer with phone number 1231232002 not found,1
+Error: Customer with phone number 551234002 not found,1
+Error: Customer with phone number 1255555 not found,1
+Error: Customer with phone number 12352355123 not found,1
+Error: Customer with phone number 1220012300 not found,1
+Error: Customer with phone number 12355550023 not found,1
+Error: Customer with phone number 1232320002 not found,1
+Error: Customer with phone number incoming_caller not found,1
+Error: Customer with phone number 5523523 not found,1
+Error: Customer with ID 123 not found,1
+Error: Customer with phone number 555-005-5532003 not found,1
+Error: Customer with phone number 5512123002 not found,1
+Error: Customer with phone number 55512200 not found,1
+Error: Customer with phone number 555-555-123 not found,1
+Error: Customer with phone number 555123 not found,1
+Error: User sara_g not found,1
+Error: Customer with phone number 1200552002 not found,1
+Error: User RTIA_5901 not found,1
+Error: Reservation HHQ05 not found,1
+Error: User mohamed_fernandez_5188 not found,1
+Error: User mohamed_hrnandez_5188 not found,1
+Error: Reservation EA5SDQ not found,1
+Error: Reservation BA5SDQ not found,1
+Error: User James_Patel98 not found,1
+Error: Reservation H9Z1C not found,1
+Error: Reservation 8HQ05L not found,1
+Error: User MIA_KIM_4397 not found,1
+Error: User yare_rcia_1905 not found,1
+Error: Reservation H9ZUC not found,1
+Error: Reservation 3RK2E9 not found,1
+Error: User amelia_doe_8890 not found,1
+Error: Reservation x c u b d not found,1
+Error: User anwaye_gerci_5901 not found,1
+Error: User LIVIA_GONZALEZ_2305 not found,1
+Error: Reservation 1N99Q6 not found,1
+Error: User daiki_lee_144 not found,1
+Error: User RAJ_Sanchez_7340 not found,1
+Error: User Sophia_Silver_7557 not found,1
+Error: User IA_ILBA_7557 not found,1
+Error: User YAX4ZR not found,1
+Error: User OMAR_ROSSI_1241 not found,1
+Error: User Noah_Muller not found,1
+Error: Flight 9XX6W not found,1
+Error: Reservation XCHM4B not found,1
+Error: User OMAR_DAVIS not found,1
+Error: User Raj_Sanchez_7340 not found,1
+Error: User SOPHIA_CAYLOR_9065 not found,1
+Error: User Sophia_ILVA not found,1
+Error: User SCHIA_TAYLOR_90 not found,1
+Error: User SCHIA_EAYLOR_9065 not found,1
+Error: User Sophia_Taylor_90 not found,1
+Error: User Sophia_Taylor_90640 not found,1
+Error: User Sophia_Taylor_9064 not found,1
+Error: User Arav_Ahmed_6699 not found,1
+Error: User amelia_roxy_1297 not found,1
+Error: User Livia_Gonzalez_2305 not found,1
+Error: Not enough seats on flight HAT229,1
+Error: User Sophia_Taylor not found,1
+Error: User SOPHIA_SILVA_7557 not found,1
+Error: Reservation H8Q0 not found,1
+Error: User Sophia_underscore_Silva_7557 not found,1
+Error: Reservation B7N3P1 not found,1
+Error: Reservation 8JX2WO not found,1
+Error: Reservation ZFA04Y not found,1
+Error: User AARAV_ahmed_6699 not found,1
+Error: User IVAN_ROSSI_8555 not found,1
+Error: User Arav_ahmed_6699 not found,1
+Error: User James_Taylor_7043 not found,1
+Error: Reservation 3RK29 not found,1
+Error: Reservation HX-DUBJ not found,1
+Error: User lucas_brown_123 not found,1
+Error: Not enough balance in payment method certificate_7504069,1
+Error: User Sophia_silva_7557 not found,1
+Error: User mohamed_hernandez_45188 not found,1
+"Error: AirlineTools.update_reservation_flights() missing 4 required positional arguments: 'reservation_id', 'cabin', 'flights', and 'payment_id'",1
+Error: User liam_khan_0501 not found,1
+Error: AirlineTools.get_user_details() missing 1 required positional argument: 'user_id',1
+Error: User moe_m_p_d_silva_9265 not found,1
+Error: User aarav_g_k_1177 not found,1
+Error: User aarav_kapadia_1177 not found,1
+"Error: Payment amount does not add up, total price is 1368, but paid 0",1
+Error: User Olivia_Gonzalez_ not found,1
+Error: Reservation X E W R D 9 not found,1
+Error: User Ivan_Rossi_8555 not found,1
+Error: Reservation W R D 9 not found,1
+Error: User Ivan_Muller_7015 not found,1
+Error: User omar_marrossi_1241 not found,1
+Error: User aarav_med_6699 not found,1
+Error: User Sophia_Kim_72287 not found,1
+Error: User Amelia_Rossi_1297 not found,1
+Error: User _sanchez_7340 not found,1
+Error: User schoolbrownEI_crown_fin075 not found,1
+Error: User schoolbrownEI_crown_NW_7075 not found,1
+Error: Reservation ZA5SGQ not found,1
+Error: User Noah_Nuller_9847 not found,1
+Error: User Noah_Mueller_9847 not found,1
+Error: User AAR_AHMED_6699 not found,1
+Error: User Amelia R. Davis_8890 not found,1
+Error: User YARA_Garcia_1905 not found,1
+Error: Reservation HXUBJ not found,1
+Error: Reservation V5SGQ not found,1
+Error: User AMEIA_DNEIS_8890 not found,1
+Error: User raj_brown_5 not found,1
+Error: User MOHAMTTOHKME not found,1
+Error: User Jane's_underscore_Taylor_underscore_7043 not found,1
+Error: User Ivan_Muller not found,1
+Error: User Amelia_Sanchez_473 not found,1
+Error: User _ar_garcia_1177 not found,1
+Error: User R9PJS not found,1
+Error: User Amelia_Davis_889 not found,1
+Error: User _ara_garcia_1177 not found,1
+Error: User Arev_MED not found,1
+Error: User mohamed_hrnan_dez_5188 not found,1
+Error: Flight 045 not found,1
+Error: User ETHAN_MARTIN_2396 not found,1
+Error: User Sophia_Silva_75 not found,1
+Error: User Sophia_Silva_7 not found,1
+Error: User Sophia_Silva not found,1
+Error: User Arev_66 not found,1
+Error: User Ethan_Martins_23 not found,1
+Error: Reservation I5UKW not found,1
+Error: User AMELIA_ROSSI not found,1
+Error: Reservation FI5UKW not found,1
+Error: User AMELIA_ROSSI_12 not found,1
+Error: User Ivan_Rossi_555 not found,1
+Error: User AAR__THME not found,1
+Error: User _rabcia_1177 not found,1
+Error: User _gardia_1177 not found,1
+Error: Flight 12045 not found,1
+Error: User sopsia_ea557 not found,1
+Error: User LIAM_KHAN not found,1
+Error: User MSLIAM not found,1
+Error: User IAMKM not found,1
+Error: User IANAN not found,1
+Error: User sopo4fa_57 not found,1
+Error: User fochia_sia_7557 not found,1
+Error: User sopsia_siva_7557 not found,1
+Error: User LIAM_AHAN not found,1
+Error: User si_filva_7557 not found,1
+Error: User sochia_s_557 not found,1
+Error: User Omar_rossi_1241 not found,1
+Error: User MEI_BROWN_7075 not found,1
+Error: Reservation MEI_BROWN_7075 not found,1
+Error: Reservation MTI_BROWN_7075 not found,1
+Error: User LIAM not found,1
+Error: User HAN not found,1
+Error: User _gargia_1177 not found,1
+Error: User MIA_D_3668 not found,1
+Error: Reservation GB1N not found,1
+Error: User JAAmes_Lee_6136 not found,1
+Error: User is_gonzales_2305 not found,1
+Error: User MIA_LI_8 not found,1
+Error: User MIA_LI_3668 not found,1
+Error: User IA_LI_3668 not found,1
+Error: User MIA_LI_368 not found,1
+Error: User LIAMM_AHAN not found,1
+Error: User sia_ci_7287 not found,1
+Error: User sia_kim_7287 not found,1
+Error: User sosia_cim_7287 not found,1
+Error: User KIKI_ULLE_1116 not found,1
+Error: User IOAM not found,1
+Error: User IAM not found,1
+Error: User Noah_Muller9847 not found,1

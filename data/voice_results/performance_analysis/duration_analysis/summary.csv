@@ -1,0 +1,4 @@
+llm,mean_airline_control,mean_airline_regular,mean_retail_control,mean_retail_control_accents,mean_retail_control_audio,mean_retail_control_behavior,mean_retail_regular,mean_telecom_control,mean_telecom_regular,std_airline_control,std_airline_regular,std_retail_control,std_retail_control_accents,std_retail_control_audio,std_retail_control_behavior,std_retail_regular,std_telecom_control,std_telecom_regular
+gemini:gemini-live-2.5-flash-native-audio,167.09,237.1,202.26,220.03,216.28,224.57,302.09,231.17,296.37,81.54,95.64,73.29,74.51,91.54,87.56,117.43,100.59,112.45
+openai:gpt-realtime-1.5,321.59,589.62,371.34,360.83,350.58,630.03,645.99,483.25,871.95,138.23,297.6,143.02,148.37,136.9,325.13,348.91,179.25,363.85
+xai:xai-realtime,413.72,755.93,565.95,641.43,563.45,794.09,1038.52,698.71,1130.51,218.69,430.35,235.69,249.58,237.34,374.21,488.15,292.65,490.23

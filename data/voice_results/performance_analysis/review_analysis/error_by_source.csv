@@ -1,0 +1,4 @@
+source,gemini-live-2.5-flas (control),gemini-live-2.5-flas (control_accents),gemini-live-2.5-flas (control_audio),gemini-live-2.5-flas (control_behavior),gemini-live-2.5-flas (regular),gpt-realtime-1.5 (control),gpt-realtime-1.5 (control_accents),gpt-realtime-1.5 (control_audio),gpt-realtime-1.5 (control_behavior),gpt-realtime-1.5 (regular),xai-realtime (control),xai-realtime (control_accents),xai-realtime (control_audio),xai-realtime (control_behavior),xai-realtime (regular),TOTAL
+agent,640,198,240,225,709,218,72,71,85,385,416,333,168,133,663,4556
+unknown,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,2
+user,141,39,53,50,157,103,39,34,55,141,92,53,61,59,109,1186
