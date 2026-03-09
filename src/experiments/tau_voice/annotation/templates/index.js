@@ -168,8 +168,8 @@
                         }
                     }
                     
-                    // Group rows by simulation
-                    const simulations = {};
+                    const stored = getStoredAnnotations();
+                    let importCount = 0;
                     
                     for (let i = 1; i < lines.length; i++) {
                         const values = parseCSVLine(lines[i]);
@@ -179,48 +179,18 @@
                         headers.forEach((h, idx) => { row[h] = values[idx]; });
                         
                         const key = `${row.task_id}_${row.simulation_id}`;
-                        
-                        if (!simulations[key]) {
-                            simulations[key] = {
-                                task_id: row.task_id,
-                                simulation_id: row.simulation_id,
-                                trial: parseInt(row.trial) || 0,
-                                summary_error_source: row.summary_error_source || null,
-                                summary_error_type: row.summary_error_type || null,
-                                summary_notes: row.summary_notes || '',
-                                global_notes: row.global_notes || '',
-                                author_email: row.author_email || null,
-                                created_at: row.created_at || new Date().toISOString(),
-                                completed: row.completed === 'true' || row.completed === 'True' || row.completed === '1',
-                                errors: []
-                            };
-                        }
-                        
-                        // Add error if there's error data
-                        if (row.error_id || row.error_source) {
-                            simulations[key].errors.push({
-                                id: row.error_id || `imported_${i}`,
-                                source: row.error_source || 'agent',
-                                error_tags: row.error_tags ? row.error_tags.split('; ').filter(t => t) : [],
-                                severity: row.severity || 'critical',
-                                tick_start: row.tick_start ? parseInt(row.tick_start) : null,
-                                tick_end: row.tick_end ? parseInt(row.tick_end) : null,
-                                reasoning: row.reasoning || '',
-                                correct_behavior: row.correct_behavior || '',
-                                status: row.error_status || 'original'
-                            });
-                        }
-                    }
-                    
-                    // Store annotations
-                    const stored = getStoredAnnotations();
-                    let importCount = 0;
-                    
-                    for (const [key, sim] of Object.entries(simulations)) {
                         stored[key] = {
                             id: `imported_${Date.now()}_${importCount}`,
-                            ...sim,
-                            active_errors: sim.errors.filter(e => e.status !== 'deleted')
+                            task_id: row.task_id,
+                            simulation_id: row.simulation_id,
+                            trial: parseInt(row.trial) || 0,
+                            summary_error_source: row.error_source || null,
+                            summary_error_type: row.error_type || null,
+                            summary_notes: row.notes || '',
+                            rater: row.rater || null,
+                            batch: row.batch || BATCH_NAME,
+                            created_at: row.created_at || new Date().toISOString(),
+                            completed: row.completed === 'true' || row.completed === 'True' || row.completed === '1',
                         };
                         importCount++;
                     }
