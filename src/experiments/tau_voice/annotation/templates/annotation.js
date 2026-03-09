@@ -270,7 +270,7 @@
             if (document.getElementById('raterDisplay')) {
                 document.getElementById('raterDisplay').textContent = RATER_NAME;
             }
-            initializeErrors();
+            initializeForm();
         }
 
         if (!RATER_NAME) {

@@ -38,6 +38,17 @@ def _load_template(name: str) -> str:
     return (TEMPLATES_DIR / name).read_text()
 
 
+def _escape_js_string(value: str) -> str:
+    """Escape a value for safe insertion into a JS string literal."""
+    return (
+        value.replace("\\", "\\\\")
+        .replace("'", "\\'")
+        .replace('"', '\\"')
+        .replace("</", "<\\/")
+        .replace("\n", "\\n")
+    )
+
+
 def format_time_ms(ms: int) -> str:
     """Format milliseconds as min:sec.ms."""
     minutes = ms // 60000
@@ -650,13 +661,13 @@ def generate_html(
     js = _load_template("annotation.js")
     js = (
         js.replace("__ERRORS_JSON__", errors_json)
-        .replace("__SIMULATION_ID__", simulation.id)
-        .replace("__TASK_ID__", str(simulation.task_id))
+        .replace("__SIMULATION_ID__", _escape_js_string(simulation.id))
+        .replace("__TASK_ID__", _escape_js_string(str(simulation.task_id)))
         .replace(
             "__TRIAL__",
             str(simulation.trial if simulation.trial is not None else 0),
         )
-        .replace("__BATCH_NAME__", batch_name)
+        .replace("__BATCH_NAME__", _escape_js_string(batch_name))
     )
 
     # Full HTML
@@ -927,7 +938,7 @@ def load_and_filter_results(
     filter_tasks: Optional[list[str]] = None,
     filter_trials: Optional[list[int]] = None,
     max_items: Optional[int] = None,
-) -> list[tuple[SimulationRun, str, Path]]:
+) -> list[tuple[SimulationRun, str, Path, str]]:
     """
     Load simulation results and apply filters.
 
@@ -1072,7 +1083,7 @@ def generate_index_page(
         batch_name: Batch identifier for localStorage namespacing.
     """
     index_css = _load_template("index.css")
-    index_js = _load_template("index.js").replace("__BATCH_NAME__", batch_name)
+    index_js = _load_template("index.js").replace("__BATCH_NAME__", _escape_js_string(batch_name))
 
     index_html = f"""<!DOCTYPE html>
 <html>
@@ -1188,7 +1199,7 @@ def _run_results_mode(args) -> None:
             output_dir=args.output_dir,
             domain=domain,
             results_dir=results_dir,
-            copy_audio=args.copy_audio,
+            copy_audio=not args.no_copy_audio,
             batch_name=args.batch_name,
             experiment_label=experiment_label,
         )
@@ -1244,10 +1255,10 @@ examples:
         help="Parent directory for batch output (default: data/annotations/)",
     )
     parser.add_argument(
-        "--copy-audio",
+        "--no-copy-audio",
         action="store_true",
-        default=True,
-        help="Copy audio files to output directory",
+        default=False,
+        help="Skip copying audio files to output directory",
     )
     parser.add_argument(
         "--domain",
