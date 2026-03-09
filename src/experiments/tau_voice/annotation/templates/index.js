@@ -95,12 +95,12 @@
                 'error_source', 'error_type', 'notes', 'completed', 'created_at'
             ];
             
-            let csv = headers.join(',') + '\\n';
+            let csv = headers.join(',') + '\n';
             
             function escapeCSV(val) {
                 if (val === null || val === undefined) return '';
                 val = String(val);
-                if (val.includes(',') || val.includes('\\n') || val.includes('"')) {
+                if (val.includes(',') || val.includes('\n') || val.includes('"')) {
                     val = '"' + val.replace(/"/g, '""') + '"';
                 }
                 return val;
@@ -113,7 +113,7 @@
                     ann.summary_error_source || '', ann.summary_error_type || '',
                     ann.summary_notes || '', ann.completed, ann.created_at
                 ].map(escapeCSV);
-                csv += row.join(',') + '\\n';
+                csv += row.join(',') + '\n';
             }
             
             // Download
@@ -151,7 +151,7 @@
             reader.onload = function(e) {
                 try {
                     const csv = e.target.result;
-                    const lines = csv.split('\\n').filter(l => l.trim());
+                    const lines = csv.split('\n').filter(l => l.trim());
                     
                     if (lines.length < 2) {
                         showImportStatus('CSV file is empty or has no data rows', true);
