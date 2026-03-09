@@ -151,15 +151,14 @@
             reader.onload = function(e) {
                 try {
                     const csv = e.target.result;
-                    const lines = csv.split('\n').filter(l => l.trim());
+                    const rows = parseCSV(csv);
                     
-                    if (lines.length < 2) {
+                    if (rows.length < 2) {
                         showImportStatus('CSV file is empty or has no data rows', true);
                         return;
                     }
                     
-                    // Parse header
-                    const headers = parseCSVLine(lines[0]);
+                    const headers = rows[0];
                     const requiredFields = ['task_id', 'simulation_id'];
                     for (const field of requiredFields) {
                         if (!headers.includes(field)) {
@@ -171,8 +170,8 @@
                     const stored = getStoredAnnotations();
                     let importCount = 0;
                     
-                    for (let i = 1; i < lines.length; i++) {
-                        const values = parseCSVLine(lines[i]);
+                    for (let i = 1; i < rows.length; i++) {
+                        const values = rows[i];
                         if (values.length !== headers.length) continue;
                         
                         const row = {};
@@ -207,37 +206,43 @@
             event.target.value = ''; // Reset file input
         }
         
-        // Simple CSV line parser (handles quoted fields)
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
+        function parseCSV(text) {
+            const rows = [];
+            let current = [];
+            let field = '';
             let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+
                 if (inQuotes) {
-                    if (char === '"' && line[i + 1] === '"') {
-                        current += '"';
+                    if (ch === '"' && text[i + 1] === '"') {
+                        field += '"';
                         i++;
-                    } else if (char === '"') {
+                    } else if (ch === '"') {
                         inQuotes = false;
                     } else {
-                        current += char;
+                        field += ch;
                     }
+                } else if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ',') {
+                    current.push(field);
+                    field = '';
+                } else if (ch === '\r') {
+                    // skip \r, handle newline on \n
+                } else if (ch === '\n') {
+                    current.push(field);
+                    field = '';
+                    if (current.some(f => f.trim())) rows.push(current);
+                    current = [];
                 } else {
-                    if (char === '"') {
-                        inQuotes = true;
-                    } else if (char === ',') {
-                        result.push(current);
-                        current = '';
-                    } else {
-                        current += char;
-                    }
+                    field += ch;
                 }
             }
-            result.push(current);
-            return result;
+            current.push(field);
+            if (current.some(f => f.trim())) rows.push(current);
+            return rows;
         }
         
         // Column sorting
