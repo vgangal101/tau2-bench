@@ -554,6 +554,12 @@ def save_simulation_note(
     """
     Save a simulation note to a directory.
 
+    .. deprecated::
+        This function saves *_simulation.json files which are very large (100K-350K lines)
+        and should NOT be committed to git. Use the results-based export mode in
+        ``export_html.py --results`` instead, which reads results.json directly without
+        creating intermediate simulation dump files.
+
     Saves both:
     1. The note metadata as a JSON file
     2. The full simulation run as a separate JSON file
@@ -566,6 +572,20 @@ def save_simulation_note(
     Returns:
         True if saved successfully, False otherwise.
     """
+    import warnings
+
+    warnings.warn(
+        "save_simulation_note() creates large *_simulation.json files that should not "
+        "be committed to git. Use 'export_html.py --results' instead, which reads "
+        "results.json directly. See src/experiments/tau_voice/annotation/README.md.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    ConsoleDisplay.console.print(
+        "[yellow]⚠ Warning: This saves a large *_simulation.json file. "
+        "These files are gitignored and should not be committed. "
+        "Consider using 'export_html.py --results' instead.[/]"
+    )
     try:
         # Create filename based on task and note ID
         base_filename = f"task_{note.task_id}_{note.id}"
