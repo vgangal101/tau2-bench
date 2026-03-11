@@ -960,7 +960,7 @@ def plot_pass_1_all_complexities(
                         linewidth=0.5,
                     )
                     # Add small value label on top (horizontal, compact format)
-                    label = f".{int(val * 100)}" if val < 1 else "1"
+                    label = f".{round(val * 100)}" if val < 1 else "1"
                     ax.text(
                         xp,
                         val + 0.01,
@@ -1112,7 +1112,7 @@ def plot_pass_1_filtered(
                         linewidth=0.5,
                     )
                     # Add value label in compact format (horizontal, small)
-                    label = f".{int(val * 100):02d}"
+                    label = f".{round(val * 100):02d}"
                     ax.text(
                         xp,
                         val + 0.02,
@@ -2869,6 +2869,9 @@ def save_duration_raw(
             continue
         for sim in sim_results.simulations:
             num_ticks = len(sim.ticks) if sim.ticks else 0
+            tick_duration = None
+            if sim.ticks:
+                tick_duration = sim.ticks[0].tick_duration_seconds
             rows.append(
                 {
                     "llm": params["llm"],
@@ -2879,6 +2882,7 @@ def save_duration_raw(
                     "trial": sim.trial,
                     "duration_seconds": sim.duration,
                     "num_ticks": num_ticks,
+                    "tick_duration_seconds": tick_duration,
                     "termination_reason": (
                         sim.termination_reason.value
                         if hasattr(sim.termination_reason, "value")
@@ -5909,7 +5913,7 @@ def _generate_main_results_table(
             def fmt_val(val, is_best):
                 if val is None:
                     return "--"
-                pct = f"{int(val * 100)}\\%"
+                pct = f"{round(val * 100)}\\%"
                 return rf"\textbf{{{pct}}}" if is_best else pct
 
             control_str = fmt_val(
@@ -5923,7 +5927,7 @@ def _generate_main_results_table(
 
             # Delta
             if row["control"] is not None and row["regular"] is not None:
-                delta = int((row["regular"] - row["control"]) * 100)
+                delta = round((row["regular"] - row["control"]) * 100)
                 delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
             else:
                 delta_str = "--"
@@ -6033,11 +6037,11 @@ def _generate_ablation_table(
             control_val = data[llm].get("control")
             if val is not None:
                 model_vals.append(val)
-                pct = int(val * 100)
+                pct = round(val * 100)
                 if complexity == "control":
                     vals.append(f"{pct}\\%")
                 elif control_val is not None:
-                    delta = int((val - control_val) * 100)
+                    delta = round((val - control_val) * 100)
                     delta_str = f"+{delta}" if delta >= 0 else str(delta)
                     vals.append(f"{pct}\\% ({delta_str})")
                 else:
@@ -6048,7 +6052,7 @@ def _generate_ablation_table(
         # Compute "All" column (average across models)
         if model_vals:
             avg_val = sum(model_vals) / len(model_vals)
-            avg_pct = int(avg_val * 100)
+            avg_pct = round(avg_val * 100)
             if complexity == "control":
                 vals.append(f"{avg_pct}\\%")
             else:
@@ -6059,7 +6063,7 @@ def _generate_ablation_table(
                 ]
                 if control_vals:
                     avg_control = sum(control_vals) / len(control_vals)
-                    avg_delta = int((avg_val - avg_control) * 100)
+                    avg_delta = round((avg_val - avg_control) * 100)
                     delta_str = f"+{avg_delta}" if avg_delta >= 0 else str(avg_delta)
                     vals.append(f"{avg_pct}\\% ({delta_str})")
                 else:

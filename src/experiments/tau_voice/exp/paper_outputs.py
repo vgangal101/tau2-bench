@@ -273,7 +273,7 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
     def fmt_val(val, is_best):
         if val is None:
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if is_best else pct
 
     def _render_group(group_rows, domain_label_text):
@@ -300,7 +300,7 @@ def _generate_main_results_table(output_dir: Path, df_metrics: pd.DataFrame) -> 
             )
 
             if row["control"] is not None and row["regular"] is not None:
-                delta = int((row["regular"] - row["control"]) * 100)
+                delta = round((row["regular"] - row["control"]) * 100)
                 delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
                 if row["control"] != 0:
                     delta_rel = (row["regular"] - row["control"]) / row["control"] * 100
@@ -434,13 +434,13 @@ def _render_ablation_table(
         vals = []
         for name, val, control_val in row_values:
             if val is not None:
-                pct = int(val * 100)
+                pct = round(val * 100)
                 is_best = val == best_val
 
                 if complexity == "control":
                     cell = f"{pct}\\%"
                 elif control_val is not None:
-                    delta = int((val - control_val) * 100)
+                    delta = round((val - control_val) * 100)
                     delta_str = f"+{delta}" if delta >= 0 else str(delta)
                     if control_val != 0:
                         delta_rel = (val - control_val) / control_val * 100
@@ -1133,13 +1133,13 @@ def _generate_voice_vs_text_table(output_dir: Path, df_metrics: pd.DataFrame) ->
     def fmt_val(val, is_best=False):
         if val is None:
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if is_best else pct
 
     def fmt_delta(text_val, voice_val):
         if text_val is None or voice_val is None:
             return "--", "--"
-        delta = int((voice_val - text_val) * 100)
+        delta = round((voice_val - text_val) * 100)
         delta_str = f"+{delta}\\%" if delta >= 0 else f"$-${abs(delta)}\\%"
         if text_val != 0:
             delta_rel = (voice_val - text_val) / text_val * 100
@@ -1369,9 +1369,9 @@ def _generate_combined_comparison_table(
     def fmt_val_with_delta(val, text_val, is_best=False):
         if val is None:
             return "--"
-        pct = int(val * 100)
+        pct = round(val * 100)
         if text_val is not None:
-            delta = int((val - text_val) * 100)
+            delta = round((val - text_val) * 100)
             if text_val != 0:
                 delta_rel = (val - text_val) / text_val * 100
                 cell = f"{pct}\\% ({delta:+d}, {delta_rel:+.1f}\\%)"
@@ -1385,9 +1385,11 @@ def _generate_combined_comparison_table(
         """Format text column with GPT-5 and GPT-4.1 in parenthesis on same line."""
         if sota_val is None and nonthinking_val is None:
             return "--"
-        sota_str = f"{int(sota_val * 100)}\\%" if sota_val is not None else "--"
+        sota_str = f"{round(sota_val * 100)}\\%" if sota_val is not None else "--"
         nonthinking_str = (
-            f"({int(nonthinking_val * 100)}\\%)" if nonthinking_val is not None else ""
+            f"({round(nonthinking_val * 100)}\\%)"
+            if nonthinking_val is not None
+            else ""
         )
         return f"{sota_str} {nonthinking_str}".strip()
 
@@ -1994,17 +1996,11 @@ def _plot_ablation_figure(output_dir: Path, df_metrics: pd.DataFrame) -> None:
                     edgecolor="white",
                     linewidth=0.5,
                 )
-                label = f"{int(val * 100)}"
+                label = f"{round(val * 100)}"
                 ax.text(xp, val + 0.02, label, ha="center", va="bottom", fontsize=5)
 
     # X-axis labels
-    llm_short_names = []
-    for llm in llms:
-        short = llm.split(":")[-1] if ":" in llm else llm
-        short = short.replace("gpt-realtime-", "gpt-rt-")
-        short = short.replace("gemini-2.0-flash-live-", "gem-2-live-")
-        short = short.replace("grok-2-realtime-", "grok-2-rt-")
-        llm_short_names.append(short[:12])
+    llm_short_names = [get_short_llm_name(llm) for llm in llms]
 
     ax.set_ylabel("pass@1", fontsize=9)
     ax.set_xticks(x)
@@ -2151,7 +2147,7 @@ def _generate_voice_quality_table(
     def fmt_pct(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if val == best_val else pct
 
     def fmt_sec(val, best_val):
@@ -2549,14 +2545,14 @@ def _generate_voice_quality_table_unified(
         """Format percentage where higher is better."""
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if val == best_val else pct
 
     def fmt_pct_lower_better(val, best_val):
         """Format percentage where lower is better (error rates)."""
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if val == best_val else pct
 
     def fmt_sec(val, best_val):
@@ -2971,7 +2967,7 @@ def _generate_voice_quality_aggregated_table(
     def fmt_pct(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         return rf"\textbf{{{pct}}}" if abs(val - best_val) < 0.001 else pct
 
     # Only show "All" rows (aggregated across domains)
@@ -3140,7 +3136,7 @@ def _generate_vertical_voice_quality_table(
     def fmt_pct_higher(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)
@@ -3152,7 +3148,7 @@ def _generate_vertical_voice_quality_table(
     def fmt_pct_lower(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)
@@ -3346,7 +3342,7 @@ def _generate_core_metrics_table(
     def fmt_pct_higher(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)
@@ -3358,7 +3354,7 @@ def _generate_core_metrics_table(
     def fmt_pct_lower(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)
@@ -3609,7 +3605,7 @@ def _generate_full_voice_quality_table(
     def fmt_pct_higher(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)
@@ -3621,7 +3617,7 @@ def _generate_full_voice_quality_table(
     def fmt_pct_lower(val, best_val):
         if pd.isna(val):
             return "--"
-        pct = f"{int(val * 100)}\\%"
+        pct = f"{round(val * 100)}\\%"
         if (
             best_val is not None
             and not pd.isna(best_val)

@@ -9,6 +9,13 @@
 \@LN@col{2}
 \newlabel{sec:intro}{{1}{1}{}{section.1}{}}
 \newlabel{sec:intro@cref}{{[section][1][]1}{[1][1][]1}{}{}{}}
+\@LN@col{1}
+\@LN@col{2}
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:headline}{{1}{2}{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 85\%. Voice agents show two levels of degradation: under \textbf {Clean} conditions (clean audio, no interruptions), performance drops to 31--51\% ($-$34 to $-$54pp); under \textbf {Realistic} conditions (realistic audio, interruptions), it falls further to 25--38\% ($-$47 to $-$59pp from text).\revised {Was 80\%, 29--42\% ($-$38 to $-$51pp), 19--30\% ($-$50 to $-$61pp).}}{figure.caption.1}{}}
+\newlabel{fig:headline@cref}{{[figure][1][]1}{[1][2][]2}{}{}{}}
+\newlabel{sec:related}{{2}{2}{}{section.2}{}}
+\newlabel{sec:related@cref}{{[section][2][]2}{[1][2][]2}{}{}{}}
 \citation{yao_-bench_2024}
 \citation{barres_2-bench_2025}
 \citation{lin_full-duplex-bench_2025}
@@ -19,13 +26,6 @@
 \citation{gosai_audio_2025}
 \citation{yao_-bench_2024}
 \citation{barres_2-bench_2025}
-\@LN@col{1}
-\@LN@col{2}
-\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:headline}{{1}{2}{Task completion (pass@1) averaged across all domains. GPT-5 (reasoning) achieves 85\%. Voice agents show two levels of degradation: under \textbf {Clean} conditions (clean audio, no interruptions), performance drops to 29--51\% ($-$34 to $-$56pp); under \textbf {Realistic} conditions (realistic audio, interruptions), it falls further to 25--38\% ($-$47 to $-$60pp from text)}{figure.caption.1}{}}
-\newlabel{fig:headline@cref}{{[figure][1][]1}{[1][2][]2}{}{}{}}
-\newlabel{sec:related}{{2}{2}{}{section.2}{}}
-\newlabel{sec:related@cref}{{[section][2][]2}{[1][2][]2}{}{}{}}
 \citation{lin_full-duplex-bench_2025}
 \citation{lin_full-duplex-bench-v2_2025}
 \citation{arora_talking_2025}
@@ -39,7 +39,7 @@
 \citation{xai_grok_voice_2025}
 \@LN@col{1}
 \newlabel{tab:related-comparison}{{1}{3}{Comparison of evaluation dimensions across benchmarks. Prior work advances individual dimensions; \tauvoice {} combines all three}{table.caption.2}{}}
-\newlabel{tab:related-comparison@cref}{{[table][1][]1}{[1][2][]3}{}{}{}}
+\newlabel{tab:related-comparison@cref}{{[table][1][]1}{[1][3][]3}{}{}{}}
 \@LN@col{2}
 \newlabel{sec:methods}{{3}{3}{}{section.3}{}}
 \newlabel{sec:methods@cref}{{[section][3][]3}{[1][3][]3}{}{}{}}
@@ -64,7 +64,7 @@
 \newlabel{tab:models@cref}{{[table][3][]3}{[1][5][]5}{}{}{}}
 \@LN@col{1}
 \newlabel{tab:conditions}{{4}{6}{Speech complexity conditions: Clean vs Realistic}{table.caption.8}{}}
-\newlabel{tab:conditions@cref}{{[table][4][]4}{[1][5][]6}{}{}{}}
+\newlabel{tab:conditions@cref}{{[table][4][]4}{[1][6][]6}{}{}{}}
 \newlabel{tab:conditions-ablation-single}{{5}{6}{Speech complexity conditions by ablation (single factors). Columns: Cln=Clean, +N=Noise, +A=Accents, +I=Interrupts, Real=Realistic (all effects)}{table.caption.9}{}}
 \newlabel{tab:conditions-ablation-single@cref}{{[table][5][]5}{[1][6][]6}{}{}{}}
 \@LN@col{2}
@@ -72,120 +72,97 @@
 \newlabel{sec:results@cref}{{[section][5][]5}{[1][6][]6}{}{}{}}
 \@LN@col{1}
 \newlabel{tab:text-control-regular}{{6}{7}{Text vs Voice comparison (pass@1). Text shows GPT-5 (reasoning) and GPT-4.1 (non-reasoning). Voice evaluated under Clean and Realistic conditions. Deltas show gap from GPT-5}{table.caption.10}{}}
-\newlabel{tab:text-control-regular@cref}{{[table][6][]6}{[1][6][]7}{}{}{}}
+\newlabel{tab:text-control-regular@cref}{{[table][6][]6}{[1][7][]7}{}{}{}}
 \@LN@col{2}
 \newlabel{tab:ablation-single}{{7}{7}{Ablation: impact of individual acoustic factors on pass@1 (Retail domain)}{table.caption.11}{}}
 \newlabel{tab:ablation-single@cref}{{[table][7][]7}{[1][7][]7}{}{}{}}
 \@LN@col{1}
 \newlabel{tab:voice-quality}{{8}{8}{Voice interaction quality (Realistic condition, aggregated across domains). \textbf {Bold} indicates best. Full breakdown in Appendix~\ref {app:voice-metrics-detail}}{table.caption.12}{}}
-\newlabel{tab:voice-quality@cref}{{[table][8][]8}{[1][7][]8}{}{}{}}
+\newlabel{tab:voice-quality@cref}{{[table][8][]8}{[1][8][]8}{}{}{}}
 \newlabel{sec:analysis}{{5.2}{8}{}{subsection.5.2}{}}
 \newlabel{sec:analysis@cref}{{[subsection][2][5]5.2}{[1][8][]8}{}{}{}}
 \@LN@col{2}
 \newlabel{tab:combined-error-analysis}{{9}{8}{Error analysis: distribution of error types by source. Agent errors dominate in both cohorts (75\% and 90\%)}{table.caption.13}{}}
 \newlabel{tab:combined-error-analysis@cref}{{[table][9][]9}{[1][8][]8}{}{}{}}
 \bibdata{tau-voice}
-\bibcite{ao_sd-eval_2025}{{1}{2025}{{Ao et~al.}}{{Ao, Wang, Tian, Chen, Zhang, Lu, Wang, Li, and Wu}}}
-\bibcite{arora_talking_2025}{{2}{2025}{{Arora et~al.}}{{Arora, Lu, Chiu, Pang, and Watanabe}}}
-\bibcite{barres_2-bench_2025}{{3}{2025}{{Barres et~al.}}{{Barres, Dong, Ray, Si, and Narasimhan}}}
-\bibcite{chen_voicebench_2024}{{4}{2024}{{Chen et~al.}}{{Chen, Yue, Zhang, Gao, Tan, and Li}}}
-\bibcite{gartner_conversational_ai_2024}{{5}{2024}{{Gartner}}{{}}}
-\bibcite{gartner_agentic_ai_2025}{{6}{2025}{{Gartner}}{{}}}
-\@LN@col{1}
-\newlabel{sec:conclusion}{{6}{9}{}{section.6}{}}
-\newlabel{sec:conclusion@cref}{{[section][6][]6}{[1][8][]9}{}{}{}}
-\@LN@col{2}
-\bibcite{gosai_audio_2025}{{7}{2025}{{Gosai et~al.}}{{Gosai, Vuong, Tyagi, Li, You, Bavare, Uçar, Fang, Jang, Liu, and He}}}
-\bibcite{jiang_s2s-arena_2025}{{8}{2025}{{Jiang et~al.}}{{Jiang, Lin, Bu, Du, Wang, and Li}}}
-\bibcite{li_cb-whisper_2024}{{9}{2024}{{Li et~al.}}{{Li, Li, Zhang, Su, Yu, Piao, Qiao, Ma, Zhao, and Yang}}}
-\bibcite{lin_full-duplex-bench-v2_2025}{{10}{2025{a}}{{Lin et~al.}}{{Lin, Kuan, Shi, Chang, Arora, Watanabe, and Lee}}}
-\bibcite{lin_full-duplex-bench_2025}{{11}{2025{b}}{{Lin et~al.}}{{Lin, Lian, Li, Wang, Anumanchipalli, Liu, and Lee}}}
-\bibcite{liu_vocalbench_2026}{{12}{2026}{{Liu et~al.}}{{Liu, Wang, Cheng, Liu, Li, Hou, Wu, Gu, Wang, and Wang}}}
-\bibcite{moore_ai_voice_2025}{{13}{2025}{{Moore}}{{}}}
-\bibcite{openai_introducing_2025}{{14}{2025}{{OpenAI}}{{}}}
-\bibcite{si_spokenwoz_2025}{{15}{2025}{{Si et~al.}}{{Si, Ma, Gao, Wu, Lin, Dai, Li, Yan, Huang, and Li}}}
-\bibcite{vertex_ai_gemini_2025}{{16}{2025}{{Vertex~AI}}{{}}}
-\bibcite{wang_audiobench_2025}{{17}{2025}{{Wang et~al.}}{{Wang, Zou, Lin, Sun, Liu, Zhang, Liu, Aw, and Chen}}}
-\bibcite{xai_grok_voice_2025}{{18}{2025}{{xAI}}{{}}}
-\bibcite{yang_paras2s_2025}{{19}{2025}{{Yang et~al.}}{{Yang, Tu, Liu, Qu, Lee, Lu, Wang, and Wu}}}
-\bibcite{yao_-bench_2024}{{20}{2024}{{Yao et~al.}}{{Yao, Shinn, Razavi, and Narasimhan}}}
-\bibcite{zhang_wildspeech-bench_2025}{{21}{2025}{{Zhang et~al.}}{{Zhang, Zhang, Lei, Wu, Liu, Jia, and Zhou}}}
 \bibstyle{icml2026}
 \@LN@col{1}
+\newlabel{sec:conclusion}{{6}{9}{}{section.6}{}}
+\newlabel{sec:conclusion@cref}{{[section][6][]6}{[1][9][]9}{}{}{}}
 \@LN@col{2}
-\newlabel{app:hyperparams}{{A}{11}{Appendix Overview}{appendix.A}{}}
-\newlabel{app:hyperparams@cref}{{[section][1][]A}{[1][11][]11}{}{}{}}
-\newlabel{tab:turn-taking-thresholds}{{10}{11}{Turn-taking thresholds controlling conversation flow}{table.caption.17}{}}
-\newlabel{tab:turn-taking-thresholds@cref}{{[table][10][]10}{[1][11][]11}{}{}{}}
-\newlabel{app:audio-processing}{{B}{11}{Appendix Overview}{appendix.B}{}}
-\newlabel{app:audio-processing@cref}{{[section][2][]B}{[1][11][]11}{}{}{}}
-\newlabel{app:buffer-formalism}{{B.1}{11}{Appendix Overview}{subsection.B.1}{}}
-\newlabel{app:buffer-formalism@cref}{{[subsection][1][2]B.1}{[1][11][]11}{}{}{}}
-\newlabel{eq:agent-output}{{1}{11}{Appendix Overview}{equation.1}{}}
-\newlabel{eq:agent-output@cref}{{[equation][1][]1}{[1][11][]11}{}{}{}}
-\newlabel{eq:buffer-update}{{2}{11}{Appendix Overview}{equation.2}{}}
-\newlabel{eq:buffer-update@cref}{{[equation][2][]2}{[1][11][]11}{}{}{}}
-\newlabel{sec:proportional-text}{{B.2}{11}{Appendix Overview}{subsection.B.2}{}}
-\newlabel{sec:proportional-text@cref}{{[subsection][2][2]B.2}{[1][11][]11}{}{}{}}
-\newlabel{app:linearization}{{B.3}{12}{Appendix Overview}{subsection.B.3}{}}
-\newlabel{app:linearization@cref}{{[subsection][3][2]B.3}{[1][12][]12}{}{}{}}
-\newlabel{tab:linearization-rules}{{11}{12}{Linearization rules for converting overlapping speech to sequential messages}{table.caption.18}{}}
-\newlabel{tab:linearization-rules@cref}{{[table][11][]11}{[1][12][]12}{}{}{}}
-\newlabel{app:personas}{{C}{12}{Appendix Overview}{appendix.C}{}}
-\newlabel{app:personas@cref}{{[section][3][]C}{[1][12][]12}{}{}{}}
-\newlabel{app:audio-effects}{{D}{13}{Appendix Overview}{appendix.D}{}}
-\newlabel{app:audio-effects@cref}{{[section][4][]D}{[1][13][]13}{}{}{}}
-\newlabel{tab:environment-presets}{{12}{13}{Environment presets define which audio files are used for background and burst noise generation}{table.caption.19}{}}
-\newlabel{tab:environment-presets@cref}{{[table][12][]12}{[1][13][]13}{}{}{}}
-\newlabel{tab:effect-scheduling}{{13}{13}{Effect scheduling parameters for the Realistic complexity preset}{table.caption.20}{}}
-\newlabel{tab:effect-scheduling@cref}{{[table][13][]13}{[1][13][]13}{}{}{}}
-\newlabel{app:voice-metrics}{{E}{14}{Appendix Overview}{appendix.E}{}}
-\newlabel{app:voice-metrics@cref}{{[section][5][]E}{[1][14][]14}{}{}{}}
-\newlabel{tab:error-summary}{{14}{14}{Agent error definitions. Turn-taking errors affect $R_R$, $R_Y$, and $I_A$. Selectivity errors affect $S_{BC}$, $S_{VT}$, and $S_{ND}$}{table.caption.21}{}}
-\newlabel{tab:error-summary@cref}{{[table][14][]14}{[1][14][]14}{}{}{}}
-\newlabel{app:turn-taking-prompts}{{F}{14}{Appendix Overview}{appendix.F}{}}
-\newlabel{app:turn-taking-prompts@cref}{{[section][6][]F}{[1][14][]14}{}{}{}}
-\newlabel{app:system-prompts}{{G}{17}{Appendix Overview}{appendix.G}{}}
-\newlabel{app:system-prompts@cref}{{[section][7][]G}{[1][16][]17}{}{}{}}
-\newlabel{app:user-sim-prompt}{{G.1}{17}{Appendix Overview}{subsection.G.1}{}}
-\newlabel{app:user-sim-prompt@cref}{{[subsection][1][7]G.1}{[1][16][]17}{}{}{}}
-\newlabel{app:agent-prompt}{{G.2}{19}{Appendix Overview}{subsection.G.2}{}}
-\newlabel{app:agent-prompt@cref}{{[subsection][2][7]G.2}{[1][19][]19}{}{}{}}
-\newlabel{app:results}{{H}{22}{Appendix Overview}{appendix.H}{}}
-\newlabel{app:results@cref}{{[section][8][]H}{[1][22][]22}{}{}{}}
-\newlabel{app:voice-metrics-detail}{{H.1}{22}{Appendix Overview}{subsection.H.1}{}}
-\newlabel{app:voice-metrics-detail@cref}{{[subsection][1][8]H.1}{[1][22][]22}{}{}{}}
-\newlabel{app:qualitative-analysis}{{H.2}{22}{Appendix Overview}{subsection.H.2}{}}
-\newlabel{app:qualitative-analysis@cref}{{[subsection][2][8]H.2}{[1][22][]22}{}{}{}}
-\newlabel{tab:voice-quality-detail}{{15}{23}{Voice interaction quality metrics---full breakdown (Realistic condition). \textbf {Bold} indicates best per domain. $\uparrow $ = higher is better, $\downarrow $ = lower is better}{table.caption.22}{}}
-\newlabel{tab:voice-quality-detail@cref}{{[table][15][]15}{[1][22][]23}{}{}{}}
-\newlabel{tab:full-notes-both}{{16}{23}{Qualitative error annotations for sampled task completion failures. Left: Voice-Fragile cohort (failures from Clean audio setting, 20 tasks). Right: Noise-Fragile cohort (failures from Realistic audio setting, 20 tasks)}{table.caption.23}{}}
-\newlabel{tab:full-notes-both@cref}{{[table][16][]16}{[1][22][]23}{}{}{}}
-\newlabel{app:stat-sig}{{H.3}{24}{Appendix Overview}{subsection.H.3}{}}
-\newlabel{app:stat-sig@cref}{{[subsection][3][8]H.3}{[1][24][]24}{}{}{}}
-\newlabel{tab:stat-sig}{{17}{24}{Statistical reliability analysis for Retail domain (3 runs, n=114 tasks each). All reported values are mean $\pm $ 95\% CI}{table.caption.24}{}}
-\newlabel{tab:stat-sig@cref}{{[table][17][]17}{[1][24][]24}{}{}{}}
-\newlabel{app:examples}{{I}{24}{Appendix Overview}{appendix.I}{}}
-\newlabel{app:examples@cref}{{[section][9][]I}{[1][24][]24}{}{}{}}
-\newlabel{app:example-task}{{I.1}{24}{Appendix Overview}{subsection.I.1}{}}
-\newlabel{app:example-task@cref}{{[subsection][1][9]I.1}{[1][24][]24}{}{}{}}
-\newlabel{tab:task41-config}{{18}{25}{Task 41 configuration}{table.caption.25}{}}
-\newlabel{tab:task41-config@cref}{{[table][18][]18}{[1][24][]25}{}{}{}}
+\newlabel{app:hyperparams}{{A}{10}{Appendix Overview}{appendix.A}{}}
+\newlabel{app:hyperparams@cref}{{[section][1][]A}{[1][10][]10}{}{}{}}
+\newlabel{tab:turn-taking-thresholds}{{10}{10}{Turn-taking thresholds controlling conversation flow}{table.caption.16}{}}
+\newlabel{tab:turn-taking-thresholds@cref}{{[table][10][]10}{[1][10][]10}{}{}{}}
+\newlabel{app:audio-processing}{{B}{10}{Appendix Overview}{appendix.B}{}}
+\newlabel{app:audio-processing@cref}{{[section][2][]B}{[1][10][]10}{}{}{}}
+\newlabel{app:buffer-formalism}{{B.1}{10}{Appendix Overview}{subsection.B.1}{}}
+\newlabel{app:buffer-formalism@cref}{{[subsection][1][2]B.1}{[1][10][]10}{}{}{}}
+\newlabel{eq:agent-output}{{1}{10}{Appendix Overview}{equation.1}{}}
+\newlabel{eq:agent-output@cref}{{[equation][1][]1}{[1][10][]10}{}{}{}}
+\newlabel{eq:buffer-update}{{2}{10}{Appendix Overview}{equation.2}{}}
+\newlabel{eq:buffer-update@cref}{{[equation][2][]2}{[1][10][]10}{}{}{}}
+\newlabel{sec:proportional-text}{{B.2}{10}{Appendix Overview}{subsection.B.2}{}}
+\newlabel{sec:proportional-text@cref}{{[subsection][2][2]B.2}{[1][10][]10}{}{}{}}
+\newlabel{app:linearization}{{B.3}{11}{Appendix Overview}{subsection.B.3}{}}
+\newlabel{app:linearization@cref}{{[subsection][3][2]B.3}{[1][11][]11}{}{}{}}
+\newlabel{tab:linearization-rules}{{11}{11}{Linearization rules for converting overlapping speech to sequential messages}{table.caption.17}{}}
+\newlabel{tab:linearization-rules@cref}{{[table][11][]11}{[1][11][]11}{}{}{}}
+\newlabel{app:personas}{{C}{11}{Appendix Overview}{appendix.C}{}}
+\newlabel{app:personas@cref}{{[section][3][]C}{[1][11][]11}{}{}{}}
+\newlabel{app:audio-effects}{{D}{12}{Appendix Overview}{appendix.D}{}}
+\newlabel{app:audio-effects@cref}{{[section][4][]D}{[1][12][]12}{}{}{}}
+\newlabel{tab:environment-presets}{{12}{12}{Environment presets define which audio files are used for background and burst noise generation}{table.caption.18}{}}
+\newlabel{tab:environment-presets@cref}{{[table][12][]12}{[1][12][]12}{}{}{}}
+\newlabel{tab:effect-scheduling}{{13}{12}{Effect scheduling parameters for the Realistic complexity preset}{table.caption.19}{}}
+\newlabel{tab:effect-scheduling@cref}{{[table][13][]13}{[1][12][]12}{}{}{}}
+\newlabel{app:voice-metrics}{{E}{13}{Appendix Overview}{appendix.E}{}}
+\newlabel{app:voice-metrics@cref}{{[section][5][]E}{[1][13][]13}{}{}{}}
+\newlabel{tab:error-summary}{{14}{13}{Agent error definitions. Turn-taking errors affect $R_R$, $R_Y$, and $I_A$. Selectivity errors affect $S_{BC}$, $S_{VT}$, and $S_{ND}$}{table.caption.20}{}}
+\newlabel{tab:error-summary@cref}{{[table][14][]14}{[1][13][]13}{}{}{}}
+\newlabel{app:turn-taking-prompts}{{F}{13}{Appendix Overview}{appendix.F}{}}
+\newlabel{app:turn-taking-prompts@cref}{{[section][6][]F}{[1][13][]13}{}{}{}}
+\newlabel{app:system-prompts}{{G}{16}{Appendix Overview}{appendix.G}{}}
+\newlabel{app:system-prompts@cref}{{[section][7][]G}{[1][15][]16}{}{}{}}
+\newlabel{app:user-sim-prompt}{{G.1}{16}{Appendix Overview}{subsection.G.1}{}}
+\newlabel{app:user-sim-prompt@cref}{{[subsection][1][7]G.1}{[1][15][]16}{}{}{}}
+\newlabel{app:agent-prompt}{{G.2}{18}{Appendix Overview}{subsection.G.2}{}}
+\newlabel{app:agent-prompt@cref}{{[subsection][2][7]G.2}{[1][18][]18}{}{}{}}
+\newlabel{app:results}{{H}{21}{Appendix Overview}{appendix.H}{}}
+\newlabel{app:results@cref}{{[section][8][]H}{[1][21][]21}{}{}{}}
+\newlabel{app:voice-metrics-detail}{{H.1}{21}{Appendix Overview}{subsection.H.1}{}}
+\newlabel{app:voice-metrics-detail@cref}{{[subsection][1][8]H.1}{[1][21][]21}{}{}{}}
+\newlabel{app:qualitative-analysis}{{H.2}{21}{Appendix Overview}{subsection.H.2}{}}
+\newlabel{app:qualitative-analysis@cref}{{[subsection][2][8]H.2}{[1][21][]21}{}{}{}}
+\newlabel{tab:voice-quality-detail}{{15}{22}{Voice interaction quality metrics---full breakdown (Realistic condition). \textbf {Bold} indicates best per domain. $\uparrow $ = higher is better, $\downarrow $ = lower is better}{table.caption.21}{}}
+\newlabel{tab:voice-quality-detail@cref}{{[table][15][]15}{[1][21][]22}{}{}{}}
+\newlabel{tab:full-notes-both}{{16}{22}{Qualitative error annotations for sampled task completion failures. Left: Voice-Fragile cohort (failures from Clean audio setting, 20 tasks). Right: Noise-Fragile cohort (failures from Realistic audio setting, 20 tasks)}{table.caption.22}{}}
+\newlabel{tab:full-notes-both@cref}{{[table][16][]16}{[1][21][]22}{}{}{}}
+\newlabel{app:stat-sig}{{H.3}{23}{Appendix Overview}{subsection.H.3}{}}
+\newlabel{app:stat-sig@cref}{{[subsection][3][8]H.3}{[1][23][]23}{}{}{}}
+\newlabel{tab:stat-sig}{{17}{23}{Statistical reliability analysis for Retail domain (3 runs, n=114 tasks each). All reported values are mean $\pm $ 95\% CI}{table.caption.23}{}}
+\newlabel{tab:stat-sig@cref}{{[table][17][]17}{[1][23][]23}{}{}{}}
+\newlabel{app:examples}{{I}{23}{Appendix Overview}{appendix.I}{}}
+\newlabel{app:examples@cref}{{[section][9][]I}{[1][23][]23}{}{}{}}
+\newlabel{app:example-task}{{I.1}{23}{Appendix Overview}{subsection.I.1}{}}
+\newlabel{app:example-task@cref}{{[subsection][1][9]I.1}{[1][23][]23}{}{}{}}
+\newlabel{tab:task41-config}{{18}{24}{Task 41 configuration}{table.caption.24}{}}
+\newlabel{tab:task41-config@cref}{{[table][18][]18}{[1][23][]24}{}{}{}}
 \gdef \LT@i {\LT@entry 
     {1}{52.23367pt}\LT@entry 
     {1}{126.21101pt}\LT@entry 
     {1}{126.21101pt}\LT@entry 
     {1}{83.53188pt}\LT@entry 
     {1}{83.13188pt}}
-\newlabel{tab:task41-eval}{{19}{26}{Example tool call sequence for Task 41. Read calls (steps 1--4, 8--9) gather information; write calls (steps 5--7, 10) modify the database. Only the final database state is checked for reward}{table.caption.26}{}}
-\newlabel{tab:task41-eval@cref}{{[table][19][]19}{[1][26][]26}{}{}{}}
-\newlabel{tab:task41-completion}{{20}{26}{Write action completion status for Task 41}{table.caption.27}{}}
-\newlabel{tab:task41-completion@cref}{{[table][20][]20}{[1][26][]26}{}{}{}}
-\newlabel{app:example-transcript}{{I.2}{26}{Appendix Overview}{subsection.I.2}{}}
-\newlabel{app:example-transcript@cref}{{[subsection][2][9]I.2}{[1][26][]26}{}{}{}}
-\newlabel{tab:event-summary}{{22}{29}{Event summary for Task 41 conversation}{table.caption.28}{}}
-\newlabel{tab:event-summary@cref}{{[table][22][]22}{[1][29][]29}{}{}{}}
-\newlabel{tab:technical-details}{{23}{30}{Technical parameters for the Task 41 simulation}{table.caption.29}{}}
-\newlabel{tab:technical-details@cref}{{[table][23][]23}{[1][29][]30}{}{}{}}
+\newlabel{tab:task41-eval}{{19}{25}{Example tool call sequence for Task 41. Read calls (steps 1--4, 8--9) gather information; write calls (steps 5--7, 10) modify the database. Only the final database state is checked for reward}{table.caption.25}{}}
+\newlabel{tab:task41-eval@cref}{{[table][19][]19}{[1][25][]25}{}{}{}}
+\newlabel{tab:task41-completion}{{20}{25}{Write action completion status for Task 41}{table.caption.26}{}}
+\newlabel{tab:task41-completion@cref}{{[table][20][]20}{[1][25][]25}{}{}{}}
+\newlabel{app:example-transcript}{{I.2}{25}{Appendix Overview}{subsection.I.2}{}}
+\newlabel{app:example-transcript@cref}{{[subsection][2][9]I.2}{[1][25][]25}{}{}{}}
+\newlabel{tab:event-summary}{{22}{28}{Event summary for Task 41 conversation}{table.caption.27}{}}
+\newlabel{tab:event-summary@cref}{{[table][22][]22}{[1][28][]28}{}{}{}}
+\newlabel{tab:technical-details}{{23}{29}{Technical parameters for the Task 41 simulation}{table.caption.28}{}}
+\newlabel{tab:technical-details@cref}{{[table][23][]23}{[1][28][]29}{}{}{}}
 \xdef \mintedoldcachechecksum{\detokenize{B0BC9D6166B2B63680587E4DFDCCA0D6:10}}
-\gdef \@abspage@last{30}
+\gdef \@abspage@last{29}

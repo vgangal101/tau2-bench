@@ -1083,7 +1083,9 @@ def generate_index_page(
         batch_name: Batch identifier for localStorage namespacing.
     """
     index_css = _load_template("index.css")
-    index_js = _load_template("index.js").replace("__BATCH_NAME__", _escape_js_string(batch_name))
+    index_js = _load_template("index.js").replace(
+        "__BATCH_NAME__", _escape_js_string(batch_name)
+    )
 
     index_html = f"""<!DOCTYPE html>
 <html>
@@ -1192,7 +1194,9 @@ def _run_results_mode(args) -> None:
     for sim, domain, results_dir, experiment_label in entries:
         reward = sim.reward_info.reward if sim.reward_info else None
         reward_str = f" (reward={reward:.2f})" if reward is not None else ""
-        print(f"Exporting: task {sim.task_id} / sim {sim.id}{reward_str} [{experiment_label}]")
+        print(
+            f"Exporting: task {sim.task_id} / sim {sim.id}{reward_str} [{experiment_label}]"
+        )
 
         html_file = export_simulation(
             simulation=sim,
@@ -1205,17 +1209,21 @@ def _run_results_mode(args) -> None:
         )
         if html_file:
             exported.append(html_file)
-            metadata.append({
-                "task_id": str(sim.task_id),
-                "simulation_id": sim.id,
-                "experiment": experiment_label,
-            })
+            metadata.append(
+                {
+                    "task_id": str(sim.task_id),
+                    "simulation_id": sim.id,
+                    "experiment": experiment_label,
+                }
+            )
             print(f"  -> {html_file}")
 
     print(f"\nExported {len(exported)} simulations to {args.output_dir}")
 
     if exported:
-        index_path = generate_index_page(exported, args.output_dir, metadata, args.batch_name)
+        index_path = generate_index_page(
+            exported, args.output_dir, metadata, args.batch_name
+        )
         print(f"Index page: {index_path}")
 
 

@@ -3,20 +3,20 @@
  & & \multicolumn{2}{c|}{\textbf{Latency}$\downarrow$} & \multicolumn{2}{c|}{\textbf{Responsiveness}$\uparrow$} & \textbf{Interrupt}$\downarrow$ & \multicolumn{3}{c}{\textbf{Selectivity}$\uparrow$} \\
 \textbf{Domain} & \textbf{Model} & $L_R$ & $L_Y$ & $R_R$ & $R_Y$ & $I_A$ & $S_{BC}$ & $S_{VT}$ & $S_{ND}$ \\
 \midrule
-\multirow{3}{*}{All} & gemini-live-2.5-flash-nat & 1.42s & 0.76s & 78\% & 52\% & 21\% & 88\% & 33\% & \textbf{50\%} \\
- & gpt-realtime-1.5 & 1.39s & \textbf{0.42s} & \textbf{99\%} & \textbf{99\%} & \textbf{13\%} & 1\% & 5\% & 9\% \\
- & xai-realtime & \textbf{1.15s} & 1.15s & 91\% & 75\% & 84\% & \textbf{92\%} & \textbf{58\%} & 21\% \\
+\multirow{3}{*}{All} & Gemini 2.5 Flash & 1.38s & 0.79s & 80\% & 56\% & 21\% & \textbf{93\%} & 32\% & \textbf{47\%} \\
+ & GPT Realtime 1.5 & 1.39s & \textbf{0.42s} & \textbf{100\%} & \textbf{100\%} & \textbf{14\%} & 2\% & 5\% & 10\% \\
+ & xAI Realtime & \textbf{1.15s} & 1.15s & 91\% & 75\% & 84\% & 93\% & \textbf{58\%} & 21\% \\
 \midrule
-\multirow{3}{*}{Retail} & gemini-live-2.5-flash-nat & 1.56s & 0.77s & 75\% & 50\% & 19\% & 76\% & 33\% & \textbf{54\%} \\
- & gpt-realtime-1.5 & 1.39s & \textbf{0.43s} & \textbf{99\%} & \textbf{100\%} & \textbf{14\%} & 3\% & 6\% & 8\% \\
- & xai-realtime & \textbf{1.12s} & 1.18s & 90\% & 70\% & 77\% & \textbf{93\%} & \textbf{60\%} & 21\% \\
+\multirow{3}{*}{Retail} & Gemini 2.5 Flash & 1.45s & 0.86s & 79\% & 61\% & 17\% & 91\% & 28\% & \textbf{45\%} \\
+ & GPT Realtime 1.5 & 1.39s & \textbf{0.43s} & \textbf{100\%} & \textbf{100\%} & \textbf{15\%} & 3\% & 6\% & 8\% \\
+ & xAI Realtime & \textbf{1.12s} & 1.18s & 91\% & 70\% & 77\% & \textbf{93\%} & \textbf{61\%} & 22\% \\
 \midrule
-\multirow{3}{*}{Airline} & gemini-live-2.5-flash-nat & 1.46s & 0.73s & 80\% & 57\% & 19\% & 88\% & 40\% & \textbf{54\%} \\
- & gpt-realtime-1.5 & 1.43s & \textbf{0.42s} & \textbf{99\%} & \textbf{100\%} & \textbf{14\%} & 2\% & 6\% & 7\% \\
- & xai-realtime & \textbf{1.18s} & 1.12s & 90\% & 77\% & 82\% & \textbf{90\%} & \textbf{59\%} & 19\% \\
+\multirow{3}{*}{Airline} & Gemini 2.5 Flash & 1.46s & 0.73s & 80\% & 57\% & 19\% & 89\% & 40\% & \textbf{55\%} \\
+ & GPT Realtime 1.5 & 1.43s & \textbf{0.42s} & \textbf{100\%} & \textbf{100\%} & \textbf{14\%} & 2\% & 6\% & 7\% \\
+ & xAI Realtime & \textbf{1.18s} & 1.12s & 91\% & 77\% & 83\% & \textbf{91\%} & \textbf{59\%} & 20\% \\
 \midrule
-\multirow{3}{*}{Telecom} & gemini-live-2.5-flash-nat & 1.24s & 0.79s & 80\% & 50\% & 26\% & \textbf{100\%} & 27\% & \textbf{41\%} \\
- & gpt-realtime-1.5 & 1.35s & \textbf{0.41s} & \textbf{100\%} & \textbf{99\%} & \textbf{11\%} & 0\% & 3\% & 13\% \\
- & xai-realtime & \textbf{1.16s} & 1.16s & 92\% & 78\% & 92\% & 94\% & \textbf{55\%} & 22\% \\
+\multirow{3}{*}{Telecom} & Gemini 2.5 Flash & 1.24s & 0.79s & 80\% & 50\% & 27\% & \textbf{100\%} & 27\% & \textbf{42\%} \\
+ & GPT Realtime 1.5 & 1.35s & \textbf{0.41s} & \textbf{100\%} & \textbf{100\%} & \textbf{12\%} & 0\% & 3\% & 13\% \\
+ & xAI Realtime & \textbf{1.16s} & 1.16s & 93\% & 78\% & 93\% & 94\% & \textbf{55\%} & 22\% \\
 \bottomrule
 \end{tabular}

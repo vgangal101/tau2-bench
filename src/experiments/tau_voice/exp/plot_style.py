@@ -411,27 +411,37 @@ def style_axis(ax, grid: bool = True) -> None:
         ax.yaxis.grid(True, linestyle="--", alpha=0.3)
 
 
-def get_short_llm_name(llm_name: str, max_len: int = 15) -> str:
+SHORT_MODEL_NAMES: dict[str, str] = {
+    "gemini-live-2.5-flash-native-audio": "Gemini 2.5 Flash",
+    "gpt-realtime-1.5": "GPT Realtime 1.5",
+    "xai-realtime": "xAI Realtime",
+}
+
+
+def get_short_llm_name(llm_name: str, max_len: int = 20) -> str:
     """
     Get a shortened display name for an LLM.
 
+    Uses curated ``SHORT_MODEL_NAMES`` when available, otherwise strips the
+    provider prefix and truncates.
+
     Args:
-        llm_name: Full LLM identifier (e.g., "openai:gpt-realtime-2025-08-28")
-        max_len: Maximum length of the shortened name
+        llm_name: Full LLM identifier (e.g., "openai:gpt-realtime-1.5")
+        max_len: Maximum length for fallback truncation
 
     Returns:
-        Shortened name (e.g., "gpt-realtime-202")
+        Shortened display name (e.g., "GPT Realtime 1.5")
     """
     if not llm_name:
         return "unknown"
 
     # Extract the model name after the provider prefix
-    if ":" in llm_name:
-        name = llm_name.split(":")[-1]
-    else:
-        name = llm_name
+    name = llm_name.split(":")[-1] if ":" in llm_name else llm_name
 
-    # Truncate if needed
+    if name in SHORT_MODEL_NAMES:
+        return SHORT_MODEL_NAMES[name]
+
+    # Fallback: truncate if needed
     if len(name) > max_len:
         return name[:max_len]
     return name
