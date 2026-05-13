@@ -87,7 +87,7 @@ The banking domain requires a retrieval configuration for the knowledge base. Yo
 tau2 run --domain banking_knowledge --retrieval-config alltools --agent-llm gpt-4.1 --user-llm gpt-4.1 --num-trials 4
 
 # Banking domain with AllTools retrieval using OpenRouter/Qwen embeddings
-tau2 run --domain banking_knowledge --retrieval-config alltools --retrieval-config-kwargs '{"dense_embedding_provider":"openrouter"}' --agent-llm gpt-4.1 --user-llm gpt-4.1 --num-trials 4
+tau2 run --domain banking_knowledge --retrieval-config alltools --retrieval-config-kwargs '{"alltools_dense_embedding_provider":"openrouter"}' --agent-llm gpt-4.1 --user-llm gpt-4.1 --num-trials 4
 ```
 
 Common `retrieval_config` values:

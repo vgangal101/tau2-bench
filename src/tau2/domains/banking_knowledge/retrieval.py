@@ -66,21 +66,26 @@ DEFAULT_DENSE_EMBEDDING_MODEL_OPENROUTER = "qwen3-embedding-8b"
 
 
 def resolve_alltools_dense_embedding(
-    dense_embedding_provider: Optional[str] = None,
-    dense_embedding_model: Optional[str] = None,
+    alltools_dense_embedding_provider: Optional[str] = None,
+    alltools_dense_embedding_model: Optional[str] = None,
 ) -> tuple[str, str]:
     """Resolve AllTools dense retrieval kwargs to an embedder type and model."""
-    provider = dense_embedding_provider or DEFAULT_ALLTOOLS_DENSE_EMBEDDING_PROVIDER
+    provider = (
+        alltools_dense_embedding_provider or DEFAULT_ALLTOOLS_DENSE_EMBEDDING_PROVIDER
+    )
     if provider == ALLTOOLS_DENSE_EMBEDDING_PROVIDER_OPENAI:
-        return provider, dense_embedding_model or DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI
+        return (
+            provider,
+            alltools_dense_embedding_model or DEFAULT_DENSE_EMBEDDING_MODEL_OPENAI,
+        )
     if provider == ALLTOOLS_DENSE_EMBEDDING_PROVIDER_OPENROUTER:
         return (
             provider,
-            dense_embedding_model or DEFAULT_DENSE_EMBEDDING_MODEL_OPENROUTER,
+            alltools_dense_embedding_model or DEFAULT_DENSE_EMBEDDING_MODEL_OPENROUTER,
         )
 
     raise ValueError(
-        f"Unknown dense_embedding_provider: {provider!r}. "
+        f"Unknown alltools_dense_embedding_provider: {provider!r}. "
         f"Expected {ALLTOOLS_DENSE_EMBEDDING_PROVIDER_OPENAI!r} or "
         f"{ALLTOOLS_DENSE_EMBEDDING_PROVIDER_OPENROUTER!r}."
     )
@@ -662,8 +667,8 @@ def resolve_variant(
     grep_top_k: Optional[int] = None,
     case_sensitive: Optional[bool] = None,
     reranker_min_score: Optional[int] = None,
-    dense_embedding_provider: Optional[str] = None,
-    dense_embedding_model: Optional[str] = None,
+    alltools_dense_embedding_provider: Optional[str] = None,
+    alltools_dense_embedding_model: Optional[str] = None,
     **_extra: Any,
 ) -> RetrievalVariant:
     """Look up a variant by name and apply optional overrides.
@@ -702,8 +707,8 @@ def resolve_variant(
         variant.kb_search_dense.reranker_min_score = reranker_min_score
     if canonical_name == "alltools" and variant.kb_search_dense is not None:
         embedder_type, model = resolve_alltools_dense_embedding(
-            dense_embedding_provider=dense_embedding_provider,
-            dense_embedding_model=dense_embedding_model,
+            alltools_dense_embedding_provider=alltools_dense_embedding_provider,
+            alltools_dense_embedding_model=alltools_dense_embedding_model,
         )
         variant.kb_search_dense.embedder_type = embedder_type
         variant.kb_search_dense.embedder_model = model

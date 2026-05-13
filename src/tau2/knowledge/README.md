@@ -19,8 +19,8 @@ If `--retrieval-config` is omitted for `banking_knowledge`, the default is **`al
 Requirements: **sandbox-runtime** for `shell`, and an embedding API for dense search:
 
 - **Default**: uses OpenAI embeddings — set **`OPENAI_API_KEY`**. Model: **`text-embedding-3-large`**.
-- **OpenRouter/Qwen**: pass **`--retrieval-config-kwargs '{"dense_embedding_provider":"openrouter"}'`** and set **`OPENROUTER_API_KEY`**. Model: **`qwen3-embedding-8b`**.
-- To override either default model, include **`"dense_embedding_model": "<model-id>"`** in `--retrieval-config-kwargs`.
+- **OpenRouter/Qwen**: pass **`--retrieval-config-kwargs '{"alltools_dense_embedding_provider":"openrouter"}'`** and set **`OPENROUTER_API_KEY`**. Model: **`qwen3-embedding-8b`**.
+- To override either default model, include **`"alltools_dense_embedding_model": "<model-id>"`** in `--retrieval-config-kwargs`.
 
 ## Retrieval Configs
 
@@ -52,7 +52,7 @@ Embedding-based configs (`openai_embeddings*`, `qwen_embeddings*`, `alltools`) c
 
 ### OpenRouter API Key
 
-The `qwen_embeddings*` configs and `alltools` with `dense_embedding_provider=openrouter` route through [OpenRouter](https://openrouter.ai/). Set the `OPENROUTER_API_KEY` environment variable (or add it to your `.env` file — see `.env.example`).
+The `qwen_embeddings*` configs and `alltools` with `alltools_dense_embedding_provider=openrouter` route through [OpenRouter](https://openrouter.ai/). Set the `OPENROUTER_API_KEY` environment variable (or add it to your `.env` file — see `.env.example`).
 
 ### sandbox-runtime
 

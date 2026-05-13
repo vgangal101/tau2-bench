@@ -634,11 +634,11 @@ def get_unique_embedder_configs_for_retrieval_configs(
             )
 
             embedder_type, model = resolve_alltools_dense_embedding(
-                dense_embedding_provider=retrieval_config_kwargs.get(
-                    "dense_embedding_provider"
+                alltools_dense_embedding_provider=retrieval_config_kwargs.get(
+                    "alltools_dense_embedding_provider"
                 ),
-                dense_embedding_model=retrieval_config_kwargs.get(
-                    "dense_embedding_model"
+                alltools_dense_embedding_model=retrieval_config_kwargs.get(
+                    "alltools_dense_embedding_model"
                 ),
             )
             config = (embedder_type, {"model": model})

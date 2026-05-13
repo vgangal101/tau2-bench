@@ -1105,8 +1105,8 @@ class TestRetrievalVariantRegistry:
 
         variant = resolve_variant(
             "alltools",
-            dense_embedding_provider="openrouter",
-            dense_embedding_model="custom-qwen-model",
+            alltools_dense_embedding_provider="openrouter",
+            alltools_dense_embedding_model="custom-qwen-model",
         )
         assert variant.kb_search_dense is not None
         assert variant.kb_search_dense.embedder_type == "openrouter"
@@ -1115,8 +1115,8 @@ class TestRetrievalVariantRegistry:
     def test_resolve_variant_alltools_rejects_unknown_dense_provider(self):
         from tau2.domains.banking_knowledge.retrieval import resolve_variant
 
-        with pytest.raises(ValueError, match="dense_embedding_provider"):
-            resolve_variant("alltools", dense_embedding_provider="unknown")
+        with pytest.raises(ValueError, match="alltools_dense_embedding_provider"):
+            resolve_variant("alltools", alltools_dense_embedding_provider="unknown")
 
     def test_bm25_variant(self):
         from tau2.domains.banking_knowledge.retrieval import resolve_variant
@@ -1151,7 +1151,7 @@ class TestAllToolsEmbedderWarmupMapping:
 
         configs = get_unique_embedder_configs_for_retrieval_configs(
             ["alltools"],
-            {"dense_embedding_provider": "openrouter"},
+            {"alltools_dense_embedding_provider": "openrouter"},
         )
         assert configs == [("openrouter", {"model": "qwen3-embedding-8b"})]
 
@@ -1163,8 +1163,8 @@ class TestAllToolsEmbedderWarmupMapping:
         configs = get_unique_embedder_configs_for_retrieval_configs(
             ["alltools"],
             {
-                "dense_embedding_provider": "openrouter",
-                "dense_embedding_model": "custom-qwen-model",
+                "alltools_dense_embedding_provider": "openrouter",
+                "alltools_dense_embedding_model": "custom-qwen-model",
             },
         )
         assert configs == [("openrouter", {"model": "custom-qwen-model"})]
