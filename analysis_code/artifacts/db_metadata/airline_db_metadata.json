@@ -1,0 +1,39 @@
+{
+  "tables": {
+    "flights": {
+      "record_model": "Flight",
+      "primary_key": "flight_number",
+      "foreign_keys": []
+    },
+    "users": {
+      "record_model": "User",
+      "primary_key": "user_id",
+      "foreign_keys": [
+        {
+          "field": "reservations",
+          "references_table": "reservations",
+          "references_key": "reservation_id",
+          "kind": "collection"
+        }
+      ]
+    },
+    "reservations": {
+      "record_model": "Reservation",
+      "primary_key": "reservation_id",
+      "foreign_keys": [
+        {
+          "field": "user_id",
+          "references_table": "users",
+          "references_key": "user_id",
+          "kind": "scalar"
+        },
+        {
+          "field": "flights.flight_number",
+          "references_table": "flights",
+          "references_key": "flight_number",
+          "kind": "scalar"
+        }
+      ]
+    }
+  }
+}

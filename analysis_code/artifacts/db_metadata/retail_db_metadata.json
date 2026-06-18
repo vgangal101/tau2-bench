@@ -1,0 +1,39 @@
+{
+  "tables": {
+    "products": {
+      "record_model": "Product",
+      "primary_key": "product_id",
+      "foreign_keys": []
+    },
+    "users": {
+      "record_model": "User",
+      "primary_key": "user_id",
+      "foreign_keys": [
+        {
+          "field": "orders",
+          "references_table": "orders",
+          "references_key": "order_id",
+          "kind": "collection"
+        }
+      ]
+    },
+    "orders": {
+      "record_model": "Order",
+      "primary_key": "order_id",
+      "foreign_keys": [
+        {
+          "field": "user_id",
+          "references_table": "users",
+          "references_key": "user_id",
+          "kind": "scalar"
+        },
+        {
+          "field": "items.product_id",
+          "references_table": "products",
+          "references_key": "product_id",
+          "kind": "scalar"
+        }
+      ]
+    }
+  }
+}
