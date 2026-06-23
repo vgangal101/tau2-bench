@@ -10,6 +10,7 @@ from tau2.environment.environment import Environment
 from tau2.environment.toolkit import ToolKitBase, ToolType
 
 from schema_types import annotation_to_str
+from tool_ast_analyzer import analyze_tool, build_helper_map
 
 
 def _unwrap_optional(annotation):
@@ -306,21 +307,15 @@ class AugmentedPDDLlikeSchema:
         return fks
 
     def _build_schema(self, env_name: str) -> dict:
+        """Build the augmented PDDL-like schema for a single environment.
+
+        READ tools get inputs + output only.
+        WRITE tools additionally get preconditions (top-level If/Raise guards)
+        and effects (state mutations), extracted via static AST analysis.
         """
-        Build the augmented PDDL-like schema for a single environment.
-
-        TODO: implement. Tool signatures alone are not enough -- this should
-        derive precondition/effect structure plus the auxiliary information
-        needed to characterize TauBench tasks.
-
-        - Characterize the API-Dependency-Graph, need to maintain the input arguments , and the outputs of each tool-call.
-        """
-
-        # to start, for each tool call signature, make a list of all the input
-        # arguments for a tool, put that in the schema. Alongside, record the
-        # output: the DB/domain entity the tool returns (name + cardinality),
-        # which is what the API-Dependency-Graph links producers to consumers on.
         toolkit = self.toolkits[env_name]
+        toolkit_cls = type(toolkit)
+        helper_map = build_helper_map(toolkit_cls)
 
         tools: dict[str, dict] = {}
         for name, tool in toolkit.get_tools().items():
@@ -334,7 +329,8 @@ class AugmentedPDDLlikeSchema:
             # function signature; the actual return annotation lives on the
             # synthetic "returns" field of tool.returns.
             return_annotation = tool.returns.model_fields["returns"].annotation
-            tools[name] = {
+            input_params = set(tool.params.model_fields.keys())
+            entry: dict = {
                 "type": tool_type.value,
                 # input arg name -> normalized type string, so the dependency
                 # graph can match consumer inputs to producer output fields on
@@ -345,6 +341,12 @@ class AugmentedPDDLlikeSchema:
                 },
                 "output": _describe_return(return_annotation),
             }
+            if tool_type == ToolType.WRITE:
+                func = getattr(toolkit_cls, name)
+                analysis = analyze_tool(func, input_params, helper_map)
+                entry["preconditions"] = analysis["preconditions"]
+                entry["effects"] = analysis["effects"]
+            tools[name] = entry
 
         return {"tools": tools}
 
