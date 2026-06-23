@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from tau2.registry import registry
 from tau2.environment.db import DB
 from tau2.environment.environment import Environment
-from tau2.environment.toolkit import ToolKitBase
+from tau2.environment.toolkit import ToolKitBase, ToolType
+
+from schema_types import annotation_to_str
 
 
 def _unwrap_optional(annotation):
@@ -322,12 +324,25 @@ class AugmentedPDDLlikeSchema:
 
         tools: dict[str, dict] = {}
         for name, tool in toolkit.get_tools().items():
+            # Only READ and WRITE tools belong in the schema; THINK/GENERIC
+            # utilities (e.g. think, calculate) don't touch DB/domain entities
+            # and aren't part of the API-Dependency-Graph.
+            tool_type = toolkit.tool_type(name)
+            if tool_type not in (ToolType.READ, ToolType.WRITE):
+                continue
             # tool.params / tool.returns are pydantic models built from the
             # function signature; the actual return annotation lives on the
             # synthetic "returns" field of tool.returns.
             return_annotation = tool.returns.model_fields["returns"].annotation
             tools[name] = {
-                "inputs": list(tool.params.model_fields.keys()),
+                "type": tool_type.value,
+                # input arg name -> normalized type string, so the dependency
+                # graph can match consumer inputs to producer output fields on
+                # both name and type.
+                "inputs": {
+                    pname: annotation_to_str(pfield.annotation)
+                    for pname, pfield in tool.params.model_fields.items()
+                },
                 "output": _describe_return(return_annotation),
             }
 
@@ -337,7 +352,7 @@ class AugmentedPDDLlikeSchema:
 def main():
     import json
 
-    artifacts_dir = Path("analyzer_code/artifacts")
+    artifacts_dir = Path("analysis_code/artifacts")
     db_metadata_dir = artifacts_dir / "db_metadata"
     db_metadata_dir.mkdir(parents=True, exist_ok=True)
     schema_dir = artifacts_dir / "schemas"
