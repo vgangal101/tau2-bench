@@ -1,0 +1,364 @@
+{
+  "tools": {
+    "cancel_pending_order": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "reason": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "field_equals",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "value": "pending"
+        },
+        {
+          "kind": "input_in",
+          "param": "reason",
+          "values": [
+            "no longer needed",
+            "ordered by mistake"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "to": "cancelled"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "cancel_reason",
+          "from_input": "reason"
+        },
+        {
+          "kind": "list_append",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "payment_history"
+        }
+      ]
+    },
+    "exchange_delivered_order_items": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "item_ids": "List[str]",
+        "new_item_ids": "List[str]",
+        "payment_method_id": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "field_equals",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "value": "delivered"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "to": "exchange requested"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "exchange_items",
+          "to": "sorted(item_ids)"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "exchange_new_items",
+          "to": "sorted(new_item_ids)"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "exchange_payment_method_id",
+          "from_input": "payment_method_id"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "exchange_price_difference",
+          "to": "diff_price"
+        }
+      ]
+    },
+    "find_user_id_by_name_zip": {
+      "type": "read",
+      "inputs": {
+        "first_name": "str",
+        "last_name": "str",
+        "zip": "str"
+      },
+      "output": {
+        "entity": "str",
+        "cardinality": "single",
+        "is_db_entity": false
+      }
+    },
+    "find_user_id_by_email": {
+      "type": "read",
+      "inputs": {
+        "email": "str"
+      },
+      "output": {
+        "entity": "str",
+        "cardinality": "single",
+        "is_db_entity": false
+      }
+    },
+    "get_order_details": {
+      "type": "read",
+      "inputs": {
+        "order_id": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "get_product_details": {
+      "type": "read",
+      "inputs": {
+        "product_id": "str"
+      },
+      "output": {
+        "entity": "Product",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "get_item_details": {
+      "type": "read",
+      "inputs": {
+        "item_id": "str"
+      },
+      "output": {
+        "entity": "Variant",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "get_user_details": {
+      "type": "read",
+      "inputs": {
+        "user_id": "str"
+      },
+      "output": {
+        "entity": "User",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "list_all_product_types": {
+      "type": "read",
+      "inputs": {},
+      "output": {
+        "entity": "str",
+        "cardinality": "single",
+        "is_db_entity": false
+      }
+    },
+    "modify_pending_order_address": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "address1": "str",
+        "address2": "str",
+        "city": "str",
+        "state": "str",
+        "country": "str",
+        "zip": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "opaque_predicate",
+          "predicate": "_is_pending_order",
+          "table": "orders",
+          "key_input": "order_id"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "address",
+          "to": "UserAddress(address1=address1, address2=address2, city=city, state=state, country=country, zip=zip)"
+        }
+      ]
+    },
+    "modify_pending_order_items": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "item_ids": "List[str]",
+        "new_item_ids": "List[str]",
+        "payment_method_id": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "field_equals",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "value": "pending"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "list_append",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "payment_history"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "to": "pending (item modified)"
+        }
+      ]
+    },
+    "modify_pending_order_payment": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "payment_method_id": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "opaque_predicate",
+          "predicate": "_is_pending_order",
+          "table": "orders",
+          "key_input": "order_id"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "list_append",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "payment_history"
+        }
+      ]
+    },
+    "modify_user_address": {
+      "type": "write",
+      "inputs": {
+        "user_id": "str",
+        "address1": "str",
+        "address2": "str",
+        "city": "str",
+        "state": "str",
+        "country": "str",
+        "zip": "str"
+      },
+      "output": {
+        "entity": "User",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "users",
+          "key_input": "user_id",
+          "field": "address",
+          "to": "UserAddress(address1=address1, address2=address2, city=city, state=state, country=country, zip=zip)"
+        }
+      ]
+    },
+    "return_delivered_order_items": {
+      "type": "write",
+      "inputs": {
+        "order_id": "str",
+        "item_ids": "List[str]",
+        "payment_method_id": "str"
+      },
+      "output": {
+        "entity": "Order",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [
+        {
+          "kind": "field_equals",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "value": "delivered"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "status",
+          "to": "return requested"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "return_items",
+          "to": "sorted(item_ids)"
+        },
+        {
+          "kind": "field_set",
+          "table": "orders",
+          "key_input": "order_id",
+          "field": "return_payment_method_id",
+          "from_input": "payment_method_id"
+        }
+      ]
+    }
+  }
+}

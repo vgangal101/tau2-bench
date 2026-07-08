@@ -1,0 +1,123 @@
+{
+  "cancel_pending_order": {
+    "exchange_delivered_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_address": [
+      "order_id"
+    ],
+    "modify_pending_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_payment": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ],
+    "return_delivered_order_items": [
+      "order_id"
+    ]
+  },
+  "exchange_delivered_order_items": {
+    "cancel_pending_order": [
+      "order_id"
+    ],
+    "modify_pending_order_address": [
+      "order_id"
+    ],
+    "modify_pending_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_payment": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ],
+    "return_delivered_order_items": [
+      "order_id"
+    ]
+  },
+  "modify_pending_order_address": {
+    "cancel_pending_order": [
+      "order_id"
+    ],
+    "exchange_delivered_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_payment": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ],
+    "return_delivered_order_items": [
+      "order_id"
+    ]
+  },
+  "modify_pending_order_items": {
+    "cancel_pending_order": [
+      "order_id"
+    ],
+    "exchange_delivered_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_address": [
+      "order_id"
+    ],
+    "modify_pending_order_payment": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ],
+    "return_delivered_order_items": [
+      "order_id"
+    ]
+  },
+  "modify_pending_order_payment": {
+    "cancel_pending_order": [
+      "order_id"
+    ],
+    "exchange_delivered_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_address": [
+      "order_id"
+    ],
+    "modify_pending_order_items": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ],
+    "return_delivered_order_items": [
+      "order_id"
+    ]
+  },
+  "modify_user_address": {},
+  "return_delivered_order_items": {
+    "cancel_pending_order": [
+      "order_id"
+    ],
+    "exchange_delivered_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_address": [
+      "order_id"
+    ],
+    "modify_pending_order_items": [
+      "order_id"
+    ],
+    "modify_pending_order_payment": [
+      "order_id"
+    ],
+    "modify_user_address": [
+      "user_id"
+    ]
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "tools": {
+    "book_reservation": {
+      "type": "write",
+      "inputs": {
+        "user_id": "str",
+        "origin": "str",
+        "destination": "str",
+        "flight_type": "Literal['round_trip', 'one_way']",
+        "cabin": "Literal['business', 'economy', 'basic_economy']",
+        "flights": "List[FlightInfo | dict]",
+        "passengers": "List[Passenger | dict]",
+        "payment_methods": "List[Payment | dict]",
+        "total_baggages": "int",
+        "nonfree_baggages": "int",
+        "insurance": "Literal['yes', 'no']"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "record_create",
+          "table": "reservations"
+        },
+        {
+          "kind": "list_append_db",
+          "table": "users",
+          "field": "reservations"
+        }
+      ]
+    },
+    "cancel_reservation": {
+      "type": "write",
+      "inputs": {
+        "reservation_id": "str"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "list_append",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "payment_history"
+        },
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "status",
+          "to": "cancelled"
+        }
+      ]
+    },
+    "get_reservation_details": {
+      "type": "read",
+      "inputs": {
+        "reservation_id": "str"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "get_user_details": {
+      "type": "read",
+      "inputs": {
+        "user_id": "str"
+      },
+      "output": {
+        "entity": "User",
+        "cardinality": "single",
+        "is_db_entity": true
+      }
+    },
+    "list_all_airports": {
+      "type": "read",
+      "inputs": {},
+      "output": {
+        "entity": "AirportCode",
+        "cardinality": "list",
+        "is_db_entity": true
+      }
+    },
+    "search_direct_flight": {
+      "type": "read",
+      "inputs": {
+        "origin": "str",
+        "destination": "str",
+        "date": "str"
+      },
+      "output": {
+        "entity": "DirectFlight",
+        "cardinality": "list",
+        "is_db_entity": true
+      }
+    },
+    "search_onestop_flight": {
+      "type": "read",
+      "inputs": {
+        "origin": "str",
+        "destination": "str",
+        "date": "str"
+      },
+      "output": {
+        "entity": "tuple",
+        "cardinality": "list",
+        "is_db_entity": false
+      }
+    },
+    "send_certificate": {
+      "type": "write",
+      "inputs": {
+        "user_id": "str",
+        "amount": "int"
+      },
+      "output": {
+        "entity": "str",
+        "cardinality": "single",
+        "is_db_entity": false
+      },
+      "preconditions": [],
+      "effects": []
+    },
+    "update_reservation_baggages": {
+      "type": "write",
+      "inputs": {
+        "reservation_id": "str",
+        "total_baggages": "int",
+        "nonfree_baggages": "int",
+        "payment_id": "str"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "total_baggages",
+          "from_input": "total_baggages"
+        },
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "nonfree_baggages",
+          "from_input": "nonfree_baggages"
+        },
+        {
+          "kind": "list_append",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "payment_history"
+        }
+      ]
+    },
+    "update_reservation_flights": {
+      "type": "write",
+      "inputs": {
+        "reservation_id": "str",
+        "cabin": "Literal['business', 'economy', 'basic_economy']",
+        "flights": "List[FlightInfo | dict]",
+        "payment_id": "str"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "flights",
+          "to": "reservation_flights"
+        },
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "cabin",
+          "from_input": "cabin"
+        },
+        {
+          "kind": "list_append",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "payment_history"
+        }
+      ]
+    },
+    "update_reservation_passengers": {
+      "type": "write",
+      "inputs": {
+        "reservation_id": "str",
+        "passengers": "List[Passenger | dict]"
+      },
+      "output": {
+        "entity": "Reservation",
+        "cardinality": "single",
+        "is_db_entity": true
+      },
+      "preconditions": [],
+      "effects": [
+        {
+          "kind": "field_set",
+          "table": "reservations",
+          "key_input": "reservation_id",
+          "field": "passengers",
+          "to": "deepcopy(passengers)"
+        }
+      ]
+    },
+    "get_flight_status": {
+      "type": "read",
+      "inputs": {
+        "flight_number": "str",
+        "date": "str"
+      },
+      "output": {
+        "entity": "str",
+        "cardinality": "single",
+        "is_db_entity": false
+      }
+    }
+  }
+}

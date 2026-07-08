@@ -1,0 +1,73 @@
+{
+  "cancel_pending_order": {
+    "exchange_delivered_order_items": [
+      "orders.status: set\u2192'cancelled' invalidates requires='delivered'"
+    ],
+    "modify_pending_order_address": [
+      "orders.status: set\u2192'cancelled' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "modify_pending_order_items": [
+      "orders.status: set\u2192'cancelled' invalidates requires='pending'"
+    ],
+    "modify_pending_order_payment": [
+      "orders.status: set\u2192'cancelled' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "return_delivered_order_items": [
+      "orders.status: set\u2192'cancelled' invalidates requires='delivered'"
+    ]
+  },
+  "exchange_delivered_order_items": {
+    "cancel_pending_order": [
+      "orders.status: set\u2192'exchange requested' invalidates requires='pending'"
+    ],
+    "modify_pending_order_address": [
+      "orders.status: set\u2192'exchange requested' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "modify_pending_order_items": [
+      "orders.status: set\u2192'exchange requested' invalidates requires='pending'"
+    ],
+    "modify_pending_order_payment": [
+      "orders.status: set\u2192'exchange requested' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "return_delivered_order_items": [
+      "orders.status: set\u2192'exchange requested' invalidates requires='delivered'"
+    ]
+  },
+  "modify_pending_order_address": {},
+  "modify_pending_order_items": {
+    "cancel_pending_order": [
+      "orders.status: set\u2192'pending (item modified)' invalidates requires='pending'"
+    ],
+    "exchange_delivered_order_items": [
+      "orders.status: set\u2192'pending (item modified)' invalidates requires='delivered'"
+    ],
+    "modify_pending_order_address": [
+      "orders.status: set\u2192'pending (item modified)' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "modify_pending_order_payment": [
+      "orders.status: set\u2192'pending (item modified)' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "return_delivered_order_items": [
+      "orders.status: set\u2192'pending (item modified)' invalidates requires='delivered'"
+    ]
+  },
+  "modify_pending_order_payment": {},
+  "modify_user_address": {},
+  "return_delivered_order_items": {
+    "cancel_pending_order": [
+      "orders.status: set\u2192'return requested' invalidates requires='pending'"
+    ],
+    "exchange_delivered_order_items": [
+      "orders.status: set\u2192'return requested' invalidates requires='delivered'"
+    ],
+    "modify_pending_order_address": [
+      "orders.status: set\u2192'return requested' may invalidate opaque_predicate '_is_pending_order'"
+    ],
+    "modify_pending_order_items": [
+      "orders.status: set\u2192'return requested' invalidates requires='pending'"
+    ],
+    "modify_pending_order_payment": [
+      "orders.status: set\u2192'return requested' may invalidate opaque_predicate '_is_pending_order'"
+    ]
+  }
+}

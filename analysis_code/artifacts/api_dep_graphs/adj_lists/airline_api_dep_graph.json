@@ -1,0 +1,88 @@
+{
+  "book_reservation": {
+    "cancel_reservation": [
+      "reservation_id"
+    ],
+    "send_certificate": [
+      "user_id"
+    ],
+    "update_reservation_baggages": [
+      "reservation_id"
+    ],
+    "update_reservation_flights": [
+      "reservation_id"
+    ],
+    "update_reservation_passengers": [
+      "reservation_id"
+    ]
+  },
+  "cancel_reservation": {
+    "book_reservation": [
+      "user_id"
+    ],
+    "send_certificate": [
+      "user_id"
+    ],
+    "update_reservation_baggages": [
+      "reservation_id"
+    ],
+    "update_reservation_flights": [
+      "reservation_id"
+    ],
+    "update_reservation_passengers": [
+      "reservation_id"
+    ]
+  },
+  "send_certificate": {},
+  "update_reservation_baggages": {
+    "book_reservation": [
+      "user_id"
+    ],
+    "cancel_reservation": [
+      "reservation_id"
+    ],
+    "send_certificate": [
+      "user_id"
+    ],
+    "update_reservation_flights": [
+      "reservation_id"
+    ],
+    "update_reservation_passengers": [
+      "reservation_id"
+    ]
+  },
+  "update_reservation_flights": {
+    "book_reservation": [
+      "user_id"
+    ],
+    "cancel_reservation": [
+      "reservation_id"
+    ],
+    "send_certificate": [
+      "user_id"
+    ],
+    "update_reservation_baggages": [
+      "reservation_id"
+    ],
+    "update_reservation_passengers": [
+      "reservation_id"
+    ]
+  },
+  "update_reservation_passengers": {
+    "book_reservation": [
+      "user_id"
+    ],
+    "cancel_reservation": [
+      "reservation_id"
+    ],
+    "send_certificate": [
+      "user_id"
+    ],
+    "update_reservation_baggages": [
+      "reservation_id"
+    ],
+    "update_reservation_flights": [
+      "reservation_id"
+    ]
+  }
+}
