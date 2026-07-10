@@ -11,7 +11,7 @@
 #      (edit the #SBATCH block and the "Sol environment" step below first)
 #
 #SBATCH --job-name=tau2-telecom-no-user
-#SBATCH --partition=general
+#SBATCH --partition=public
 #SBATCH --qos=public
 #SBATCH --account=grp_subbarao
 #SBATCH --time=02:00:00
