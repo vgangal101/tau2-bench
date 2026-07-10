@@ -17,8 +17,8 @@
 #SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH --output=logs/%x_%j.out
-#SBATCH --error=logs/%x_%j.err
+#SBATCH --output=experiment_logs/%x_%j.out
+#SBATCH --error=experiment_logs/%x_%j.err
 
 set -euo pipefail
 
@@ -38,7 +38,7 @@ AGENT="llm_agent_solo"
 USER_IMPL="dummy_user"
 AGENT_LLM="${AGENT_LLM:-gpt-4o-mini}"
 NUM_TRIALS="${NUM_TRIALS:-1}"
-SAVE_TO="${SAVE_TO:-results/telecom_no_user_${AGENT_LLM//\//_}.json}"
+SAVE_TO="${SAVE_TO:-experiment_results/telecom_no_user_${AGENT_LLM//\//_}.json}"
 STEP="${STEP:-0}"   # STEP=1 to pause between stages for manual step-through
 KEY_FILE="${KEY_FILE:-$HOME/openai_key_lab.sh}"   # sourced to set OPENAI_API_KEY on Sol
 
@@ -52,7 +52,9 @@ pause() {
 # ---- Step 1: repo + logging setup -------------------------------------
 pause "cd into repo and create output dirs: $REPO_DIR"
 cd "$REPO_DIR"
-mkdir -p logs "$(dirname "$SAVE_TO")"
+RESULTS_DIR="$(dirname "$SAVE_TO")"
+[[ -d experiment_logs ]] || mkdir experiment_logs
+[[ -d "$RESULTS_DIR" ]] || mkdir -p "$RESULTS_DIR"
 
 # ---- Step 2: Sol environment (only matters under sbatch) --------------
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
