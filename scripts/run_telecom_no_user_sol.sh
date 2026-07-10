@@ -14,7 +14,7 @@
 #SBATCH --partition=public
 #SBATCH --qos=public
 #SBATCH --account=grp_subbarao
-#SBATCH --time=02:00:00
+#SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --output=logs/%x_%j.out
@@ -23,7 +23,16 @@
 set -euo pipefail
 
 # ---- Config -----------------------------------------------------------
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# Under sbatch, Slurm stages/copies the submitted script before running it,
+# so deriving our own location from BASH_SOURCE can resolve to a spool
+# directory we don't own (the "Permission denied" on mkdir). Slurm always
+# exports SLURM_SUBMIT_DIR pointing at the real directory sbatch was run
+# from, so prefer that whenever we're actually running as a Slurm job.
+if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+    REPO_DIR="${REPO_DIR:-$SLURM_SUBMIT_DIR}"
+else
+    REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+fi
 DOMAIN="telecom"
 AGENT="llm_agent_solo"
 USER_IMPL="dummy_user"
