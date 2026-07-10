@@ -1,0 +1,75 @@
+=====================================================================
+Loaded: mamba 2.6.2
+
+Usage example:
+$ mamba create -n myenv -c conda-forge python=3 <package_name>
+$ source activate myenv
+
+Only run "pip install" after activating an environment.
+Running pip without activating an environment is known to cause issues.
+
+To list available environments:
+$ mamba info --envs
+
+More info: docs.rc.asu.edu/python
+
+=====================================================================
+     
+Using CPython 3.12.12
+Creating virtual environment at: .venv
+   Building tau2 @ file:///home/vgangal3/workspace/tau2-bench
+Downloading pandas (11.8MiB)
+Downloading tokenizers (3.1MiB)
+Downloading pydantic-core (2.0MiB)
+Downloading hf-xet (3.2MiB)
+Downloading aiohttp (1.7MiB)
+Downloading numpy (15.8MiB)
+Downloading openai (1.0MiB)
+Downloading tiktoken (1.1MiB)
+Downloading litellm (13.8MiB)
+ Downloaded tiktoken
+ Downloaded pydantic-core
+ Downloaded tokenizers
+ Downloaded hf-xet
+ Downloaded aiohttp
+      Built tau2 @ file:///home/vgangal3/workspace/tau2-bench
+ Downloaded numpy
+ Downloaded openai
+ Downloaded pandas
+ Downloaded litellm
+Installed 75 packages in 6.63s
+2026-07-10 15:39:02.549 | WARNING  | tau2.utils.utils:<module>:15 - No .env file found
+2026-07-10 15:39:02.549 | INFO     | tau2.utils.utils:<module>:28 - Using data directory from source: /home/vgangal3/workspace/tau2-bench/data
+2026-07-10 15:39:15.128 | INFO     | tau2.utils.llm_utils:<module>:102 - LiteLLM: Cache is disabled
+2026-07-10 15:39:15.768 | DEBUG    | tau2.registry:<module>:281 - Registering default components...
+2026-07-10 15:39:15.914 | DEBUG    | tau2.registry:<module>:292 - Voice dependencies not installed, skipping voice user registration
+2026-07-10 15:39:15.914 | DEBUG    | tau2.registry:<module>:350 - Default components registered successfully. Registry info: {
+  "domains": [
+    "mock",
+    "airline",
+    "retail",
+    "telecom",
+    "telecom-workflow",
+    "banking_knowledge"
+  ],
+  "agents": [
+    "llm_agent",
+    "llm_agent_gt",
+    "llm_agent_solo",
+    "discrete_time_audio_native_agent"
+  ],
+  "users": [
+    "user_simulator",
+    "dummy_user"
+  ],
+  "task_sets": [
+    "mock",
+    "airline",
+    "retail",
+    "telecom_full",
+    "telecom_small",
+    "telecom",
+    "telecom-workflow",
+    "banking_knowledge"
+  ]
+}

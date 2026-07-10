@@ -1,0 +1,2402 @@
+>>> cd into repo and create output dirs: /home/vgangal3/workspace/tau2-bench
+>>> Loading Sol modules / activating environment
+>>> Checking tau2 CLI and API key are available
+>>> Running tau2 in no-user mode: domain=telecom agent=llm_agent_solo agent-llm=gpt-4o-mini
+╭────────────────────────── Simulation Configuration ──────────────────────────╮
+│ Domain: telecom  Task Set: Default  Tasks: All                               │
+│ Trials: 1  Max Steps: 200  Max Errors: 10                                    │
+│                                                                              │
+│ Agent: llm_agent_solo → gpt-4o-mini                                          │
+│ User:  dummy_user → gpt-4.1-2025-04-14                                       │
+│                                                                              │
+│ Save: experiment_results/telecom_no_user_gpt-4o-mini.json  Concurrency: 3    │
+│ Verbose: False                                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Running 114 out of 114 tasks for llm_agent_solo (filtered).
+0/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None
+], trial 1
+1/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None], trial 1
+2/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard], trial 
+1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None
+]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None
+]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None
+]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:21.511 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mobile_data_issue]airplane_mode_on|data_mode_off[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:39:21.630 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mobile_data_issue]airplane_mode_on|bad_network_preference[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+2026-07-10 15:39:21.651 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|user_abroad_roaming_enabled_off[PERSONA:None
+] failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+3/114 (trial 1/1). Running task 
+[mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Ea
+sy], trial 1
+4/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSON
+A:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Ea
+sy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+5/114 (trial 1/1). Running task 
+[mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:E
+asy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:E
+asy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Ea
+sy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:E
+asy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Ea
+sy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:E
+asy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:25.123 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]data_saver_mode_on|user_abroad_roaming_enabled_off[PERSONA:Ea
+sy] failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+6/114 (trial 1/1). Running task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:25.394 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:E
+asy] failed permanently after 4 attempts: DummyUser.__init__() got an unexpected
+keyword argument 'tools'
+2026-07-10 15:39:25.395 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|user_abroad_roaming_enabled_off[PERSON
+A:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+7/114 (trial 1/1). Running task 
+[mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+8/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_e
+nabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_e
+nabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_e
+nabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_e
+nabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:39:28.427 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mobile_data_issue]data_mode_off|data_usage_exceeded[PERSONA:None] failed
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+9/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disab
+led_on[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disab
+led_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:39:28.880 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mobile_data_issue]data_saver_mode_on|data_usage_exceeded[PERSONA:Easy] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+2026-07-10 15:39:28.969 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|user_abroad_roaming_e
+nabled_off[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+10/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_of
+f[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_of
+f[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+11/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PE
+RSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PE
+RSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disab
+led_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_of
+f[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PE
+RSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disab
+led_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_of
+f[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PE
+RSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:31.884 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|data_saver_mode_on|user_abroad_roaming_disab
+led_on[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+12/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+n[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+n[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:32.269 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_enabled_of
+f[PERSONA:Easy] failed permanently after 4 attempts: DummyUser.__init__() got an
+unexpected keyword argument 'tools'
+2026-07-10 15:39:32.358 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PE
+RSONA:None] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+13/114 (trial 1/1). Running task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disable
+d_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disable
+d_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+14/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+ff[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+ff[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+n[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disable
+d_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+ff[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+n[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disable
+d_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+ff[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:39:35.354 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+n[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() got an
+unexpected keyword argument 'tools'
+15/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded
+[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded
+[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:35.657 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]data_mode_off|data_usage_exceeded|user_abroad_roaming_disable
+d_off[PERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+2026-07-10 15:39:35.743 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|user_abroad_roaming_disabled_o
+ff[PERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+16/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_ab
+road_roaming_disabled_on[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_ab
+road_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+17/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|u
+ser_abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|u
+ser_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded
+[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_ab
+road_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|u
+ser_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded
+[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_ab
+road_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|u
+ser_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:39:38.808 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|data_saver_mode_on|data_usage_exceeded
+[PERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+18/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:39:39.042 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|user_ab
+road_roaming_disabled_on[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:39.132 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded|u
+ser_abroad_roaming_disabled_off[PERSONA:Easy] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+19/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming
+_disabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming
+_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+20/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroa
+d_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroa
+d_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming
+_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroa
+d_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming
+_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroa
+d_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+2026-07-10 15:39:42.111 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_saver_mode_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+21/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:39:42.600 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming
+_disabled_off[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:42.686 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_usage_exceeded|user_abroa
+d_roaming_disabled_off[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+22/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+23/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_disabled_on[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+2026-07-10 15:39:45.418 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+24/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got an
+unexpected keyword argument 'tools'
+2026-07-10 15:39:45.984 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|data_mode_off|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_enabled_off[PERSONA:Hard] failed permanently after 
+4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+25/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:46.201 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] failed permanently 
+after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+26/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got an
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+Status: 24/114 complete. Avg reward: N/A. 3 running: 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy].0(1s R2), 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None].0(1s R2), 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy].0(0s R2)
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got an
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:48.873 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mode_on|user_abroad_roaming_disabled_on[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|user_abroad_roaming_disabled_on[PERSONA:Easy] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+27/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+2026-07-10 15:39:49.292 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_saver_mode_on|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+28/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:49.508 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|data_mode_off|data_saver_mode_on|data_
+usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed permanently
+after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+29/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:52.183 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_
+exceeded|user_abroad_roaming_disabled_off[PERSONA:Easy] failed permanently after
+4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+30/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None], 
+trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:52.599 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+31/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:52.978 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_saver_mo
+de_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+32/114 (trial 1/1). Running task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:55.646 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|data_mode_off|data_sa
+ver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+33/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:
+Easy], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:55.904 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|user_abroad_roaming_disabled_off[PERSONA:Hard] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+34/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:
+None], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:
+None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:56.286 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_
+on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+35/114 (trial 1/1). Running task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA
+:Hard], trial 1
+  Retry 1/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA
+:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:
+None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA
+:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:
+None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA
+:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:58.957 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:
+Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+36/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:59.357 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:
+None] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+37/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:39:59.596 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mobile_data_issue]airplane_mode_on|bad_network_preference|bad_vpn|data_mode_off
+|data_saver_mode_on|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA
+:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+38/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:02.263 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]airplane_mode_on|unseat_sim_card[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+39/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:02.665 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]airplane_mode_on|lock_sim_card_pin[PERSONA:Easy] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+40/114 (trial 1/1). Running task 
+[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:02.901 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]airplane_mode_on|break_apn_settings[PERSONA:Hard] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+41/114 (trial 1/1). Running task 
+[service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:05.572 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]airplane_mode_on|overdue_bill_suspension[PERSONA:None] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+42/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:05.975 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]overdue_bill_suspension|unseat_sim_card[PERSONA:Easy] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+43/114 (trial 1/1). Running task 
+[service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:06.369 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]contract_end_suspension|unseat_sim_card[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+44/114 (trial 1/1). Running task 
+[service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:08.880 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]break_apn_settings|lock_sim_card_pin[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+45/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard],
+trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:09.283 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+46/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None]
+, trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:09.832 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [service_issue]contract_end_suspension|lock_sim_card_pin[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+47/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:
+Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:12.190 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+48/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:Non
+e], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:Non
+e]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:12.737 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|unseat_sim_card[PERSONA:None]
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+49/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSON
+A:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSON
+A:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:13.139 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|overdue_bill_suspension|unseat_sim_card[PERSONA:
+Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+50/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSO
+NA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSO
+NA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:Non
+e]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSON
+A:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSO
+NA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:Non
+e]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSON
+A:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSO
+NA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:15.664 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin[PERSONA:Non
+e] failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+51/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:16.046 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension[PERSON
+A:Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+52/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:16.449 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension[PERSO
+NA:None] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+53/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+Status: 51/114 complete. Avg reward: N/A. 3 running: 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard].0(1s R2), 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy].0(1s R2), 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard].0(0s R2)
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:18.976 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSON
+A:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+54/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_
+card[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_
+card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:40:19.357 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERS
+ONA:Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+55/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat
+_sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat
+_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+2026-07-10 15:40:19.901 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERS
+ONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+56/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat
+_sim_card[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat
+_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_
+card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat
+_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat
+_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_
+card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat
+_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat
+_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument
+'tools'
+2026-07-10 15:40:22.446 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|unseat_sim_
+card[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+57/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unsea
+t_sim_card[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unsea
+t_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:22.666 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|lock_sim_card_pin|overdue_bill_suspension|unseat
+_sim_card[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+58/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unsea
+t_sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unsea
+t_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:23.212 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|contract_end_suspension|lock_sim_card_pin|unseat
+_sim_card[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+59/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unsea
+t_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unsea
+t_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unsea
+t_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unsea
+t_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:25.758 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|overdue_bill_suspension|unsea
+t_sim_card[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+60/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:26.125 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|unsea
+t_sim_card[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+61/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unse
+at_sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unse
+at_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:26.520 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bill_suspension[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+62/114 (trial 1/1). Running task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unse
+at_sim_card[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unse
+at_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unse
+at_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unse
+at_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unse
+at_sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unse
+at_sim_card[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:29.065 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_sim_card_pin[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+63/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension|unseat_sim_card[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:40:29.435 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unse
+at_sim_card[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+64/114 (trial 1/1). Running task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin|unseat_sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin|unseat_sim_card[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:40:29.828 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]break_apn_settings|contract_end_suspension|lock_sim_card_pin|unse
+at_sim_card[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+65/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin|unseat_sim_card[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin|unseat_sim_card[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:32.377 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bill_suspension|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|lock_sim_card_pin|overdue_bil
+l_suspension|unseat_sim_card[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+66/114 (trial 1/1). Running task 
+[mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:32.745 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_sim_card_pin|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[service_issue]airplane_mode_on|break_apn_settings|contract_end_suspension|lock_
+sim_card_pin|unseat_sim_card[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+67/114 (trial 1/1). Running task 
+[mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy], trial
+1
+  Retry 1/3 for task 
+[mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:33.301 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mms_issue]airplane_mode_on|break_app_both_permissions[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+68/114 (trial 1/1). Running task 
+[mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:35.848 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mms_issue]break_app_sms_permission|data_mode_off[PERSONA:None] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+69/114 (trial 1/1). Running task 
+[mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard], 
+trial 1
+  Retry 1/3 for task 
+[mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:36.055 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mms_issue]break_app_storage_permission|data_usage_exceeded[PERSONA:Easy]
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+70/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None],
+trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:36.613 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task [mms_issue]break_app_both_permissions|data_usage_exceeded[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+71/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None]
+, trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None]:
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:39.314 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_apn_mms_setting|user_abroad_roaming_enabled_off[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+2026-07-10 15:40:39.405 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_on[PERSONA:None] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+72/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy], 
+trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+73/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:N
+one], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:N
+one]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:39.920 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|user_abroad_roaming_disabled_off[PERSONA:None]
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+74/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PER
+SONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PER
+SONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:N
+one]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PER
+SONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:N
+one]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PER
+SONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:42.703 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|break_app_both_permissions[PERSONA:Easy] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+75/114 (trial 1/1). Running task 
+[mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disa
+bled_on[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disa
+bled_on[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:40:42.921 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|data_usage_exceeded[PERSONA:N
+one] failed permanently after 4 attempts: DummyUser.__init__() got an unexpected
+keyword argument 'tools'
+76/114 (trial 1/1). Running task 
+[mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabl
+ed_on[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabl
+ed_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:40:43.234 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|user_abroad_roaming_enabled_off[PER
+SONA:Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+77/114 (trial 1/1). Running task 
+[mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy], 
+trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disa
+bled_on[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabl
+ed_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disa
+bled_on[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabl
+ed_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:46.169 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_app_storage_permission|unseat_sim_card|user_abroad_roaming_disa
+bled_on[PERSONA:Easy] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+2026-07-10 15:40:46.263 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_app_both_permissions|unseat_sim_card|user_abroad_roaming_disabl
+ed_on[PERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+78/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+79/114 (trial 1/1). Running task 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:46.543 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_wifi_calling|data_mode_off|data_usage_exceeded[PERSONA:Easy] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+80/114 (trial 1/1). Running task 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+Status: 78/114 complete. Avg reward: N/A. 3 running: 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None].0(0s R2), 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard].0(0s R2), 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None].0(0s R2)
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:40:49.571 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|data_mode_off|user_abroad_roaming_disabled_on[
+PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:40:49.811 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_apn_mms_setting|data_mode_off|user_abroad_roaming_disabled_on[P
+ERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+81/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_d
+isabled_on[PERSONA:Hard], trial 1
+2026-07-10 15:40:49.905 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_app_sms_permission|data_usage_exceeded|user_abroad_roaming_disa
+bled_on[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+82/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_
+abroad_roaming_disabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_d
+isabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+83/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_us
+age_exceeded[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_
+abroad_roaming_disabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_us
+age_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_d
+isabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_
+abroad_roaming_disabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_us
+age_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_d
+isabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_
+abroad_roaming_disabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_us
+age_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:40:53.375 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|break_app_sms_permission|user_abroad_roaming_d
+isabled_on[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:53.516 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|break_app_both_permissions|data_usage_exceeded|user_
+abroad_roaming_disabled_off[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:53.531 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_usage_exceeded[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_us
+age_exceeded[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+84/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_storage_permission[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_storage_permission[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+85/114 (trial 1/1). Running task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_ro
+aming_enabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_ro
+aming_enabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+86/114 (trial 1/1). Running task 
+[mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_r
+oaming_disabled_on[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_r
+oaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_storage_permission[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_ro
+aming_enabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_r
+oaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_storage_permission[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_ro
+aming_enabled_off[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_r
+oaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+2026-07-10 15:40:57.000 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_app_storage_permission[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_storage_permission[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:57.148 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|unseat_sim_card|user_abroad_ro
+aming_enabled_off[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:40:57.156 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]break_apn_mms_setting|data_mode_off|data_usage_exceeded|user_abroad_r
+oaming_disabled_on[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+87/114 (trial 1/1). Running task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_
+usage_exceeded[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_
+usage_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+88/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|unseat_sim_card[PERSONA:Hard], trial 1
+89/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|
+data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|unseat_sim_card[PERSONA:Hard]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|
+data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_
+usage_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|unseat_sim_card[PERSONA:Hard]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|
+data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_
+usage_exceeded[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|unseat_sim_card[PERSONA:Hard]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|
+data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:00.468 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_usage_exceeded[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_
+usage_exceeded[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+90/114 (trial 1/1). Running task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_excee
+ded|unseat_sim_card[PERSONA:None], trial 1
+2026-07-10 15:41:00.568 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_storage_permission|unseat_sim_card[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|unseat_sim_card[PERSONA:Hard] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_excee
+ded|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+91/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_enabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+2026-07-10 15:41:00.798 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_storage_permission|
+data_mode_off|user_abroad_roaming_enabled_off[PERSONA:Easy] failed permanently 
+after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+92/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_excee
+ded|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_excee
+ded|unseat_sim_card[PERSONA:None]: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:04.026 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|data_mode_off|data_usage_excee
+ded|unseat_sim_card[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:04.120 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|break_app_sms_permission|data_mode_off|data_us
+age_exceeded|user_abroad_roaming_enabled_off[PERSONA:None] failed permanently 
+after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+93/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mo
+de_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+2026-07-10 15:41:04.214 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:Hard] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+94/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_e
+xceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mo
+de_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+95/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard],
+ trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_e
+xceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard]:
+ DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mo
+de_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_e
+xceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard]:
+ DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mo
+de_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_e
+xceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard]:
+ DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:07.706 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mode_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|data_mo
+de_off|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:41:07.831 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|data_usage_e
+xceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:41:07.831 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+96/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+97/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None]
+, trial 1
+98/114 (trial 1/1). Running task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|dat
+a_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None], 
+trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|dat
+a_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|dat
+a_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None]
+: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|dat
+a_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None]: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:11.369 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard] failed 
+permanently after 4 attempts: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+2026-07-10 15:41:11.460 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_both_permissions|da
+ta_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None]
+ failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+2026-07-10 15:41:11.477 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|dat
+a_mode_off|data_usage_exceeded|user_abroad_roaming_disabled_off[PERSONA:None] 
+failed permanently after 4 attempts: DummyUser.__init__() got an unexpected 
+keyword argument 'tools'
+99/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mod
+e_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSON
+A:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mod
+e_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSON
+A:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+100/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled
+_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled
+_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+101/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enable
+d_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enable
+d_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mod
+e_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSON
+A:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled
+_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enable
+d_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mod
+e_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSON
+A:None]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled
+_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enable
+d_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:41:14.790 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_wifi_calling|break_app_both_permissions|data_mod
+e_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSON
+A:None] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+102/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy], trial 1
+2026-07-10 15:41:14.891 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|unseat_sim_card|user_abroad_roaming_enabled
+_off[PERSONA:Hard] failed permanently after 4 attempts: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+103/114 (trial 1/1). Running task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:15.126 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|break_apn_mms_setting|break_a
+pp_both_permissions|data_mode_off|data_usage_exceeded|user_abroad_roaming_enable
+d_off[PERSONA:None] failed permanently after 4 attempts: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+104/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy]: DummyUser.__init__() got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard]: DummyUser.__init__() got an unexpected keyword
+argument 'tools'
+Status: 102/114 complete. Avg reward: N/A. 3 running: 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy].0(1s R3), 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy].0(1s R3), 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard].0(0s R3)
+2026-07-10 15:41:18.197 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_app_sms_permission|data
+_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PE
+RSONA:Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:41:18.291 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_a
+pp_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:
+Easy] failed permanently after 4 attempts: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+105/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sm
+s_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roami
+ng_disabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sm
+s_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roami
+ng_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+106/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+2026-07-10 15:41:18.584 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_st
+orage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_r
+oaming_enabled_off[PERSONA:Hard] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+107/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_
+abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_
+abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sm
+s_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roami
+ng_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_
+abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sm
+s_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roami
+ng_disabled_off[PERSONA:None]: DummyUser.__init__() got an unexpected keyword 
+argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card[PERSONA:Easy]: DummyUser.__init__() got an unexpected keyword argument 
+'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_
+abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:41:21.594 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_app_sm
+s_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roami
+ng_disabled_off[PERSONA:None] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:21.690 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card[PERSONA:Easy] failed permanently after 4 attempts: DummyUser.__init__()
+got an unexpected keyword argument 'tools'
+108/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_enabled_off[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+109/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_disabled_on[PERSONA:None], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+2026-07-10 15:41:22.051 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_usage_exceeded|unseat_sim_card|user_
+abroad_roaming_disabled_off[PERSONA:Easy] failed permanently after 4 attempts: 
+DummyUser.__init__() got an unexpected keyword argument 'tools'
+110/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_enabled_off[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_disabled_on[PERSONA:None]: DummyUser.__init__() got an 
+unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy]: DummyUser.__init__() got
+an unexpected keyword argument 'tools'
+2026-07-10 15:41:24.997 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_enabled_off[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_enabled_off[PERSONA:None] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:25.093 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:None] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_sms_permission|data_mode_off|data_usage_exceeded|unseat_sim_
+card|user_abroad_roaming_disabled_on[PERSONA:None] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+111/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_on[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+112/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+2026-07-10 15:41:25.516 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_on[PERSONA:Easy] failed permanently after 
+4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+113/114 (trial 1/1). Running task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_off[PERSONA:Hard], trial 1
+  Retry 1/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_off[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+  Retry 2/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_off[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_on[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy]: DummyUser.__init__() 
+got an unexpected keyword argument 'tools'
+  Retry 3/3 for task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_off[PERSONA:Hard]: DummyUser.__init__() got 
+an unexpected keyword argument 'tools'
+2026-07-10 15:41:28.573 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_on[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_on[PERSONA:Hard] failed permanently after 4 
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:28.651 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_storage_permission|data_mode_off|data_usage_exceeded|unseat_
+sim_card|user_abroad_roaming_disabled_off[PERSONA:Easy] failed permanently after
+4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+2026-07-10 15:41:28.832 | ERROR    | tau2.runner.progress:run_with_retry:101 - Task [mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mms_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_sim_card|user_abroad_roaming_disabled_off[PERSONA:Hard] failed after 4 attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+  Task 
+[mms_issue]airplane_mode_on|bad_network_preference|bad_wifi_calling|break_apn_mm
+s_setting|break_app_both_permissions|data_mode_off|data_usage_exceeded|unseat_si
+m_card|user_abroad_roaming_disabled_off[PERSONA:Hard] failed permanently after 4
+attempts: DummyUser.__init__() got an unexpected keyword argument 'tools'
+
+Successfully completed all simulations!
+To review the simulations, run: tau2 view
+╭───────────────────────── Agent Performance Metrics ──────────────────────────╮
+│   ═══ Overview ═══                                                           │
+│   Total Simulations         114                                              │
+│   ⚠️  Infra Errors           114 (excluded from metrics below)                │
+│   Evaluated                 0                                                │
+│   Total Tasks               0                                                │
+│                                                                              │
+│   ═══ Reward Metrics ═══                                                     │
+│   🏆 Average Reward         0.0000                                           │
+│   💰 Avg Cost/Conversation  $0.0000                                          │
+│                                                                              │
+│   ═══ Action Metrics ═══                                                     │
+│   📖 Read Actions           -                                                │
+│   ✏️  Write Actions          -                                                │
+│                                                                              │
+│   ═══ DB Match ═══                                                           │
+│   🗄️  DB Match               Not checked: 0                                   │
+│                                                                              │
+│   ═══ Authentication ═══                                                     │
+│                                                                              │
+│   ═══ Termination ═══                                                        │
+│   🛑 Normal Stop            0 (👤 0 / 🤖 0)                                  │
+│                                                                              │
+│   ═══ LLM Judge Review ═══                                                   │
+│                             No review data available                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+>>> Done. Results saved to experiment_results/telecom_no_user_gpt-4o-mini.json
