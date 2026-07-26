@@ -24,6 +24,8 @@
 #SBATCH --mem=16G
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=vgangal3@asu.edu
 
 set -euo pipefail
 
