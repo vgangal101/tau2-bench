@@ -4,15 +4,15 @@
 #
 # Works two ways:
 #   1. Locally, stepped through by hand:
-#        STEP=1 bash scripts/run_telecom_no_user_sol.sh
+#        STEP=1 bash launch_scripts/run_telecom_no_user_sol.sh
 #      (each stage pauses for Enter; the #SBATCH lines below are ignored by bash)
 #   2. Submitted to the Sol cluster as a batch job:
-#        sbatch scripts/run_telecom_no_user_sol.sh
+#        sbatch launch_scripts/run_telecom_no_user_sol.sh
 #      (edit the #SBATCH block and the "Sol environment" step below first)
 #
 # Which OpenAI key gets used is controlled by KEY_PROFILE (default "personal"):
-#   KEY_PROFILE=personal bash scripts/run_telecom_no_user_sol.sh   # ~/openai_key_personal.sh
-#   KEY_PROFILE=lab      bash scripts/run_telecom_no_user_sol.sh   # ~/openai_key_lab.sh
+#   KEY_PROFILE=personal bash launch_scripts/run_telecom_no_user_sol.sh   # ~/openai_key_personal.sh
+#   KEY_PROFILE=lab      bash launch_scripts/run_telecom_no_user_sol.sh   # ~/openai_key_lab.sh
 # Or bypass profiles entirely with KEY_FILE=/path/to/key.sh
 #
 #SBATCH --job-name=tau2-telecom-no-user
