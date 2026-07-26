@@ -10,6 +10,11 @@
 #        sbatch scripts/run_telecom_no_user_sol.sh
 #      (edit the #SBATCH block and the "Sol environment" step below first)
 #
+# Which OpenAI key gets used is controlled by KEY_PROFILE (default "personal"):
+#   KEY_PROFILE=personal bash scripts/run_telecom_no_user_sol.sh   # ~/openai_key_personal.sh
+#   KEY_PROFILE=lab      bash scripts/run_telecom_no_user_sol.sh   # ~/openai_key_lab.sh
+# Or bypass profiles entirely with KEY_FILE=/path/to/key.sh
+#
 #SBATCH --job-name=tau2-telecom-no-user
 #SBATCH --partition=public
 #SBATCH --qos=public
@@ -40,7 +45,16 @@ AGENT_LLM="${AGENT_LLM:-gpt-4o-mini}"
 NUM_TRIALS="${NUM_TRIALS:-1}"
 SAVE_TO="${SAVE_TO:-experiment_results/telecom_no_user_${AGENT_LLM//\//_}.json}"
 STEP="${STEP:-0}"   # STEP=1 to pause between stages for manual step-through
-KEY_FILE="${KEY_FILE:-$HOME/openai_key_personal.sh}"   # sourced to set OPENAI_API_KEY on Sol
+
+# Which OpenAI key to use: "personal" (default) or "lab" (shared ASU key).
+# Override KEY_FILE directly to point at any other key file.
+KEY_PROFILE="${KEY_PROFILE:-personal}"
+case "$KEY_PROFILE" in
+    personal) DEFAULT_KEY_FILE="$HOME/openai_key_personal.sh" ;;
+    lab)      DEFAULT_KEY_FILE="$HOME/openai_key_lab.sh" ;;
+    *)        echo "Unknown KEY_PROFILE '$KEY_PROFILE' (expected 'personal' or 'lab')" >&2; exit 1 ;;
+esac
+KEY_FILE="${KEY_FILE:-$DEFAULT_KEY_FILE}"   # sourced to set OPENAI_API_KEY on Sol
 
 pause() {
     echo ">>> $1"
