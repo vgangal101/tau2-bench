@@ -16,7 +16,7 @@
 # different model string the endpoint expects.
 #
 #SBATCH --job-name=tau2-telecom-no-user-intel
-#SBATCH --partition=general
+#SBATCH --partition=public
 #SBATCH --qos=public
 #SBATCH --account=vgangal3
 #SBATCH --time=08:00:00
