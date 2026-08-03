@@ -1,0 +1,1176 @@
+[
+  {
+    "name": "disable_roaming",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Disables international roaming on a line.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to disable roaming for.",
+          "title": "Line Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "description": "Message indicating the roaming has been enabled.",
+          "title": "Returns",
+          "type": "string"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "enable_roaming",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Enables international roaming on a line.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to enable roaming for.",
+          "title": "Line Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "Message indicating the roaming has been enabled.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_bills_for_customer",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Retrieves a list of the customer's bills, most recent first.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "limit": {
+          "default": 12,
+          "description": "Maximum number of bills to return.",
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "customer_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "$defs": {
+        "Bill": {
+          "additionalProperties": false,
+          "properties": {
+            "bill_id": {
+              "description": "Unique identifier for the bill",
+              "title": "Bill Id",
+              "type": "string"
+            },
+            "customer_id": {
+              "description": "ID of the customer this bill belongs to",
+              "title": "Customer Id",
+              "type": "string"
+            },
+            "period_start": {
+              "description": "Start date of the billing period (format: YYYY-MM-DD, timezone: EST)",
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            },
+            "period_end": {
+              "description": "End date of the billing period (format: YYYY-MM-DD, timezone: EST)",
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            },
+            "issue_date": {
+              "description": "Date the bill was issued/generated (format: YYYY-MM-DD, timezone: EST)",
+              "format": "date",
+              "title": "Issue Date",
+              "type": "string"
+            },
+            "total_due": {
+              "description": "Total amount due in USD",
+              "title": "Total Due",
+              "type": "number"
+            },
+            "due_date": {
+              "description": "Date by which payment is due (format: YYYY-MM-DD, timezone: EST)",
+              "format": "date",
+              "title": "Due Date",
+              "type": "string"
+            },
+            "line_items": {
+              "description": "Individual charges, credits, and payments on this bill",
+              "items": {
+                "$ref": "#/$defs/LineItem"
+              },
+              "title": "Line Items",
+              "type": "array"
+            },
+            "status": {
+              "$ref": "#/$defs/BillStatus",
+              "default": "Draft",
+              "description": "Current status of the bill"
+            }
+          },
+          "required": [
+            "bill_id",
+            "customer_id",
+            "period_start",
+            "period_end",
+            "issue_date",
+            "total_due",
+            "due_date"
+          ],
+          "title": "Bill",
+          "type": "object"
+        },
+        "BillStatus": {
+          "enum": [
+            "Draft",
+            "Issued",
+            "Awaiting Payment",
+            "Paid",
+            "Overdue",
+            "Disputed"
+          ],
+          "title": "BillStatus",
+          "type": "string"
+        },
+        "LineItem": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "description": "Descriptive text for the line item",
+              "title": "Description",
+              "type": "string"
+            },
+            "amount": {
+              "description": "Monetary amount in USD (positive for charges, negative for credits)",
+              "title": "Amount",
+              "type": "number"
+            },
+            "date": {
+              "description": "Date the line item was applied (format: YYYY-MM-DD, timezone: EST)",
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            },
+            "item_type": {
+              "description": "Category of the line item (e.g., Plan Charge, Overage, Fee, Credit, Payment)",
+              "title": "Item Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "description",
+            "amount",
+            "date",
+            "item_type"
+          ],
+          "title": "LineItem",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "returns": {
+          "description": "List of Bill objects, ordered by issue date (newest first).",
+          "items": {
+            "$ref": "#/$defs/Bill"
+          },
+          "title": "Returns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_customer_by_id",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Retrieves a customer directly by their unique ID.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "The unique identifier of the customer.",
+          "title": "Customer Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "$defs": {
+        "AccountStatus": {
+          "enum": [
+            "Active",
+            "Suspended",
+            "Pending Verification",
+            "Closed"
+          ],
+          "title": "AccountStatus",
+          "type": "string"
+        },
+        "Address": {
+          "additionalProperties": false,
+          "properties": {
+            "street": {
+              "description": "Street address including house/apartment number",
+              "title": "Street",
+              "type": "string"
+            },
+            "city": {
+              "description": "City name",
+              "title": "City",
+              "type": "string"
+            },
+            "state": {
+              "description": "State or province code (e.g., CA, NY)",
+              "title": "State",
+              "type": "string"
+            },
+            "zip_code": {
+              "description": "Postal/ZIP code",
+              "title": "Zip Code",
+              "type": "string"
+            }
+          },
+          "required": [
+            "street",
+            "city",
+            "state",
+            "zip_code"
+          ],
+          "title": "Address",
+          "type": "object"
+        },
+        "Customer": {
+          "additionalProperties": false,
+          "properties": {
+            "customer_id": {
+              "description": "Unique identifier for the customer",
+              "title": "Customer Id",
+              "type": "string"
+            },
+            "full_name": {
+              "description": "Customer's full name",
+              "title": "Full Name",
+              "type": "string"
+            },
+            "date_of_birth": {
+              "description": "Customer's date of birth for identity verification (format: YYYY-MM-DD)",
+              "title": "Date Of Birth",
+              "type": "string"
+            },
+            "email": {
+              "description": "Customer's email address",
+              "title": "Email",
+              "type": "string"
+            },
+            "phone_number": {
+              "description": "Customer's primary contact phone number",
+              "title": "Phone Number",
+              "type": "string"
+            },
+            "address": {
+              "$ref": "#/$defs/Address",
+              "description": "Customer's billing address"
+            },
+            "account_status": {
+              "$ref": "#/$defs/AccountStatus",
+              "default": "Pending Verification",
+              "description": "Current status of the customer account"
+            },
+            "payment_methods": {
+              "description": "Stored payment methods for this customer",
+              "items": {
+                "$ref": "#/$defs/PaymentMethod"
+              },
+              "title": "Payment Methods",
+              "type": "array"
+            },
+            "line_ids": {
+              "description": "Phone/data lines owned by this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Line Ids",
+              "type": "array"
+            },
+            "bill_ids": {
+              "description": "Bills associated with this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Bill Ids",
+              "type": "array"
+            },
+            "created_at": {
+              "default": "2025-01-01",
+              "description": "Date and time when the customer account was created (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "last_extension_date": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Date of the most recent payment extension (used for quarterly limit check) (format: YYYY-MM-DD, timezone: EST)",
+              "title": "Last Extension Date"
+            },
+            "goodwill_credit_used_this_year": {
+              "default": 0.0,
+              "description": "Amount of goodwill credit used in the current calendar year",
+              "title": "Goodwill Credit Used This Year",
+              "type": "number"
+            }
+          },
+          "required": [
+            "customer_id",
+            "full_name",
+            "date_of_birth",
+            "email",
+            "phone_number",
+            "address"
+          ],
+          "title": "Customer",
+          "type": "object"
+        },
+        "PaymentMethod": {
+          "additionalProperties": false,
+          "properties": {
+            "method_type": {
+              "$ref": "#/$defs/PaymentMethodType",
+              "description": "Type of payment method"
+            },
+            "account_number_last_4": {
+              "description": "Last 4 digits of the account number",
+              "title": "Account Number Last 4",
+              "type": "string"
+            },
+            "expiration_date": {
+              "description": "The expiration date of the payment method in the format MM/YYYY",
+              "title": "Expiration Date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method_type",
+            "account_number_last_4",
+            "expiration_date"
+          ],
+          "title": "PaymentMethod",
+          "type": "object"
+        },
+        "PaymentMethodType": {
+          "enum": [
+            "Credit Card",
+            "Debit Card",
+            "PayPal"
+          ],
+          "title": "PaymentMethodType",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "returns": {
+          "$ref": "#/$defs/Customer",
+          "description": "Customer object if found, None otherwise."
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_customer_by_name",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Searches for customers by name and DOB. May return multiple matches if names are similar,\n\nDOB helps disambiguate.",
+    "parameters": {
+      "properties": {
+        "full_name": {
+          "description": "The full name of the customer.",
+          "title": "Full Name",
+          "type": "string"
+        },
+        "dob": {
+          "description": "Date of birth for verification, in the format YYYY-MM-DD.",
+          "title": "Dob",
+          "type": "string"
+        }
+      },
+      "required": [
+        "full_name",
+        "dob"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "$defs": {
+        "AccountStatus": {
+          "enum": [
+            "Active",
+            "Suspended",
+            "Pending Verification",
+            "Closed"
+          ],
+          "title": "AccountStatus",
+          "type": "string"
+        },
+        "Address": {
+          "additionalProperties": false,
+          "properties": {
+            "street": {
+              "description": "Street address including house/apartment number",
+              "title": "Street",
+              "type": "string"
+            },
+            "city": {
+              "description": "City name",
+              "title": "City",
+              "type": "string"
+            },
+            "state": {
+              "description": "State or province code (e.g., CA, NY)",
+              "title": "State",
+              "type": "string"
+            },
+            "zip_code": {
+              "description": "Postal/ZIP code",
+              "title": "Zip Code",
+              "type": "string"
+            }
+          },
+          "required": [
+            "street",
+            "city",
+            "state",
+            "zip_code"
+          ],
+          "title": "Address",
+          "type": "object"
+        },
+        "Customer": {
+          "additionalProperties": false,
+          "properties": {
+            "customer_id": {
+              "description": "Unique identifier for the customer",
+              "title": "Customer Id",
+              "type": "string"
+            },
+            "full_name": {
+              "description": "Customer's full name",
+              "title": "Full Name",
+              "type": "string"
+            },
+            "date_of_birth": {
+              "description": "Customer's date of birth for identity verification (format: YYYY-MM-DD)",
+              "title": "Date Of Birth",
+              "type": "string"
+            },
+            "email": {
+              "description": "Customer's email address",
+              "title": "Email",
+              "type": "string"
+            },
+            "phone_number": {
+              "description": "Customer's primary contact phone number",
+              "title": "Phone Number",
+              "type": "string"
+            },
+            "address": {
+              "$ref": "#/$defs/Address",
+              "description": "Customer's billing address"
+            },
+            "account_status": {
+              "$ref": "#/$defs/AccountStatus",
+              "default": "Pending Verification",
+              "description": "Current status of the customer account"
+            },
+            "payment_methods": {
+              "description": "Stored payment methods for this customer",
+              "items": {
+                "$ref": "#/$defs/PaymentMethod"
+              },
+              "title": "Payment Methods",
+              "type": "array"
+            },
+            "line_ids": {
+              "description": "Phone/data lines owned by this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Line Ids",
+              "type": "array"
+            },
+            "bill_ids": {
+              "description": "Bills associated with this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Bill Ids",
+              "type": "array"
+            },
+            "created_at": {
+              "default": "2025-01-01",
+              "description": "Date and time when the customer account was created (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "last_extension_date": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Date of the most recent payment extension (used for quarterly limit check) (format: YYYY-MM-DD, timezone: EST)",
+              "title": "Last Extension Date"
+            },
+            "goodwill_credit_used_this_year": {
+              "default": 0.0,
+              "description": "Amount of goodwill credit used in the current calendar year",
+              "title": "Goodwill Credit Used This Year",
+              "type": "number"
+            }
+          },
+          "required": [
+            "customer_id",
+            "full_name",
+            "date_of_birth",
+            "email",
+            "phone_number",
+            "address"
+          ],
+          "title": "Customer",
+          "type": "object"
+        },
+        "PaymentMethod": {
+          "additionalProperties": false,
+          "properties": {
+            "method_type": {
+              "$ref": "#/$defs/PaymentMethodType",
+              "description": "Type of payment method"
+            },
+            "account_number_last_4": {
+              "description": "Last 4 digits of the account number",
+              "title": "Account Number Last 4",
+              "type": "string"
+            },
+            "expiration_date": {
+              "description": "The expiration date of the payment method in the format MM/YYYY",
+              "title": "Expiration Date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method_type",
+            "account_number_last_4",
+            "expiration_date"
+          ],
+          "title": "PaymentMethod",
+          "type": "object"
+        },
+        "PaymentMethodType": {
+          "enum": [
+            "Credit Card",
+            "Debit Card",
+            "PayPal"
+          ],
+          "title": "PaymentMethodType",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "returns": {
+          "description": "List of matching Customer objects.",
+          "items": {
+            "$ref": "#/$defs/Customer"
+          },
+          "title": "Returns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_customer_by_phone",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Finds a customer by their primary contact or line phone number.",
+    "parameters": {
+      "properties": {
+        "phone_number": {
+          "description": "The phone number to search for.",
+          "title": "Phone Number",
+          "type": "string"
+        }
+      },
+      "required": [
+        "phone_number"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "$defs": {
+        "AccountStatus": {
+          "enum": [
+            "Active",
+            "Suspended",
+            "Pending Verification",
+            "Closed"
+          ],
+          "title": "AccountStatus",
+          "type": "string"
+        },
+        "Address": {
+          "additionalProperties": false,
+          "properties": {
+            "street": {
+              "description": "Street address including house/apartment number",
+              "title": "Street",
+              "type": "string"
+            },
+            "city": {
+              "description": "City name",
+              "title": "City",
+              "type": "string"
+            },
+            "state": {
+              "description": "State or province code (e.g., CA, NY)",
+              "title": "State",
+              "type": "string"
+            },
+            "zip_code": {
+              "description": "Postal/ZIP code",
+              "title": "Zip Code",
+              "type": "string"
+            }
+          },
+          "required": [
+            "street",
+            "city",
+            "state",
+            "zip_code"
+          ],
+          "title": "Address",
+          "type": "object"
+        },
+        "Customer": {
+          "additionalProperties": false,
+          "properties": {
+            "customer_id": {
+              "description": "Unique identifier for the customer",
+              "title": "Customer Id",
+              "type": "string"
+            },
+            "full_name": {
+              "description": "Customer's full name",
+              "title": "Full Name",
+              "type": "string"
+            },
+            "date_of_birth": {
+              "description": "Customer's date of birth for identity verification (format: YYYY-MM-DD)",
+              "title": "Date Of Birth",
+              "type": "string"
+            },
+            "email": {
+              "description": "Customer's email address",
+              "title": "Email",
+              "type": "string"
+            },
+            "phone_number": {
+              "description": "Customer's primary contact phone number",
+              "title": "Phone Number",
+              "type": "string"
+            },
+            "address": {
+              "$ref": "#/$defs/Address",
+              "description": "Customer's billing address"
+            },
+            "account_status": {
+              "$ref": "#/$defs/AccountStatus",
+              "default": "Pending Verification",
+              "description": "Current status of the customer account"
+            },
+            "payment_methods": {
+              "description": "Stored payment methods for this customer",
+              "items": {
+                "$ref": "#/$defs/PaymentMethod"
+              },
+              "title": "Payment Methods",
+              "type": "array"
+            },
+            "line_ids": {
+              "description": "Phone/data lines owned by this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Line Ids",
+              "type": "array"
+            },
+            "bill_ids": {
+              "description": "Bills associated with this customer",
+              "items": {
+                "type": "string"
+              },
+              "title": "Bill Ids",
+              "type": "array"
+            },
+            "created_at": {
+              "default": "2025-01-01",
+              "description": "Date and time when the customer account was created (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "last_extension_date": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Date of the most recent payment extension (used for quarterly limit check) (format: YYYY-MM-DD, timezone: EST)",
+              "title": "Last Extension Date"
+            },
+            "goodwill_credit_used_this_year": {
+              "default": 0.0,
+              "description": "Amount of goodwill credit used in the current calendar year",
+              "title": "Goodwill Credit Used This Year",
+              "type": "number"
+            }
+          },
+          "required": [
+            "customer_id",
+            "full_name",
+            "date_of_birth",
+            "email",
+            "phone_number",
+            "address"
+          ],
+          "title": "Customer",
+          "type": "object"
+        },
+        "PaymentMethod": {
+          "additionalProperties": false,
+          "properties": {
+            "method_type": {
+              "$ref": "#/$defs/PaymentMethodType",
+              "description": "Type of payment method"
+            },
+            "account_number_last_4": {
+              "description": "Last 4 digits of the account number",
+              "title": "Account Number Last 4",
+              "type": "string"
+            },
+            "expiration_date": {
+              "description": "The expiration date of the payment method in the format MM/YYYY",
+              "title": "Expiration Date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method_type",
+            "account_number_last_4",
+            "expiration_date"
+          ],
+          "title": "PaymentMethod",
+          "type": "object"
+        },
+        "PaymentMethodType": {
+          "enum": [
+            "Credit Card",
+            "Debit Card",
+            "PayPal"
+          ],
+          "title": "PaymentMethodType",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "returns": {
+          "$ref": "#/$defs/Customer",
+          "description": "Customer object if found, None otherwise."
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_data_usage",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Retrieves current billing cycle data usage for a line, including data\n\nrefueling amount, data limit, and cycle end date.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to check usage for.",
+          "title": "Line Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "Dictionary with usage information.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "get_details_by_id",
+    "type": "read",
+    "mutates_state": false,
+    "description": "Retrieves the details for a given ID.\n\nThe ID must be a valid ID for a Customer, Line, Device, Bill, or Plan.",
+    "parameters": {
+      "properties": {
+        "id": {
+          "description": "The ID of the object to retrieve.",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "The object corresponding to the ID.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "refuel_data",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Refuels data for a specific line, adding to the customer's bill.\n\nChecks: Line status must be Active, Customer owns the line.\nLogic: Adds data to the line and charges customer based on the plan's refueling rate.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to refuel data for.",
+          "title": "Line Id",
+          "type": "string"
+        },
+        "gb_amount": {
+          "description": "Amount of data to add in gigabytes.",
+          "title": "Gb Amount",
+          "type": "number"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id",
+        "gb_amount"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "Dictionary with success status, message, charge amount, and updated line if applicable.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "resume_line",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Resumes a suspended line.\n\nChecks: Line status must be Suspended or Pending Activation.\nLogic: Sets line status to Active, clears suspension_start_date.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to resume.",
+          "title": "Line Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "Dictionary with success status, message, and updated line if applicable.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "send_payment_request",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Sends a payment request to the customer for a specific bill.\n\nChecks:\n    - Customer exists\n    - Bill exists and belongs to the customer\n    - No other bills are already awaiting payment for this customer\nLogic: Sets bill status to AWAITING_PAYMENT and notifies customer.\nWarning: This method does not check if the bill is already PAID.\nAlways check the bill status before calling this method.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the bill.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "bill_id": {
+          "description": "ID of the bill to send payment request for.",
+          "title": "Bill Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "bill_id"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "description": "Message indicating the payment request has been sent.",
+          "title": "Returns",
+          "type": "string"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "suspend_line",
+    "type": "write",
+    "mutates_state": true,
+    "description": "Suspends a specific line (max 6 months).\n\nChecks: Line status must be Active.\nLogic: Sets line status to Suspended, records suspension_start_date.",
+    "parameters": {
+      "properties": {
+        "customer_id": {
+          "description": "ID of the customer who owns the line.",
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "line_id": {
+          "description": "ID of the line to suspend.",
+          "title": "Line Id",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason for suspension.",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "customer_id",
+        "line_id",
+        "reason"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "additionalProperties": true,
+          "description": "Dictionary with success status, message, and updated line if applicable.",
+          "title": "Returns",
+          "type": "object"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  },
+  {
+    "name": "transfer_to_human_agents",
+    "type": "generic",
+    "mutates_state": false,
+    "description": "Transfer the user to a human agent, with a summary of the user's issue.\n\nOnly transfer if\n -  the user explicitly asks for a human agent\n -  given the policy and the available tools, you cannot solve the user's issue.",
+    "parameters": {
+      "properties": {
+        "summary": {
+          "description": "A summary of the user's issue.",
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary"
+      ],
+      "title": "parameters",
+      "type": "object"
+    },
+    "returns": {
+      "properties": {
+        "returns": {
+          "description": "A message indicating the user has been transferred to a human agent.",
+          "title": "Returns",
+          "type": "string"
+        }
+      },
+      "required": [
+        "returns"
+      ],
+      "title": "returns",
+      "type": "object"
+    }
+  }
+]
