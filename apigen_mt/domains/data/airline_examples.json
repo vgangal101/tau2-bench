@@ -1,0 +1,29 @@
+[
+  {
+    "thought": "The user wants to cancel a reservation. cancel_reservation requires only the reservation id; the user's identity is established implicitly by them owning the reservation.",
+    "intent": "You are Alex Nguyen, user id alex_nguyen_4821. You'd like to cancel reservation ABC123 because your plans changed.",
+    "actions": [
+      {
+        "name": "cancel_reservation",
+        "arguments": {"reservation_id": "ABC123"}
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "thought": "The user wants to add checked baggage to an existing reservation and also asks what their current baggage allowance is, which is a pure information request answered from the sampled reservation data.",
+    "intent": "You are Priya Shah, user id priya_shah_2210. For reservation XYZ789 you'd like to add 1 more checked bag, paid with your certificate certificate_0000001.",
+    "actions": [
+      {
+        "name": "update_reservation_baggages",
+        "arguments": {
+          "reservation_id": "XYZ789",
+          "total_baggages": 2,
+          "nonfree_baggages": 1,
+          "payment_id": "certificate_0000001"
+        }
+      }
+    ],
+    "outputs": ["Your reservation currently has 1 checked bag."]
+  }
+]

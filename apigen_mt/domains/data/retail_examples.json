@@ -1,0 +1,40 @@
+[
+  {
+    "thought": "The user wants to cancel a pending order because they no longer need it. I need the user's identity, then cancel the order after checking it is pending.",
+    "intent": "You are Maria Chen, in zip code 94110. You want to cancel order #W1000001 because you no longer need the items. You'd like the refund to go back to the original payment method.",
+    "actions": [
+      {
+        "name": "find_user_id_by_name_zip",
+        "arguments": {"first_name": "Maria", "last_name": "Chen", "zip": "94110"}
+      },
+      {
+        "name": "cancel_pending_order",
+        "arguments": {"order_id": "#W1000001", "reason": "no longer needed"}
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "thought": "The user wants to know their order status (a pure information request, so it becomes an output rather than a tool call) and separately wants to update their default shipping address.",
+    "intent": "You are John Ortiz. Your email is john.ortiz@example.com. You'd like to know the status of order #W1000002, and you'd also like to update your default address to 220 Maple Ave, Apt 3, Austin, TX, USA, 73301.",
+    "actions": [
+      {
+        "name": "find_user_id_by_email",
+        "arguments": {"email": "john.ortiz@example.com"}
+      },
+      {
+        "name": "modify_user_address",
+        "arguments": {
+          "user_id": "john_ortiz_1234",
+          "address1": "220 Maple Ave",
+          "address2": "Apt 3",
+          "city": "Austin",
+          "state": "TX",
+          "country": "USA",
+          "zip": "73301"
+        }
+      }
+    ],
+    "outputs": ["Order #W1000002 is currently pending."]
+  }
+]
